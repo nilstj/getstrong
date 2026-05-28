@@ -33,13 +33,13 @@ export function sessionsByWeek(sessions: Session[], days = 90): WeekBucket[] {
 
   const weekMap = new Map<string, number>()
   for (const session of recent) {
-    const key = format(startOfWeek(new Date(session.date), { weekStartsOn: 1 }), 'MMM d')
+    const key = format(startOfWeek(new Date(session.date), { weekStartsOn: 1 }), 'yyyy-MM-dd')
     weekMap.set(key, (weekMap.get(key) ?? 0) + 1)
   }
 
   return weekStarts.map(ws => ({
     week: format(ws, 'MMM d'),
-    count: weekMap.get(format(ws, 'MMM d')) ?? 0,
+    count: weekMap.get(format(ws, 'yyyy-MM-dd')) ?? 0,
   }))
 }
 
@@ -67,6 +67,7 @@ export function hardestSentPerSession(
         .filter(p => p.session_id === session.id && p.sent)
         .map(p => normalizeToFont(p.grade_system, p.grade_value, mappings))
         .filter((g): g is string => g !== null)
+        .filter(g => fontGradeToIndex(g) !== -1)
 
       if (fontGrades.length === 0) return []
 
