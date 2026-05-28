@@ -33,9 +33,10 @@ export function useAddProblem() {
   return useMutation({
     mutationFn: async (values: Omit<Problem, 'id' | 'user_id' | 'created_at'>) => {
       const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('problems')
-        .insert({ ...values, user_id: session!.user.id })
+        .insert({ ...values, user_id: session.user.id })
         .select()
         .single()
       if (error) throw error
