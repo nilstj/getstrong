@@ -1,1 +1,159 @@
-export function SessionDetailPage() { return <div className="p-4">Session Detail</div> }
+import { useState, useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { useSession } from '../hooks/useSessions'
+import { useSessionProblems, useAddProblem } from '../hooks/useProblems'
+import { useSessionExercises, useAddExercise } from '../hooks/useExercises'
+import { useSessionStore } from '../store/sessionStore'
+import { BottomSheet } from '../components/BottomSheet'
+import { FAB } from '../components/FAB'
+import { ProblemForm } from '../components/ProblemForm'
+import { ExerciseForm } from '../components/ExerciseForm'
+import type { Problem, Exercise } from '../types'
+
+type SheetTab = 'problem' | 'exercise'
+
+export function SessionDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetTab, setSheetTab] = useState<SheetTab>('problem')
+
+  const { data: session, isLoading } = useSession(id!)
+  const { data: problems = [] } = useSessionProblems(id!)
+  const { data: exercises = [] } = useSessionExercises(id!)
+  const addProblem = useAddProblem()
+  const addExercise = useAddExercise()
+  const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
+
+  useEffect(() => {
+    setActiveSessionId(id ?? null)
+    return () => setActiveSessionId(null)
+  }, [id, setActiveSessionId])
+
+  if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
+  if (!session) return <div className="p-4 text-red-600">Session not found.</div>
+
+  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at'>) => {
+    addProblem.mutate(
+      { ...values, session_id: id! },
+      {
+        onSuccess: () => { setSheetOpen(false); toast.success('Problem added') },
+        onError: () => toast.error('Failed to save. Try again.'),
+      },
+    )
+  }
+
+  const handleAddExercise = (values: Omit<Exercise, 'id' | 'session_id' | 'user_id' | 'created_at'>) => {
+    addExercise.mutate(
+      { ...values, session_id: id! },
+      {
+        onSuccess: () => { setSheetOpen(false); toast.success('Exercise added') },
+        onError: () => toast.error('Failed to save. Try again.'),
+      },
+    )
+  }
+
+  return (
+    <div className="p-4 pb-32 space-y-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold">{session.location}</h1>
+          <p className="text-gray-500 text-sm">{session.date}</p>
+          {session.duration_minutes && (
+            <p className="text-gray-400 text-sm">{session.duration_minutes} min</p>
+          )}
+          {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
+        </div>
+        <Link to={`/sessions/${id}/edit`} className="text-sm text-indigo-600 font-medium">
+          Edit
+        </Link>
+      </div>
+
+      {problems.length > 0 && (
+        <div>
+          <h2 className="text-base font-semibold mb-2">Problems ({problems.length})</h2>
+          <div className="space-y-2">
+            {problems.map(problem => (
+              <div key={problem.id} className="bg-gray-50 rounded-xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">
+                    {problem.grade_value ?? '—'}
+                    {problem.grade_value && problem.color && (
+                      <span className="text-gray-400 text-sm font-normal ml-1">· {problem.color}</span>
+                    )}
+                    {!problem.grade_value && problem.color && (
+                      <span>{problem.color}</span>
+                    )}
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    problem.sent ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {problem.sent ? 'Sent' : 'Project'}
+                  </span>
+                </div>
+                <p className="text-gray-400 text-sm">
+                  {problem.attempts} attempt{problem.attempts !== 1 ? 's' : ''}
+                </p>
+                {problem.notes && <p className="text-gray-500 text-sm mt-0.5">{problem.notes}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {exercises.length > 0 && (
+        <div>
+          <h2 className="text-base font-semibold mb-2">Exercises ({exercises.length})</h2>
+          <div className="space-y-2">
+            {exercises.map(exercise => (
+              <div key={exercise.id} className="bg-gray-50 rounded-xl p-3">
+                <p className="font-medium">{exercise.name}</p>
+                <p className="text-gray-400 text-sm">
+                  {exercise.sets != null && `${exercise.sets} sets × `}
+                  {exercise.type === 'reps'
+                    ? `${exercise.reps} reps`
+                    : `${exercise.duration_seconds}s`}
+                </p>
+                {exercise.notes && <p className="text-gray-500 text-sm mt-0.5">{exercise.notes}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {problems.length === 0 && exercises.length === 0 && (
+        <p className="text-gray-400 text-sm text-center pt-12">
+          Nothing logged yet. Tap + to add a problem or exercise.
+        </p>
+      )}
+
+      <FAB onClick={() => setSheetOpen(true)} label="Add problem or exercise" />
+
+      <BottomSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="Add to Session"
+      >
+        <div className="flex rounded-lg overflow-hidden border mb-4">
+          {(['problem', 'exercise'] as const).map(tab => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setSheetTab(tab)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                sheetTab === tab ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+              }`}
+            >
+              {tab === 'problem' ? 'Problem' : 'Exercise'}
+            </button>
+          ))}
+        </div>
+        {sheetTab === 'problem' ? (
+          <ProblemForm onSubmit={handleAddProblem} isSubmitting={addProblem.isPending} />
+        ) : (
+          <ExerciseForm onSubmit={handleAddExercise} isSubmitting={addExercise.isPending} />
+        )}
+      </BottomSheet>
+    </div>
+  )
+}
