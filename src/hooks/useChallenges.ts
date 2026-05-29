@@ -140,7 +140,7 @@ export function useMyCompletedChallenges() {
         .eq('completed', true)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return data as { id: string; challenge_id: string; created_at: string; challenges: { title: string } }[]
+      return data as unknown as { id: string; challenge_id: string; created_at: string; challenges: { title: string } }[]
     },
   })
 }
