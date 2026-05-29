@@ -237,10 +237,20 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
       {completed > 0 && (
         <div>
           <p className="text-sm font-medium text-gray-700 mb-2">Completed by</p>
-          <div className="flex flex-wrap gap-2">
-            {attempts.filter(a => a.completed).map(a => (
-              <CompleterItem key={a.id} userId={a.user_id} />
-            ))}
+          <div className="rounded-xl border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="text-left px-3 py-2 font-medium text-gray-500">User</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-500">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attempts.filter(a => a.completed).map((a, i, arr) => (
+                  <CompleterRow key={a.id} userId={a.user_id} createdAt={a.created_at} last={i === arr.length - 1} />
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -377,17 +387,24 @@ function FollowingItem({
   )
 }
 
-function CompleterItem({ userId }: { userId: string }) {
+function CompleterRow({ userId, createdAt, last }: { userId: string; createdAt: string; last: boolean }) {
   const { data: profile } = useProfile(userId)
   if (!profile) return null
+  const date = new Date(createdAt)
+  const label = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
   return (
-    <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-3 py-1">
-      <div className="w-5 h-5 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium text-xs flex-shrink-0">
-        {profile.avatar_url
-          ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-          : profile.username?.[0]?.toUpperCase() ?? '?'}
-      </div>
-      <span className="text-sm text-gray-700">{profile.username}</span>
-    </div>
+    <tr className={last ? '' : 'border-b'}>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium text-xs flex-shrink-0">
+            {profile.avatar_url
+              ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              : profile.username?.[0]?.toUpperCase() ?? '?'}
+          </div>
+          <span className="text-gray-800">{profile.username}</span>
+        </div>
+      </td>
+      <td className="px-3 py-2.5 text-gray-500">{label}</td>
+    </tr>
   )
 }
