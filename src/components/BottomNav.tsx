@@ -29,6 +29,14 @@ export function BottomNav() {
         Log
       </button>
       <NavLink
+        to="/challenges"
+        className={({ isActive }) =>
+          `flex-1 flex flex-col items-center py-3 text-xs font-medium ${isActive ? 'text-indigo-600' : 'text-gray-500'}`
+        }
+      >
+        Challenges
+      </NavLink>
+      <NavLink
         to="/profile"
         className={({ isActive }) =>
           `flex-1 flex flex-col items-center py-3 text-xs font-medium ${isActive ? 'text-indigo-600' : 'text-gray-500'}`
