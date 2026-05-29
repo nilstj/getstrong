@@ -209,17 +209,18 @@ function ChallengeAttemptForm({
   onSubmit: (values: Omit<ChallengeAttempt, 'id' | 'user_id' | 'created_at'>) => void
   isSubmitting: boolean
 }) {
-  const { register, handleSubmit } = useForm<{ challenge_id: string; completed: boolean; notes: string }>({
-    defaultValues: { challenge_id: '', completed: false, notes: '' },
+  const { register, handleSubmit } = useForm<{ challenge_id: string; completed: boolean; notes: string; video_url: string }>({
+    defaultValues: { challenge_id: '', completed: false, notes: '', video_url: '' },
   })
 
-  const submit = (values: { challenge_id: string; completed: boolean; notes: string }) => {
+  const submit = (values: { challenge_id: string; completed: boolean; notes: string; video_url: string }) => {
     if (!values.challenge_id) return
     onSubmit({
       challenge_id: values.challenge_id,
       session_id: null,
       completed: values.completed,
       notes: values.notes || null,
+      video_url: values.video_url || null,
     })
   }
 
@@ -241,6 +242,15 @@ function ChallengeAttemptForm({
       <div className="flex items-center gap-3">
         <input {...register('completed')} id="completed" type="checkbox" className="w-5 h-5 accent-indigo-600" />
         <label htmlFor="completed" className="text-sm font-medium text-gray-700">Completed</label>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Proof video (optional)</label>
+        <input
+          {...register('video_url')}
+          type="url"
+          placeholder="https://instagram.com/... or https://youtube.com/..."
+          className="w-full border rounded-lg px-3 py-2.5 text-sm"
+        />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>

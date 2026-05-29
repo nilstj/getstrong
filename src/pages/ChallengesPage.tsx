@@ -65,11 +65,11 @@ function AttemptCount({ challengeId }: { challengeId: string }) {
 
 function CreateChallengeForm({ onClose }: { onClose: () => void }) {
   const createChallenge = useCreateChallenge()
-  const { register, handleSubmit } = useForm<{ title: string; description: string }>()
+  const { register, handleSubmit } = useForm<{ title: string; description: string; video_url: string }>()
 
-  const onSubmit = (values: { title: string; description: string }) => {
+  const onSubmit = (values: { title: string; description: string; video_url: string }) => {
     createChallenge.mutate(
-      { title: values.title, description: values.description || null },
+      { title: values.title, description: values.description || null, video_url: values.video_url || null },
       {
         onSuccess: () => { toast.success('Challenge created'); onClose() },
         onError: () => toast.error('Failed to create challenge'),
@@ -97,6 +97,15 @@ function CreateChallengeForm({ onClose }: { onClose: () => void }) {
           className="w-full border rounded-lg px-3 py-2 text-sm"
         />
       </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Demo video link (optional)</label>
+        <input
+          {...register('video_url')}
+          type="url"
+          placeholder="https://instagram.com/... or https://youtube.com/..."
+          className="w-full border rounded-lg px-3 py-2.5 text-sm"
+        />
+      </div>
       <button
         type="submit"
         disabled={createChallenge.isPending}
@@ -117,6 +126,16 @@ function ChallengeDetail({ challenge }: { challenge: Challenge }) {
       {challenge.description && (
         <p className="text-gray-600 text-sm">{challenge.description}</p>
       )}
+      {challenge.video_url && (
+        <a
+          href={challenge.video_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm text-indigo-600 font-medium"
+        >
+          ▶ Watch demo video
+        </a>
+      )}
       <div className="flex gap-6">
         <div className="text-center">
           <p className="text-2xl font-bold">{attempts.length}</p>
@@ -133,6 +152,24 @@ function ChallengeDetail({ challenge }: { challenge: Challenge }) {
           </div>
         )}
       </div>
+      {attempts.filter(a => a.video_url).length > 0 && (
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-2">Proof videos</p>
+          <div className="space-y-1">
+            {attempts.filter(a => a.video_url).map(a => (
+              <a
+                key={a.id}
+                href={a.video_url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm text-indigo-600 truncate"
+              >
+                ▶ {a.video_url}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
       <p className="text-sm text-gray-400">Add this challenge to a session via the + button on the session detail page.</p>
     </div>
   )

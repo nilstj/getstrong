@@ -19,7 +19,7 @@ export function useChallenges() {
 export function useCreateChallenge() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (values: Pick<Challenge, 'title' | 'description'>) => {
+    mutationFn: async (values: Pick<Challenge, 'title' | 'description' | 'video_url'>) => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
       const { data, error } = await supabase

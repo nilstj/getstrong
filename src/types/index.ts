@@ -47,6 +47,7 @@ export interface Challenge {
   creator_id: string
   title: string
   description: string | null
+  video_url: string | null
   created_at: string
 }
 
@@ -57,5 +58,6 @@ export interface ChallengeAttempt {
   user_id: string
   completed: boolean
   notes: string | null
+  video_url: string | null
   created_at: string
 }
