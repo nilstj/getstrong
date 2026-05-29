@@ -41,3 +41,21 @@ export interface GradeMapping {
   v_scale: string
   font_equivalent: string
 }
+
+export interface Challenge {
+  id: string
+  creator_id: string
+  title: string
+  description: string | null
+  created_at: string
+}
+
+export interface ChallengeAttempt {
+  id: string
+  challenge_id: string
+  session_id: string | null
+  user_id: string
+  completed: boolean
+  notes: string | null
+  created_at: string
+}
