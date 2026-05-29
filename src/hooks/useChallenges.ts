@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Challenge, ChallengeAttempt } from '../types'
+import type { Challenge, ChallengeAttempt, ChallengeInvitation } from '../types'
 
 export function useChallenges() {
   return useQuery({
@@ -84,6 +84,65 @@ export function useAddChallengeAttempt() {
       if (variables.session_id) {
         queryClient.invalidateQueries({ queryKey: ['challenge_attempts', 'session', variables.session_id] })
       }
+    },
+  })
+}
+
+export function useUpdateChallenge() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...values }: Pick<Challenge, 'id' | 'title' | 'description' | 'video_url'>) => {
+      const { data, error } = await supabase
+        .from('challenges')
+        .update(values)
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Challenge
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['challenges'] })
+    },
+  })
+}
+
+export function useSendChallenge() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ challengeId, recipientIds }: { challengeId: string; recipientIds: string[] }) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+      const rows = recipientIds.map(recipient_id => ({
+        challenge_id: challengeId,
+        sender_id: session.user.id,
+        recipient_id,
+      }))
+      const { error } = await supabase.from('challenge_invitations').insert(rows)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['challenge_invitations'] })
+    },
+  })
+}
+
+export function useReceivedChallenges() {
+  return useQuery({
+    queryKey: ['challenge_invitations', 'received'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+      const { data, error } = await supabase
+        .from('challenge_invitations')
+        .select('*, challenges(id, title, description, video_url, creator_id), profiles!sender_id(username)')
+        .eq('recipient_id', session.user.id)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data as (ChallengeInvitation & {
+        challenges: Challenge
+        profiles: { username: string | null }
+      })[]
     },
   })
 }

@@ -61,3 +61,11 @@ export interface ChallengeAttempt {
   video_url: string | null
   created_at: string
 }
+
+export interface ChallengeInvitation {
+  id: string
+  challenge_id: string
+  sender_id: string
+  recipient_id: string
+  created_at: string
+}
