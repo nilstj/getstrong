@@ -48,6 +48,7 @@ export interface Challenge {
   title: string
   description: string | null
   video_url: string | null
+  tags: string[]
   created_at: string
 }
 

@@ -16,6 +16,21 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
 import type { Challenge } from '../types'
 
+const CHALLENGE_TAGS = ['Power', 'Show-off', 'Power Endurance', 'Endurance', 'Slab', 'Technical'] as const
+
+function TagPills({ tags }: { tags: string[] }) {
+  if (!tags || tags.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1 mt-2">
+      {tags.map(tag => (
+        <span key={tag} className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full px-2 py-0.5">
+          {tag}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function ChallengesPage() {
   const { user } = useAuth()
   const { data: challenges = [], isLoading } = useChallenges()
@@ -45,6 +60,7 @@ export function ChallengesPage() {
                 {inv.challenges.description && (
                   <p className="text-sm text-gray-500 mt-1">{inv.challenges.description}</p>
                 )}
+                <TagPills tags={inv.challenges.tags} />
               </button>
             ))}
           </div>
@@ -69,6 +85,7 @@ export function ChallengesPage() {
                 {challenge.description && (
                   <p className="text-sm text-gray-500 mt-1">{challenge.description}</p>
                 )}
+                <TagPills tags={challenge.tags} />
                 <AttemptCount challengeId={challenge.id} />
               </button>
               {challenge.creator_id === user?.id && (
@@ -90,16 +107,9 @@ export function ChallengesPage() {
         <ChallengeForm onClose={() => setCreateOpen(false)} />
       </BottomSheet>
 
-      <BottomSheet
-        open={!!editing}
-        onClose={() => setEditing(null)}
-        title="Edit Challenge"
-      >
+      <BottomSheet open={!!editing} onClose={() => setEditing(null)} title="Edit Challenge">
         {editing && (
-          <ChallengeForm
-            existing={editing}
-            onClose={() => setEditing(null)}
-          />
+          <ChallengeForm existing={editing} onClose={() => setEditing(null)} />
         )}
       </BottomSheet>
 
@@ -126,6 +136,8 @@ function AttemptCount({ challengeId }: { challengeId: string }) {
 function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: () => void }) {
   const createChallenge = useCreateChallenge()
   const updateChallenge = useUpdateChallenge()
+  const [tags, setTags] = useState<string[]>(existing?.tags ?? [])
+
   const { register, handleSubmit } = useForm<{ title: string; description: string; video_url: string }>({
     defaultValues: {
       title: existing?.title ?? '',
@@ -134,11 +146,16 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
     },
   })
 
+  const toggleTag = (tag: string) => {
+    setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+  }
+
   const onSubmit = (values: { title: string; description: string; video_url: string }) => {
     const payload = {
       title: values.title,
       description: values.description || null,
       video_url: values.video_url || null,
+      tags,
     }
     if (existing) {
       updateChallenge.mutate(
@@ -179,6 +196,25 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
         />
       </div>
       <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+        <div className="flex flex-wrap gap-2">
+          {CHALLENGE_TAGS.map(tag => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                tags.includes(tag)
+                  ? 'bg-indigo-600 border-indigo-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-600'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Demo video link (optional)</label>
         <input
           {...register('video_url')}
@@ -208,6 +244,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
       {challenge.description && (
         <p className="text-gray-600 text-sm">{challenge.description}</p>
       )}
+      <TagPills tags={challenge.tags} />
       {challenge.video_url && (
         <a
           href={challenge.video_url}
