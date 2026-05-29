@@ -127,6 +127,24 @@ export function useSendChallenge() {
   })
 }
 
+export function useMyCompletedChallenges() {
+  return useQuery({
+    queryKey: ['challenge_attempts', 'my_completed'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+      const { data, error } = await supabase
+        .from('challenge_attempts')
+        .select('id, challenge_id, created_at, challenges(title)')
+        .eq('user_id', session.user.id)
+        .eq('completed', true)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data as { id: string; challenge_id: string; created_at: string; challenges: { title: string } }[]
+    },
+  })
+}
+
 export function useReceivedChallenges() {
   return useQuery({
     queryKey: ['challenge_invitations', 'received'],
