@@ -28,6 +28,14 @@ export function BottomNav() {
         <span className="text-2xl font-bold leading-none mb-0.5">+</span>
         Log
       </button>
+      <NavLink
+        to="/profile"
+        className={({ isActive }) =>
+          `flex-1 flex flex-col items-center py-3 text-xs font-medium ${isActive ? 'text-indigo-600' : 'text-gray-500'}`
+        }
+      >
+        Profile
+      </NavLink>
     </nav>
   )
 }

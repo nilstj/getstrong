@@ -10,6 +10,7 @@ import { SessionsPage } from './pages/SessionsPage'
 import { NewSessionPage } from './pages/NewSessionPage'
 import { SessionDetailPage } from './pages/SessionDetailPage'
 import { EditSessionPage } from './pages/EditSessionPage'
+import { ProfilePage } from './pages/ProfilePage'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="/sessions/new" element={<NewSessionPage />} />
               <Route path="/sessions/:id" element={<SessionDetailPage />} />
               <Route path="/sessions/:id/edit" element={<EditSessionPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Routes>
         </BrowserRouter>
