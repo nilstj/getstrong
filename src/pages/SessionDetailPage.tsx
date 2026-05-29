@@ -9,9 +9,11 @@ import { BottomSheet } from '../components/BottomSheet'
 import { FAB } from '../components/FAB'
 import { ProblemForm } from '../components/ProblemForm'
 import { ExerciseForm } from '../components/ExerciseForm'
-import type { Problem, Exercise } from '../types'
+import { useForm } from 'react-hook-form'
+import { useSessionChallengeAttempts, useAddChallengeAttempt, useChallenges } from '../hooks/useChallenges'
+import type { Problem, Exercise, Challenge, ChallengeAttempt } from '../types'
 
-type SheetTab = 'problem' | 'exercise'
+type SheetTab = 'problem' | 'exercise' | 'challenge'
 
 export function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -23,6 +25,9 @@ export function SessionDetailPage() {
   const { data: exercises = [] } = useSessionExercises(id!)
   const addProblem = useAddProblem()
   const addExercise = useAddExercise()
+  const addChallengeAttempt = useAddChallengeAttempt()
+  const { data: challengeAttempts = [] } = useSessionChallengeAttempts(id!)
+  const { data: challenges = [] } = useChallenges()
   const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
 
   useEffect(() => {
@@ -48,6 +53,16 @@ export function SessionDetailPage() {
       { ...values, session_id: id! },
       {
         onSuccess: () => { setSheetOpen(false); toast.success('Exercise added') },
+        onError: () => toast.error('Failed to save. Try again.'),
+      },
+    )
+  }
+
+  const handleAddChallengeAttempt = (values: Omit<ChallengeAttempt, 'id' | 'user_id' | 'created_at'>) => {
+    addChallengeAttempt.mutate(
+      { ...values, session_id: id! },
+      {
+        onSuccess: () => { setSheetOpen(false); toast.success('Challenge attempt logged') },
         onError: () => toast.error('Failed to save. Try again.'),
       },
     )
@@ -121,7 +136,28 @@ export function SessionDetailPage() {
         </div>
       )}
 
-      {problems.length === 0 && exercises.length === 0 && (
+      {challengeAttempts.length > 0 && (
+        <div>
+          <h2 className="text-base font-semibold mb-2">Challenges ({challengeAttempts.length})</h2>
+          <div className="space-y-2">
+            {challengeAttempts.map(attempt => (
+              <div key={attempt.id} className="bg-gray-50 rounded-xl p-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">{(attempt as any).challenges?.title ?? 'Challenge'}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    attempt.completed ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {attempt.completed ? 'Completed' : 'Attempted'}
+                  </span>
+                </div>
+                {attempt.notes && <p className="text-gray-500 text-sm mt-0.5">{attempt.notes}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {problems.length === 0 && exercises.length === 0 && challengeAttempts.length === 0 && (
         <p className="text-gray-400 text-sm text-center pt-12">
           Nothing logged yet. Tap + to add a problem or exercise.
         </p>
@@ -135,7 +171,7 @@ export function SessionDetailPage() {
         title="Add to Session"
       >
         <div className="flex rounded-lg overflow-hidden border mb-4">
-          {(['problem', 'exercise'] as const).map(tab => (
+          {(['problem', 'exercise', 'challenge'] as const).map(tab => (
             <button
               key={tab}
               type="button"
@@ -144,16 +180,79 @@ export function SessionDetailPage() {
                 sheetTab === tab ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
               }`}
             >
-              {tab === 'problem' ? 'Problem' : 'Exercise'}
+              {tab === 'problem' ? 'Problem' : tab === 'exercise' ? 'Exercise' : 'Challenge'}
             </button>
           ))}
         </div>
         {sheetTab === 'problem' ? (
           <ProblemForm onSubmit={handleAddProblem} isSubmitting={addProblem.isPending} />
-        ) : (
+        ) : sheetTab === 'exercise' ? (
           <ExerciseForm onSubmit={handleAddExercise} isSubmitting={addExercise.isPending} />
+        ) : (
+          <ChallengeAttemptForm
+            challenges={challenges}
+            onSubmit={handleAddChallengeAttempt}
+            isSubmitting={addChallengeAttempt.isPending}
+          />
         )}
       </BottomSheet>
     </div>
+  )
+}
+
+function ChallengeAttemptForm({
+  challenges,
+  onSubmit,
+  isSubmitting,
+}: {
+  challenges: Challenge[]
+  onSubmit: (values: Omit<ChallengeAttempt, 'id' | 'user_id' | 'created_at'>) => void
+  isSubmitting: boolean
+}) {
+  const { register, handleSubmit } = useForm<{ challenge_id: string; completed: boolean; notes: string }>({
+    defaultValues: { challenge_id: '', completed: false, notes: '' },
+  })
+
+  const submit = (values: { challenge_id: string; completed: boolean; notes: string }) => {
+    if (!values.challenge_id) return
+    onSubmit({
+      challenge_id: values.challenge_id,
+      session_id: null,
+      completed: values.completed,
+      notes: values.notes || null,
+    })
+  }
+
+  if (challenges.length === 0) {
+    return <p className="text-sm text-gray-400 text-center py-8">No challenges yet. Create one in the Challenges tab.</p>
+  }
+
+  return (
+    <form onSubmit={handleSubmit(submit)} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Challenge</label>
+        <select {...register('challenge_id', { required: true })} className="w-full border rounded-lg px-3 py-2.5">
+          <option value="">Select a challenge</option>
+          {challenges.map(c => (
+            <option key={c.id} value={c.id}>{c.title}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex items-center gap-3">
+        <input {...register('completed')} id="completed" type="checkbox" className="w-5 h-5 accent-indigo-600" />
+        <label htmlFor="completed" className="text-sm font-medium text-gray-700">Completed</label>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+        <textarea {...register('notes')} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm" />
+      </div>
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+      >
+        {isSubmitting ? 'Saving...' : 'Log Attempt'}
+      </button>
+    </form>
   )
 }
