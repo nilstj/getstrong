@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useDashboard } from '../hooks/useDashboard'
+import { supabase } from '../lib/supabase'
 import { StatCard } from '../components/StatCard'
 import { SessionCard } from '../components/SessionCard'
 import { GradeProgressionChart } from '../components/GradeProgressionChart'
@@ -28,7 +29,15 @@ export function DashboardPage() {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="text-sm text-gray-400 hover:text-gray-600"
+        >
+          Log out
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Sessions" value={totalSessions(sessions)} />
