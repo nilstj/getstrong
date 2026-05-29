@@ -234,6 +234,23 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
           </div>
         )}
       </div>
+      {completed > 0 && (
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-2">Completed by</p>
+          <div className="flex flex-wrap gap-2">
+            {attempts.filter(a => a.completed).map(a => (
+              <div key={a.id} className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-3 py-1">
+                <div className="w-5 h-5 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium text-xs flex-shrink-0">
+                  {a.profiles?.avatar_url
+                    ? <img src={a.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                    : a.profiles?.username?.[0]?.toUpperCase() ?? '?'}
+                </div>
+                <span className="text-sm text-gray-700">{a.profiles?.username ?? 'Unknown'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {attempts.filter(a => a.video_url).length > 0 && (
         <div>
           <p className="text-sm font-medium text-gray-700 mb-2">Proof videos</p>

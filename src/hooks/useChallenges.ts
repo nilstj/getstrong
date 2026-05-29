@@ -42,10 +42,10 @@ export function useChallengeAttempts(challengeId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('challenge_attempts')
-        .select('*')
+        .select('*, profiles!user_id(username, avatar_url)')
         .eq('challenge_id', challengeId)
       if (error) throw error
-      return data as ChallengeAttempt[]
+      return data as (ChallengeAttempt & { profiles: { username: string | null; avatar_url: string | null } | null })[]
     },
   })
 }
