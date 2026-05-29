@@ -63,6 +63,15 @@ export interface ChallengeAttempt {
   created_at: string
 }
 
+export interface ExerciseTemplate {
+  id: string
+  name: string
+  type: ExerciseType
+  description: string | null
+  created_by: string
+  created_at: string
+}
+
 export interface ChallengeInvitation {
   id: string
   challenge_id: string

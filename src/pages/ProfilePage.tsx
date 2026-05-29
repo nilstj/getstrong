@@ -2,7 +2,9 @@ import { useState, useRef } from 'react'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
 import { useFollowing, useFollowUser, useUnfollowUser, useFollowersCount } from '../hooks/useFollows'
+import { useExerciseTemplates, useCreateExerciseTemplate, useDeleteExerciseTemplate } from '../hooks/useExerciseTemplates'
 import toast from 'react-hot-toast'
+import type { ExerciseType } from '../types'
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -190,6 +192,9 @@ export function ProfilePage() {
           <FollowingList followingIds={following.map(f => f.following_id)} onUnfollow={userId => unfollowUser.mutate(userId)} />
         </div>
       )}
+
+      {/* Admin: exercise library */}
+      {profile?.is_admin && <ExerciseLibraryAdmin />}
     </div>
   )
 }
@@ -225,6 +230,89 @@ function FollowingItem({ userId, onUnfollow }: { userId: string; onUnfollow: (id
       >
         Following
       </button>
+    </div>
+  )
+}
+
+function ExerciseLibraryAdmin() {
+  const { data: templates = [] } = useExerciseTemplates()
+  const createTemplate = useCreateExerciseTemplate()
+  const deleteTemplate = useDeleteExerciseTemplate()
+  const [name, setName] = useState('')
+  const [type, setType] = useState<ExerciseType>('reps')
+  const [description, setDescription] = useState('')
+
+  const handleAdd = () => {
+    if (!name.trim()) return
+    createTemplate.mutate(
+      { name: name.trim(), type, description: description.trim() || null },
+      {
+        onSuccess: () => { setName(''); setDescription(''); toast.success('Exercise added') },
+        onError: () => toast.error('Failed to add exercise'),
+      },
+    )
+  }
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold mb-3">Exercise Library (Admin)</h2>
+
+      <div className="space-y-2 mb-4">
+        {templates.length === 0 && (
+          <p className="text-sm text-gray-400 text-center py-4">No exercises yet.</p>
+        )}
+        {templates.map(t => (
+          <div key={t.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+            <div>
+              <p className="font-medium text-sm">{t.name}</p>
+              <p className="text-xs text-gray-400 capitalize">{t.type}{t.description ? ` · ${t.description}` : ''}</p>
+            </div>
+            <button
+              onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
+              className="text-xs text-red-500 font-medium px-2 py-1 rounded-lg hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="border rounded-xl p-4 space-y-3">
+        <p className="text-sm font-medium text-gray-700">Add Exercise</p>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="Exercise name"
+          className="w-full border rounded-lg px-3 py-2.5 text-sm"
+        />
+        <div className="flex rounded-lg overflow-hidden border">
+          {(['reps', 'time'] as const).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setType(t)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                type === t ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+              }`}
+            >
+              {t === 'reps' ? 'Reps' : 'Time'}
+            </button>
+          ))}
+        </div>
+        <input
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="Description (optional)"
+          className="w-full border rounded-lg px-3 py-2.5 text-sm"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={!name.trim() || createTemplate.isPending}
+          className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+        >
+          {createTemplate.isPending ? 'Adding...' : 'Add to Library'}
+        </button>
+      </div>
     </div>
   )
 }

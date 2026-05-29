@@ -11,7 +11,8 @@ import { ProblemForm } from '../components/ProblemForm'
 import { ExerciseForm } from '../components/ExerciseForm'
 import { useForm } from 'react-hook-form'
 import { useSessionChallengeAttempts, useAddChallengeAttempt, useChallenges } from '../hooks/useChallenges'
-import type { Problem, Exercise, Challenge, ChallengeAttempt } from '../types'
+import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
+import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 
 type SheetTab = 'problem' | 'exercise' | 'challenge'
 
@@ -187,7 +188,7 @@ export function SessionDetailPage() {
         {sheetTab === 'problem' ? (
           <ProblemForm onSubmit={handleAddProblem} isSubmitting={addProblem.isPending} />
         ) : sheetTab === 'exercise' ? (
-          <ExerciseForm onSubmit={handleAddExercise} isSubmitting={addExercise.isPending} />
+          <ExerciseSelector onSubmit={handleAddExercise} isSubmitting={addExercise.isPending} />
         ) : (
           <ChallengeAttemptForm
             challenges={challenges}
@@ -196,6 +197,73 @@ export function SessionDetailPage() {
           />
         )}
       </BottomSheet>
+    </div>
+  )
+}
+
+function ExerciseSelector({
+  onSubmit,
+  isSubmitting,
+}: {
+  onSubmit: (values: Omit<Exercise, 'id' | 'session_id' | 'user_id' | 'created_at'>) => void
+  isSubmitting: boolean
+}) {
+  const { data: templates = [] } = useExerciseTemplates()
+  const [picked, setPicked] = useState<ExerciseTemplate | null | 'custom'>(null)
+
+  if (picked !== null) {
+    const initialName = picked === 'custom' ? '' : picked.name
+    const initialType = picked === 'custom' ? 'reps' : picked.type
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setPicked(null)}
+          className="text-sm text-indigo-600 font-medium mb-4 flex items-center gap-1"
+        >
+          ← Back
+        </button>
+        <ExerciseForm
+          key={picked === 'custom' ? 'custom' : picked.id}
+          initialName={initialName}
+          initialType={initialType}
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {templates.length > 0 && (
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-2">From Library</p>
+          <div className="space-y-2">
+            {templates.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setPicked(t)}
+                className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-indigo-300 transition-colors"
+              >
+                <p className="font-medium text-gray-900">{t.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-gray-400 capitalize">{t.type}</span>
+                  {t.description && <span className="text-xs text-gray-400">· {t.description}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setPicked('custom')}
+        className="w-full border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+      >
+        + Custom exercise
+      </button>
     </div>
   )
 }

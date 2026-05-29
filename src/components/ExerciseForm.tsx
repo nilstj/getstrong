@@ -13,13 +13,15 @@ type FormValues = {
 interface ExerciseFormProps {
   onSubmit: (values: Omit<Exercise, 'id' | 'session_id' | 'user_id' | 'created_at'>) => void
   isSubmitting: boolean
+  initialName?: string
+  initialType?: 'reps' | 'time'
 }
 
-export function ExerciseForm({ onSubmit, isSubmitting }: ExerciseFormProps) {
+export function ExerciseForm({ onSubmit, isSubmitting, initialName = '', initialType = 'reps' }: ExerciseFormProps) {
   const { register, handleSubmit, watch } = useForm<FormValues>({
     defaultValues: {
-      name: '',
-      type: 'reps',
+      name: initialName,
+      type: initialType,
       sets: 3,
       reps: 10,
       duration_seconds: 30,
