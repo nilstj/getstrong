@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useDashboard } from '../hooks/useDashboard'
-import { useMyCompletedChallenges } from '../hooks/useChallenges'
+import { useMyCompletedChallenges, useReceivedChallenges } from '../hooks/useChallenges'
 import { supabase } from '../lib/supabase'
 import { StatCard } from '../components/StatCard'
 import { SessionCard } from '../components/SessionCard'
@@ -32,6 +33,7 @@ function getNextBadge(count: number) {
 export function DashboardPage() {
   const { data, isLoading, error } = useDashboard()
   const { data: completedChallenges = [] } = useMyCompletedChallenges()
+  const { data: receivedChallenges = [] } = useReceivedChallenges()
   const [gradeScale, setGradeScale] = useState<'font' | 'v_scale'>('font')
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
@@ -58,6 +60,28 @@ export function DashboardPage() {
           Log out
         </button>
       </div>
+
+      {receivedChallenges.length > 0 && (
+        <Link
+          to="/challenges"
+          className="flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3"
+        >
+          <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+            {receivedChallenges.length}
+          </span>
+          <div>
+            <p className="font-semibold text-indigo-900 text-sm">
+              {receivedChallenges.length === 1
+                ? 'You have a new challenge!'
+                : `You have ${receivedChallenges.length} new challenges!`}
+            </p>
+            <p className="text-xs text-indigo-500">
+              from {[...new Set(receivedChallenges.map(r => r.profiles?.username).filter(Boolean))].join(', ')}
+            </p>
+          </div>
+          <span className="ml-auto text-indigo-400 text-lg">›</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Sessions" value={totalSessions(sessions)} />
