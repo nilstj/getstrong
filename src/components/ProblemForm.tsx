@@ -2,12 +2,15 @@ import { useForm } from 'react-hook-form'
 import type { Problem, GradeSystem } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
 
+const BOARDS = ['Kilterboard', 'Moonboard', 'TB2'] as const
+
 type FormValues = {
   grade_system: GradeSystem
   grade_value: string
   color: string
   attempts: number
   sent: boolean
+  board: string
   gym: string
   beta_video_url: string
   notes: string
@@ -26,6 +29,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       color: '',
       attempts: 1,
       sent: false,
+      board: '',
       gym: '',
       beta_video_url: '',
       notes: '',
@@ -34,6 +38,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
 
   const gradeSystem = watch('grade_system')
   const attempts = watch('attempts')
+  const board = watch('board')
 
   const submit = (values: FormValues) => {
     onSubmit({
@@ -42,6 +47,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       color: values.color || null,
       attempts: values.attempts,
       sent: values.sent,
+      board: values.board || null,
       gym: values.gym || null,
       beta_video_url: values.beta_video_url || null,
       notes: values.notes || null,
@@ -77,6 +83,28 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
               <option key={g} value={g}>{g}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {gradeSystem !== 'color' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Training Board (optional)</label>
+          <div className="flex flex-wrap gap-2">
+            {BOARDS.map(b => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setValue('board', board === b ? '' : b)}
+                className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                  board === b
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-600'
+                }`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

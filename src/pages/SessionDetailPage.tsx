@@ -151,6 +151,7 @@ export function SessionDetailPage() {
                   <p className="text-gray-400 text-sm">
                     {problem.attempts} attempt{problem.attempts !== 1 ? 's' : ''}
                   </p>
+                  {problem.board && <span className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full px-2 py-0.5">{problem.board}</span>}
                   {problem.gym && <span className="text-xs text-gray-400">· {problem.gym}</span>}
                 </div>
                 {problem.beta_video_url && (

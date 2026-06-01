@@ -20,6 +20,7 @@ export interface Problem {
   color: string | null
   attempts: number
   sent: boolean
+  board: string | null
   gym: string | null
   beta_video_url: string | null
   notes: string | null
