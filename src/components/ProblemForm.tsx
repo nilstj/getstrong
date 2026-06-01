@@ -12,6 +12,7 @@ type FormValues = {
   attempts: number
   sent: boolean
   board: string
+  board_angle: number | ''
   gym: string
   beta_video_url: string
   notes: string
@@ -32,6 +33,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       attempts: 1,
       sent: false,
       board: '',
+      board_angle: '',
       gym: '',
       beta_video_url: '',
       notes: '',
@@ -51,6 +53,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       attempts: values.attempts,
       sent: values.sent,
       board: values.board || null,
+      board_angle: values.board && values.board_angle !== '' ? Number(values.board_angle) : null,
       gym: values.gym || null,
       beta_video_url: values.beta_video_url || null,
       notes: values.notes || null,
@@ -117,6 +120,25 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
                 {b}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {board && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Board Angle (°)</label>
+          <div className="flex items-center gap-3">
+            <input
+              {...register('board_angle', { valueAsNumber: true, min: 30, max: 70 })}
+              type="range"
+              min="30"
+              max="70"
+              step="5"
+              className="flex-1 accent-indigo-600"
+            />
+            <span className="text-sm font-semibold text-gray-700 w-12 text-right">
+              {watch('board_angle') !== '' ? `${watch('board_angle')}°` : '—'}
+            </span>
           </div>
         </div>
       )}

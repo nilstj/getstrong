@@ -22,6 +22,7 @@ export interface Problem {
   attempts: number
   sent: boolean
   board: string | null
+  board_angle: number | null
   gym: string | null
   beta_video_url: string | null
   notes: string | null
