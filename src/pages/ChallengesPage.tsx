@@ -3,6 +3,7 @@ import {
   useChallenges,
   useCreateChallenge,
   useUpdateChallenge,
+  useDeleteChallenge,
   useChallengeAttempts,
   useSendChallenge,
   useReceivedChallenges,
@@ -35,6 +36,7 @@ export function ChallengesPage() {
   const { user } = useAuth()
   const { data: challenges = [], isLoading } = useChallenges()
   const { data: received = [] } = useReceivedChallenges()
+  const deleteChallenge = useDeleteChallenge()
   const [createOpen, setCreateOpen] = useState(false)
   const [selected, setSelected] = useState<Challenge | null>(null)
   const [editing, setEditing] = useState<Challenge | null>(null)
@@ -89,12 +91,25 @@ export function ChallengesPage() {
                 <AttemptCount challengeId={challenge.id} />
               </button>
               {challenge.creator_id === user?.id && (
-                <button
-                  onClick={e => { e.stopPropagation(); setEditing(challenge) }}
-                  className="absolute top-3 right-3 text-xs text-indigo-500 font-medium px-2 py-1 rounded-lg hover:bg-indigo-50"
-                >
-                  Edit
-                </button>
+                <div className="absolute top-3 right-3 flex gap-1">
+                  <button
+                    onClick={e => { e.stopPropagation(); setEditing(challenge) }}
+                    className="text-xs text-indigo-500 font-medium px-2 py-1 rounded-lg hover:bg-indigo-50"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation()
+                      if (window.confirm('Delete this challenge?')) {
+                        deleteChallenge.mutate(challenge.id, { onError: () => toast.error('Failed to delete') })
+                      }
+                    }}
+                    className="text-xs text-red-500 font-medium px-2 py-1 rounded-lg hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
             </div>
           ))}

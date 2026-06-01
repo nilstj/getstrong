@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { useSession } from '../hooks/useSessions'
-import { useSessionProblems, useAddProblem } from '../hooks/useProblems'
-import { useSessionExercises, useAddExercise } from '../hooks/useExercises'
+import { useSession, useDeleteSession } from '../hooks/useSessions'
+import { useSessionProblems, useAddProblem, useDeleteProblem } from '../hooks/useProblems'
+import { useSessionExercises, useAddExercise, useDeleteExercise } from '../hooks/useExercises'
 import { useSessionStore } from '../store/sessionStore'
 import { BottomSheet } from '../components/BottomSheet'
 import { FAB } from '../components/FAB'
 import { ProblemForm } from '../components/ProblemForm'
 import { ExerciseForm } from '../components/ExerciseForm'
 import { useForm } from 'react-hook-form'
-import { useSessionChallengeAttempts, useAddChallengeAttempt, useChallenges } from '../hooks/useChallenges'
+import { useSessionChallengeAttempts, useAddChallengeAttempt, useChallenges, useDeleteChallengeAttempt } from '../hooks/useChallenges'
 import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 
@@ -18,15 +18,21 @@ type SheetTab = 'problem' | 'exercise' | 'challenge'
 
 export function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetTab, setSheetTab] = useState<SheetTab>('problem')
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const { data: session, isLoading } = useSession(id!)
   const { data: problems = [] } = useSessionProblems(id!)
   const { data: exercises = [] } = useSessionExercises(id!)
   const addProblem = useAddProblem()
   const addExercise = useAddExercise()
+  const deleteProblem = useDeleteProblem()
+  const deleteExercise = useDeleteExercise()
+  const deleteSession = useDeleteSession()
   const addChallengeAttempt = useAddChallengeAttempt()
+  const deleteChallengeAttempt = useDeleteChallengeAttempt()
   const { data: challengeAttempts = [] } = useSessionChallengeAttempts(id!)
   const { data: challenges = [] } = useChallenges()
   const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
@@ -80,9 +86,31 @@ export function SessionDetailPage() {
           )}
           {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
         </div>
-        <Link to={`/sessions/${id}/edit`} className="text-sm text-indigo-600 font-medium">
-          Edit
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to={`/sessions/${id}/edit`} className="text-sm text-indigo-600 font-medium">
+            Edit
+          </Link>
+          {confirmDelete ? (
+            <>
+              <button
+                onClick={() => deleteSession.mutate(id!, {
+                  onSuccess: () => navigate('/sessions'),
+                  onError: () => { toast.error('Failed to delete session'); setConfirmDelete(false) },
+                })}
+                className="text-sm text-red-600 font-medium"
+              >
+                Confirm
+              </button>
+              <button onClick={() => setConfirmDelete(false)} className="text-sm text-gray-400">
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setConfirmDelete(true)} className="text-sm text-red-500 font-medium">
+              Delete
+            </button>
+          )}
+        </div>
       </div>
 
       {problems.length > 0 && (
@@ -101,11 +129,19 @@ export function SessionDetailPage() {
                       <span>{problem.color}</span>
                     )}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    problem.sent ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {problem.sent ? 'Sent' : 'Project'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      problem.sent ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {problem.sent ? 'Sent' : 'Project'}
+                    </span>
+                    <button
+                      onClick={() => deleteProblem.mutate({ id: problem.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
+                      className="text-gray-300 hover:text-red-500 text-lg leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
                 <p className="text-gray-400 text-sm">
                   {problem.attempts} attempt{problem.attempts !== 1 ? 's' : ''}
@@ -123,14 +159,24 @@ export function SessionDetailPage() {
           <div className="space-y-2">
             {exercises.map(exercise => (
               <div key={exercise.id} className="bg-gray-50 rounded-xl p-3">
-                <p className="font-medium">{exercise.name}</p>
-                <p className="text-gray-400 text-sm">
-                  {exercise.sets != null && `${exercise.sets} sets × `}
-                  {exercise.type === 'reps'
-                    ? `${exercise.reps} reps`
-                    : `${exercise.duration_seconds}s`}
-                </p>
-                {exercise.notes && <p className="text-gray-500 text-sm mt-0.5">{exercise.notes}</p>}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium">{exercise.name}</p>
+                    <p className="text-gray-400 text-sm">
+                      {exercise.sets != null && `${exercise.sets} sets × `}
+                      {exercise.type === 'reps'
+                        ? `${exercise.reps} reps`
+                        : `${exercise.duration_seconds}s`}
+                    </p>
+                    {exercise.notes && <p className="text-gray-500 text-sm mt-0.5">{exercise.notes}</p>}
+                  </div>
+                  <button
+                    onClick={() => deleteExercise.mutate({ id: exercise.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
+                    className="text-gray-300 hover:text-red-500 text-lg leading-none ml-2"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -145,11 +191,19 @@ export function SessionDetailPage() {
               <div key={attempt.id} className="bg-gray-50 rounded-xl p-3">
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{(attempt as any).challenges?.title ?? 'Challenge'}</p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    attempt.completed ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {attempt.completed ? 'Completed' : 'Attempted'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      attempt.completed ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {attempt.completed ? 'Completed' : 'Attempted'}
+                    </span>
+                    <button
+                      onClick={() => deleteChallengeAttempt.mutate({ id: attempt.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
+                      className="text-gray-300 hover:text-red-500 text-lg leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
                 {attempt.notes && <p className="text-gray-500 text-sm mt-0.5">{attempt.notes}</p>}
               </div>

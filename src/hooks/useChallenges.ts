@@ -88,6 +88,36 @@ export function useAddChallengeAttempt() {
   })
 }
 
+export function useDeleteChallenge() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('challenges').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['challenges'] })
+    },
+  })
+}
+
+export function useDeleteChallengeAttempt() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, sessionId }: { id: string; sessionId: string | null }) => {
+      const { error } = await supabase.from('challenge_attempts').delete().eq('id', id)
+      if (error) throw error
+      return sessionId
+    },
+    onSuccess: (sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['challenge_attempts'] })
+      if (sessionId) {
+        queryClient.invalidateQueries({ queryKey: ['challenge_attempts', 'session', sessionId] })
+      }
+    },
+  })
+}
+
 export function useUpdateChallenge() {
   const queryClient = useQueryClient()
   return useMutation({

@@ -28,6 +28,22 @@ export function useSessionProblems(sessionId: string) {
   })
 }
 
+export function useDeleteProblem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, sessionId }: { id: string; sessionId: string }) => {
+      const { error } = await supabase.from('problems').delete().eq('id', id)
+      if (error) throw error
+      return sessionId
+    },
+    onSuccess: (sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['problems', sessionId] })
+      queryClient.invalidateQueries({ queryKey: ['problems'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
 export function useAddProblem() {
   const queryClient = useQueryClient()
   return useMutation({
