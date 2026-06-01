@@ -3,6 +3,7 @@ import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
 import { useFollowing, useFollowUser, useUnfollowUser, useFollowersCount } from '../hooks/useFollows'
 import { useExerciseTemplates, useCreateExerciseTemplate, useDeleteExerciseTemplate } from '../hooks/useExerciseTemplates'
+import { useStrengthTests, useCreateStrengthTest, useDeleteStrengthTest } from '../hooks/useStrengthTests'
 import toast from 'react-hot-toast'
 import type { ExerciseType } from '../types'
 
@@ -193,8 +194,13 @@ export function ProfilePage() {
         </div>
       )}
 
-      {/* Admin: exercise library */}
-      {profile?.is_admin && <ExerciseLibraryAdmin />}
+      {/* Admin sections */}
+      {profile?.is_admin && (
+        <>
+          <StrengthTestsAdmin />
+          <ExerciseLibraryAdmin />
+        </>
+      )}
     </div>
   )
 }
@@ -234,20 +240,74 @@ function FollowingItem({ userId, onUnfollow }: { userId: string; onUnfollow: (id
   )
 }
 
+function StrengthTestsAdmin() {
+  const { data: tests = [] } = useStrengthTests()
+  const createTest = useCreateStrengthTest()
+  const deleteTest = useDeleteStrengthTest()
+  const [name, setName] = useState('')
+  const [unit, setUnit] = useState('kg')
+  const [description, setDescription] = useState('')
+
+  const handleAdd = () => {
+    if (!name.trim()) return
+    createTest.mutate(
+      { name: name.trim(), unit: unit.trim() || 'kg', description: description.trim() || null },
+      {
+        onSuccess: () => { setName(''); setDescription(''); toast.success('Test added') },
+        onError: () => toast.error('Failed to add test'),
+      },
+    )
+  }
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold mb-3">Strength Tests (Admin)</h2>
+      <div className="space-y-2 mb-4">
+        {tests.length === 0 && <p className="text-sm text-gray-400 text-center py-4">No tests yet.</p>}
+        {tests.map(t => (
+          <div key={t.id} className="flex items-center justify-between bg-blue-50 rounded-xl px-4 py-3">
+            <div>
+              <p className="font-medium text-sm">{t.name}</p>
+              <p className="text-xs text-gray-400">{t.unit}{t.description ? ` · ${t.description}` : ''}</p>
+            </div>
+            <button
+              onClick={() => deleteTest.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
+              className="text-xs text-red-500 font-medium px-2 py-1 rounded-lg hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="border rounded-xl p-4 space-y-3">
+        <p className="text-sm font-medium text-gray-700">Add Test</p>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Test name (e.g. Max weight 10mm edge)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
+        <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="Unit (e.g. kg, seconds)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
+        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
+        <button onClick={handleAdd} disabled={!name.trim() || createTest.isPending} className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
+          {createTest.isPending ? 'Adding...' : 'Add Test'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function ExerciseLibraryAdmin() {
   const { data: templates = [] } = useExerciseTemplates()
+  const { data: tests = [] } = useStrengthTests()
   const createTemplate = useCreateExerciseTemplate()
   const deleteTemplate = useDeleteExerciseTemplate()
   const [name, setName] = useState('')
   const [type, setType] = useState<ExerciseType>('reps')
   const [description, setDescription] = useState('')
+  const [testId, setTestId] = useState('')
 
   const handleAdd = () => {
     if (!name.trim()) return
     createTemplate.mutate(
-      { name: name.trim(), type, description: description.trim() || null },
+      { name: name.trim(), type, description: description.trim() || null, test_id: testId || null },
       {
-        onSuccess: () => { setName(''); setDescription(''); toast.success('Exercise added') },
+        onSuccess: () => { setName(''); setDescription(''); setTestId(''); toast.success('Exercise added') },
         onError: () => toast.error('Failed to add exercise'),
       },
     )
@@ -265,7 +325,11 @@ function ExerciseLibraryAdmin() {
           <div key={t.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
             <div>
               <p className="font-medium text-sm">{t.name}</p>
-              <p className="text-xs text-gray-400 capitalize">{t.type}{t.description ? ` · ${t.description}` : ''}</p>
+              <p className="text-xs text-gray-400 capitalize">
+                {t.type}
+                {t.description ? ` · ${t.description}` : ''}
+                {t.test_id && ` · % ${tests.find(ts => ts.id === t.test_id)?.name ?? 'test'}`}
+              </p>
             </div>
             <button
               onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
@@ -279,37 +343,24 @@ function ExerciseLibraryAdmin() {
 
       <div className="border rounded-xl p-4 space-y-3">
         <p className="text-sm font-medium text-gray-700">Add Exercise</p>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Exercise name"
-          className="w-full border rounded-lg px-3 py-2.5 text-sm"
-        />
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Exercise name" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
         <div className="flex rounded-lg overflow-hidden border">
           {(['reps', 'time'] as const).map(t => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setType(t)}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                type === t ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
-              }`}
-            >
+            <button key={t} type="button" onClick={() => setType(t)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${type === t ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`}>
               {t === 'reps' ? 'Reps' : 'Time'}
             </button>
           ))}
         </div>
-        <input
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          placeholder="Description (optional)"
-          className="w-full border rounded-lg px-3 py-2.5 text-sm"
-        />
-        <button
-          onClick={handleAdd}
-          disabled={!name.trim() || createTemplate.isPending}
-          className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
-        >
+        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
+        {tests.length > 0 && (
+          <select value={testId} onChange={e => setTestId(e.target.value)} className="w-full border rounded-lg px-3 py-2.5 text-sm">
+            <option value="">No linked test</option>
+            {tests.map(t => <option key={t.id} value={t.id}>{t.name} ({t.unit})</option>)}
+          </select>
+        )}
+        <button onClick={handleAdd} disabled={!name.trim() || createTemplate.isPending}
+          className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
           {createTemplate.isPending ? 'Adding...' : 'Add to Library'}
         </button>
       </div>

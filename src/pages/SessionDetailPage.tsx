@@ -12,9 +12,10 @@ import { ExerciseForm } from '../components/ExerciseForm'
 import { useForm } from 'react-hook-form'
 import { useSessionChallengeAttempts, useAddChallengeAttempt, useChallenges, useDeleteChallengeAttempt } from '../hooks/useChallenges'
 import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
+import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStrengthTests } from '../hooks/useStrengthTests'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 
-type SheetTab = 'problem' | 'exercise' | 'challenge'
+type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
 export function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -35,6 +36,9 @@ export function SessionDetailPage() {
   const deleteChallengeAttempt = useDeleteChallengeAttempt()
   const { data: challengeAttempts = [] } = useSessionChallengeAttempts(id!)
   const { data: challenges = [] } = useChallenges()
+  const { data: testResults = [] } = useSessionTestResults(id!)
+  const logTestResult = useLogTestResult()
+  const deleteTestResult = useDeleteTestResult()
   const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
 
   useEffect(() => {
@@ -167,12 +171,39 @@ export function SessionDetailPage() {
                       {exercise.type === 'reps'
                         ? `${exercise.reps} reps`
                         : `${exercise.duration_seconds}s`}
+                      {exercise.weight_kg != null && ` · ${exercise.weight_kg}kg`}
                     </p>
                     {exercise.notes && <p className="text-gray-500 text-sm mt-0.5">{exercise.notes}</p>}
                   </div>
                   <button
                     onClick={() => deleteExercise.mutate({ id: exercise.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
                     className="text-gray-300 hover:text-red-500 text-lg leading-none ml-2"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {testResults.length > 0 && (
+        <div>
+          <h2 className="text-base font-semibold mb-2">Tests ({testResults.length})</h2>
+          <div className="space-y-2">
+            {testResults.map(result => (
+              <div key={result.id} className="bg-blue-50 rounded-xl p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900">{result.strength_tests.name}</p>
+                    <p className="text-sm text-blue-700 font-semibold mt-0.5">
+                      {result.value} {result.strength_tests.unit}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => deleteTestResult.mutate({ id: result.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
+                    className="text-gray-300 hover:text-red-500 text-lg leading-none"
                   >
                     ×
                   </button>
@@ -225,17 +256,17 @@ export function SessionDetailPage() {
         onClose={() => setSheetOpen(false)}
         title="Add to Session"
       >
-        <div className="flex rounded-lg overflow-hidden border mb-4">
-          {(['problem', 'exercise', 'challenge'] as const).map(tab => (
+        <div className="flex rounded-lg overflow-hidden border mb-4 text-xs">
+          {(['problem', 'exercise', 'test', 'challenge'] as const).map(tab => (
             <button
               key={tab}
               type="button"
               onClick={() => setSheetTab(tab)}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 font-medium transition-colors capitalize ${
                 sheetTab === tab ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
               }`}
             >
-              {tab === 'problem' ? 'Problem' : tab === 'exercise' ? 'Exercise' : 'Challenge'}
+              {tab}
             </button>
           ))}
         </div>
@@ -243,6 +274,15 @@ export function SessionDetailPage() {
           <ProblemForm onSubmit={handleAddProblem} isSubmitting={addProblem.isPending} />
         ) : sheetTab === 'exercise' ? (
           <ExerciseSelector onSubmit={handleAddExercise} isSubmitting={addExercise.isPending} />
+        ) : sheetTab === 'test' ? (
+          <TestLogForm
+            sessionId={id!}
+            onSubmit={(values) => logTestResult.mutate(values, {
+              onSuccess: () => { setSheetOpen(false); toast.success('Test logged') },
+              onError: () => toast.error('Failed to log test'),
+            })}
+            isSubmitting={logTestResult.isPending}
+          />
         ) : (
           <ChallengeAttemptForm
             challenges={challenges}
@@ -251,6 +291,71 @@ export function SessionDetailPage() {
           />
         )}
       </BottomSheet>
+    </div>
+  )
+}
+
+function TestLogForm({
+  sessionId,
+  onSubmit,
+  isSubmitting,
+}: {
+  sessionId: string
+  onSubmit: (values: { test_id: string; value: number; session_id: string }) => void
+  isSubmitting: boolean
+}) {
+  const { data: tests = [] } = useStrengthTests()
+  const [testId, setTestId] = useState('')
+  const [value, setValue] = useState('')
+
+  const selectedTest = tests.find(t => t.id === testId)
+
+  if (tests.length === 0) {
+    return <p className="text-sm text-gray-400 text-center py-8">No tests defined yet. Ask your admin to add some.</p>
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Test</label>
+        <select
+          value={testId}
+          onChange={e => setTestId(e.target.value)}
+          className="w-full border rounded-lg px-3 py-2.5"
+        >
+          <option value="">Select a test</option>
+          {tests.map(t => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+      </div>
+      {selectedTest && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Result ({selectedTest.unit})
+          </label>
+          {selectedTest.description && (
+            <p className="text-xs text-gray-400 mb-1">{selectedTest.description}</p>
+          )}
+          <input
+            type="number"
+            step="0.5"
+            min="0"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder={`Enter value in ${selectedTest.unit}`}
+            className="w-full border rounded-lg px-3 py-2.5"
+          />
+        </div>
+      )}
+      <button
+        type="button"
+        disabled={!testId || !value || isSubmitting}
+        onClick={() => onSubmit({ test_id: testId, value: parseFloat(value), session_id: sessionId })}
+        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+      >
+        {isSubmitting ? 'Saving...' : 'Log Test Result'}
+      </button>
     </div>
   )
 }
@@ -268,6 +373,7 @@ function ExerciseSelector({
   if (picked !== null) {
     const initialName = picked === 'custom' ? '' : picked.name
     const initialType = picked === 'custom' ? 'reps' : picked.type
+    const initialTestId = picked === 'custom' ? null : picked.test_id
     return (
       <div>
         <button
@@ -281,6 +387,7 @@ function ExerciseSelector({
           key={picked === 'custom' ? 'custom' : picked.id}
           initialName={initialName}
           initialType={initialType}
+          initialTestId={initialTestId}
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
         />
@@ -305,6 +412,9 @@ function ExerciseSelector({
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs text-gray-400 capitalize">{t.type}</span>
                   {t.description && <span className="text-xs text-gray-400">· {t.description}</span>}
+                  {t.test_id && (
+                    <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">% test</span>
+                  )}
                 </div>
               </button>
             ))}

@@ -33,6 +33,7 @@ export interface Exercise {
   sets: number | null
   reps: number | null
   duration_seconds: number | null
+  weight_kg: number | null
   notes: string | null
   created_at: string
 }
@@ -63,11 +64,30 @@ export interface ChallengeAttempt {
   created_at: string
 }
 
+export interface StrengthTest {
+  id: string
+  name: string
+  description: string | null
+  unit: string
+  created_by: string
+  created_at: string
+}
+
+export interface TestResult {
+  id: string
+  test_id: string
+  user_id: string
+  value: number
+  session_id: string | null
+  created_at: string
+}
+
 export interface ExerciseTemplate {
   id: string
   name: string
   type: ExerciseType
   description: string | null
+  test_id: string | null
   created_by: string
   created_at: string
 }

@@ -19,7 +19,7 @@ export function useExerciseTemplates() {
 export function useCreateExerciseTemplate() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (values: Pick<ExerciseTemplate, 'name' | 'type' | 'description'>) => {
+    mutationFn: async (values: Pick<ExerciseTemplate, 'name' | 'type' | 'description' | 'test_id'>) => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
       const { data, error } = await supabase
