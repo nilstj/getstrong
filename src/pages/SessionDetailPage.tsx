@@ -147,9 +147,18 @@ export function SessionDetailPage() {
                     </button>
                   </div>
                 </div>
-                <p className="text-gray-400 text-sm">
-                  {problem.attempts} attempt{problem.attempts !== 1 ? 's' : ''}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                  <p className="text-gray-400 text-sm">
+                    {problem.attempts} attempt{problem.attempts !== 1 ? 's' : ''}
+                  </p>
+                  {problem.gym && <span className="text-xs text-gray-400">· {problem.gym}</span>}
+                </div>
+                {problem.beta_video_url && (
+                  <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-indigo-500 mt-0.5 inline-block">
+                    ▶ Beta video
+                  </a>
+                )}
                 {problem.notes && <p className="text-gray-500 text-sm mt-0.5">{problem.notes}</p>}
               </div>
             ))}

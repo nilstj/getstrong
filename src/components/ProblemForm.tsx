@@ -8,6 +8,8 @@ type FormValues = {
   color: string
   attempts: number
   sent: boolean
+  gym: string
+  beta_video_url: string
   notes: string
 }
 
@@ -24,6 +26,8 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       color: '',
       attempts: 1,
       sent: false,
+      gym: '',
+      beta_video_url: '',
       notes: '',
     },
   })
@@ -38,6 +42,8 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       color: values.color || null,
       attempts: values.attempts,
       sent: values.sent,
+      gym: values.gym || null,
+      beta_video_url: values.beta_video_url || null,
       notes: values.notes || null,
     })
   }
@@ -65,10 +71,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       {gradeSystem !== 'color' && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
-          <select
-            {...register('grade_value')}
-            className="w-full border rounded-lg px-3 py-2.5"
-          >
+          <select {...register('grade_value')} className="w-full border rounded-lg px-3 py-2.5">
             <option value="">Select grade</option>
             {(gradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED).map(g => (
               <option key={g} value={g}>{g}</option>
@@ -113,6 +116,26 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       <div className="flex items-center gap-3">
         <input {...register('sent')} id="sent" type="checkbox" className="w-5 h-5 accent-indigo-600" />
         <label htmlFor="sent" className="text-sm font-medium text-gray-700">Sent (completed)</label>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Gym (optional)</label>
+        <input
+          {...register('gym')}
+          type="text"
+          placeholder="e.g. Boulders Oslo"
+          className="w-full border rounded-lg px-3 py-2.5"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Beta video (optional)</label>
+        <input
+          {...register('beta_video_url')}
+          type="url"
+          placeholder="https://instagram.com/... or https://youtube.com/..."
+          className="w-full border rounded-lg px-3 py-2.5 text-sm"
+        />
       </div>
 
       <div>

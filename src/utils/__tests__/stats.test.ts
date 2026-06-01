@@ -8,9 +8,9 @@ const SESSIONS: Session[] = [
 ]
 
 const PROBLEMS: Problem[] = [
-  { id: 'p1', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '7A', color: null, attempts: 3, sent: true, notes: null, created_at: '' },
-  { id: 'p2', session_id: 's1', user_id: 'u1', grade_system: 'v_scale', grade_value: 'V5', color: null, attempts: 1, sent: false, notes: null, created_at: '' },
-  { id: 'p3', session_id: 's2', user_id: 'u1', grade_system: 'font', grade_value: '6B+', color: null, attempts: 2, sent: true, notes: null, created_at: '' },
+  { id: 'p1', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '7A', color: null, attempts: 3, sent: true, gym: null, beta_video_url: null, notes: null, created_at: '' },
+  { id: 'p2', session_id: 's1', user_id: 'u1', grade_system: 'v_scale', grade_value: 'V5', color: null, attempts: 1, sent: false, gym: null, beta_video_url: null, notes: null, created_at: '' },
+  { id: 'p3', session_id: 's2', user_id: 'u1', grade_system: 'font', grade_value: '6B+', color: null, attempts: 2, sent: true, gym: null, beta_video_url: null, notes: null, created_at: '' },
 ]
 
 describe('totalSessions', () => {
@@ -104,7 +104,7 @@ describe('hardestSentPerSession', () => {
       { id: 's1', user_id: 'u1', date: SESSIONS[0].date, location: 'Gym', duration_minutes: 60, notes: null, created_at: '' },
     ]
     const unseated: Problem[] = [
-      { id: 'p1', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '7A', color: null, attempts: 2, sent: false, notes: null, created_at: '' },
+      { id: 'p1', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '7A', color: null, attempts: 2, sent: false, gym: null, beta_video_url: null, notes: null, created_at: '' },
     ]
     expect(hardestSentPerSession(sessions, unseated, GRADE_MAPPINGS)).toEqual([])
   })
@@ -118,8 +118,8 @@ describe('hardestSentPerSession', () => {
       { id: 's1', user_id: 'u1', date: dateStr, location: 'Gym', duration_minutes: 60, notes: null, created_at: '' },
     ]
     const problems: Problem[] = [
-      { id: 'p1', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '4', color: null, attempts: 1, sent: true, notes: null, created_at: '' },
-      { id: 'p2', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '7A', color: null, attempts: 1, sent: true, notes: null, created_at: '' },
+      { id: 'p1', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '4', color: null, attempts: 1, sent: true, gym: null, beta_video_url: null, notes: null, created_at: '' },
+      { id: 'p2', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '7A', color: null, attempts: 1, sent: true, gym: null, beta_video_url: null, notes: null, created_at: '' },
     ]
     const result = hardestSentPerSession(sessions, problems, GRADE_MAPPINGS)
     expect(result).toHaveLength(1)
@@ -131,7 +131,7 @@ describe('hardestSentPerSession', () => {
       { id: 's1', user_id: 'u1', date: '2020-01-01', location: 'Gym', duration_minutes: 60, notes: null, created_at: '' },
     ]
     const problems: Problem[] = [
-      { id: 'p1', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '7A', color: null, attempts: 1, sent: true, notes: null, created_at: '' },
+      { id: 'p1', session_id: 's1', user_id: 'u1', grade_system: 'font', grade_value: '7A', color: null, attempts: 1, sent: true, gym: null, beta_video_url: null, notes: null, created_at: '' },
     ]
     expect(hardestSentPerSession(oldSession, problems, GRADE_MAPPINGS)).toEqual([])
   })
