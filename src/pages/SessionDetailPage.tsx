@@ -124,15 +124,18 @@ export function SessionDetailPage() {
             {problems.map(problem => (
               <div key={problem.id} className="bg-gray-50 rounded-xl p-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">
-                    {problem.grade_value ?? '—'}
-                    {problem.grade_value && problem.color && (
-                      <span className="text-gray-400 text-sm font-normal ml-1">· {problem.color}</span>
-                    )}
-                    {!problem.grade_value && problem.color && (
-                      <span>{problem.color}</span>
-                    )}
-                  </span>
+                  <div>
+                    {problem.name && <p className="font-semibold text-gray-900">{problem.name}</p>}
+                    <span className={problem.name ? 'text-sm text-gray-500' : 'font-medium'}>
+                      {problem.grade_value ?? '—'}
+                      {problem.grade_value && problem.color && (
+                        <span className="text-gray-400 text-sm font-normal ml-1">· {problem.color}</span>
+                      )}
+                      {!problem.grade_value && problem.color && (
+                        <span>{problem.color}</span>
+                      )}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       problem.sent ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'

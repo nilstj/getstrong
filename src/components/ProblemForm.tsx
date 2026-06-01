@@ -5,6 +5,7 @@ import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
 const BOARDS = ['Kilterboard', 'Moonboard', 'TB2'] as const
 
 type FormValues = {
+  name: string
   grade_system: GradeSystem
   grade_value: string
   color: string
@@ -24,6 +25,7 @@ interface ProblemFormProps {
 export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
+      name: '',
       grade_system: 'font',
       grade_value: '',
       color: '',
@@ -42,6 +44,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
 
   const submit = (values: FormValues) => {
     onSubmit({
+      name: values.name || null,
       grade_system: values.grade_system,
       grade_value: values.grade_value || null,
       color: values.color || null,
@@ -56,6 +59,16 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Name (optional)</label>
+        <input
+          {...register('name')}
+          type="text"
+          placeholder="e.g. The Crimpy Roof"
+          className="w-full border rounded-lg px-3 py-2.5"
+        />
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Grade System</label>
         <div className="flex rounded-lg overflow-hidden border">
