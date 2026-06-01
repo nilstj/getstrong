@@ -72,6 +72,14 @@ export interface ExerciseTemplate {
   created_at: string
 }
 
+export interface ChallengeComment {
+  id: string
+  challenge_id: string
+  user_id: string
+  content: string
+  created_at: string
+}
+
 export interface ChallengeInvitation {
   id: string
   challenge_id: string

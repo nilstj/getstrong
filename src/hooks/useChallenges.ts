@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Challenge, ChallengeAttempt, ChallengeInvitation } from '../types'
+import type { Challenge, ChallengeAttempt, ChallengeInvitation, ChallengeComment } from '../types'
 
 export function useChallenges() {
   return useQuery({
@@ -153,6 +153,55 @@ export function useSendChallenge() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenge_invitations'] })
+    },
+  })
+}
+
+export function useChallengeComments(challengeId: string) {
+  return useQuery({
+    queryKey: ['challenge_comments', challengeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('challenge_comments')
+        .select('*')
+        .eq('challenge_id', challengeId)
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      return data as ChallengeComment[]
+    },
+  })
+}
+
+export function useAddChallengeComment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ challengeId, content }: { challengeId: string; content: string }) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+      const { data, error } = await supabase
+        .from('challenge_comments')
+        .insert({ challenge_id: challengeId, user_id: session.user.id, content })
+        .select()
+        .single()
+      if (error) throw error
+      return data as ChallengeComment
+    },
+    onSuccess: (comment) => {
+      queryClient.invalidateQueries({ queryKey: ['challenge_comments', comment.challenge_id] })
+    },
+  })
+}
+
+export function useDeleteChallengeComment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, challengeId }: { id: string; challengeId: string }) => {
+      const { error } = await supabase.from('challenge_comments').delete().eq('id', id)
+      if (error) throw error
+      return challengeId
+    },
+    onSuccess: (challengeId) => {
+      queryClient.invalidateQueries({ queryKey: ['challenge_comments', challengeId] })
     },
   })
 }

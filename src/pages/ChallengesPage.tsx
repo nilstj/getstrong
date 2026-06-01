@@ -7,6 +7,9 @@ import {
   useChallengeAttempts,
   useSendChallenge,
   useReceivedChallenges,
+  useChallengeComments,
+  useAddChallengeComment,
+  useDeleteChallengeComment,
 } from '../hooks/useChallenges'
 import { useFollowing } from '../hooks/useFollows'
 import { useProfile } from '../hooks/useProfile'
@@ -251,8 +254,24 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
 
 function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; currentUserId: string }) {
   const { data: attempts = [] } = useChallengeAttempts(challenge.id)
+  const { data: comments = [] } = useChallengeComments(challenge.id)
+  const addComment = useAddChallengeComment()
+  const deleteComment = useDeleteChallengeComment()
   const [sendOpen, setSendOpen] = useState(false)
+  const [commentText, setCommentText] = useState('')
   const completed = attempts.filter(a => a.completed).length
+
+  const handleAddComment = () => {
+    const content = commentText.trim()
+    if (!content) return
+    addComment.mutate(
+      { challengeId: challenge.id, content },
+      {
+        onSuccess: () => setCommentText(''),
+        onError: () => toast.error('Failed to post comment'),
+      },
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -324,6 +343,43 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
           </div>
         </div>
       )}
+      <div>
+        <p className="text-sm font-medium text-gray-700 mb-3">
+          Comments {comments.length > 0 && <span className="text-gray-400 font-normal">({comments.length})</span>}
+        </p>
+        {comments.length > 0 && (
+          <div className="space-y-3 mb-3">
+            {comments.map(c => (
+              <CommentItem
+                key={c.id}
+                comment={c}
+                currentUserId={currentUserId}
+                onDelete={() => deleteComment.mutate({ id: c.id, challengeId: challenge.id }, { onError: () => toast.error('Failed to delete') })}
+              />
+            ))}
+          </div>
+        )}
+        {comments.length === 0 && (
+          <p className="text-sm text-gray-400 mb-3">No comments yet. Be the first!</p>
+        )}
+        <div className="flex gap-2">
+          <input
+            value={commentText}
+            onChange={e => setCommentText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAddComment()}
+            placeholder="Add a comment…"
+            className="flex-1 border rounded-xl px-3 py-2 text-sm"
+          />
+          <button
+            onClick={handleAddComment}
+            disabled={!commentText.trim() || addComment.isPending}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+          >
+            Post
+          </button>
+        </div>
+      </div>
+
       <button
         onClick={() => setSendOpen(true)}
         className="w-full border border-indigo-600 text-indigo-600 py-2.5 rounded-xl font-medium text-sm"
@@ -436,6 +492,40 @@ function FollowingItem({
         {selected && <span className="text-white text-xs">✓</span>}
       </div>
     </button>
+  )
+}
+
+function CommentItem({
+  comment,
+  currentUserId,
+  onDelete,
+}: {
+  comment: import('../types').ChallengeComment
+  currentUserId: string
+  onDelete: () => void
+}) {
+  const { data: profile } = useProfile(comment.user_id)
+  const date = new Date(comment.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return (
+    <div className="flex gap-2.5">
+      <div className="w-7 h-7 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium text-xs flex-shrink-0 mt-0.5">
+        {profile?.avatar_url
+          ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+          : profile?.username?.[0]?.toUpperCase() ?? '?'}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-medium text-gray-800">{profile?.username ?? '…'}</span>
+          <span className="text-xs text-gray-400">{date}</span>
+          {comment.user_id === currentUserId && (
+            <button onClick={onDelete} className="text-gray-300 hover:text-red-500 text-xs ml-auto">
+              delete
+            </button>
+          )}
+        </div>
+        <p className="text-sm text-gray-700 break-words">{comment.content}</p>
+      </div>
+    </div>
   )
 }
 
