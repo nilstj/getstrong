@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useDeleteProblem } from '../hooks/useProblems'
@@ -90,28 +91,36 @@ export function SessionDetailPage() {
           )}
           {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
         </div>
-        <div className="flex items-center gap-2">
-          <Link to={`/sessions/${id}/edit`} className="text-sm text-black font-medium">
-            Edit
+        <div className="flex items-center gap-1">
+          <Link
+            to={`/sessions/${id}/edit`}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            aria-label="Edit session"
+          >
+            <Pencil size={16} />
           </Link>
           {confirmDelete ? (
-            <>
+            <div className="flex items-center gap-2 ml-1">
               <button
                 onClick={() => deleteSession.mutate(id!, {
                   onSuccess: () => navigate('/sessions'),
                   onError: () => { toast.error('Failed to delete session'); setConfirmDelete(false) },
                 })}
-                className="text-sm text-red-600 font-medium"
+                className="text-xs text-red-600 font-semibold"
               >
                 Confirm
               </button>
-              <button onClick={() => setConfirmDelete(false)} className="text-sm text-gray-400">
+              <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400">
                 Cancel
               </button>
-            </>
+            </div>
           ) : (
-            <button onClick={() => setConfirmDelete(true)} className="text-sm text-red-500 font-medium">
-              Delete
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              aria-label="Delete session"
+            >
+              <Trash2 size={16} />
             </button>
           )}
         </div>
@@ -194,9 +203,9 @@ export function SessionDetailPage() {
                   </div>
                   <button
                     onClick={() => deleteExercise.mutate({ id: exercise.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
-                    className="text-gray-300 hover:text-red-500 text-lg leading-none ml-2"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
                   >
-                    ×
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
@@ -220,9 +229,9 @@ export function SessionDetailPage() {
                   </div>
                   <button
                     onClick={() => deleteTestResult.mutate({ id: result.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
-                    className="text-gray-300 hover:text-red-500 text-lg leading-none"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                   >
-                    ×
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>

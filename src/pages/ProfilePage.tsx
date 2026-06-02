@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { Trash2 } from 'lucide-react'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
 import { useFollowing, useFollowUser, useUnfollowUser, useFollowersCount } from '../hooks/useFollows'
@@ -272,9 +273,10 @@ function StrengthTestsAdmin() {
             </div>
             <button
               onClick={() => deleteTest.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
-              className="text-xs text-red-500 font-medium px-2 py-1 rounded-lg hover:bg-red-50"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              aria-label="Delete"
             >
-              Delete
+              <Trash2 size={15} />
             </button>
           </div>
         ))}
@@ -333,9 +335,10 @@ function ExerciseLibraryAdmin() {
             </div>
             <button
               onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
-              className="text-xs text-red-500 font-medium px-2 py-1 rounded-lg hover:bg-red-50"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              aria-label="Delete"
             >
-              Delete
+              <Trash2 size={15} />
             </button>
           </div>
         ))}

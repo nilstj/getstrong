@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import {
   useChallenges,
   useCreateChallenge,
@@ -94,12 +95,13 @@ export function ChallengesPage() {
                 <AttemptCount challengeId={challenge.id} />
               </button>
               {challenge.creator_id === user?.id && (
-                <div className="absolute top-3 right-3 flex gap-1">
+                <div className="absolute top-2.5 right-2.5 flex gap-0.5">
                   <button
                     onClick={e => { e.stopPropagation(); setEditing(challenge) }}
-                    className="text-xs text-gray-500 font-medium px-2 py-1 rounded-lg hover:bg-gray-50"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    aria-label="Edit challenge"
                   >
-                    Edit
+                    <Pencil size={14} />
                   </button>
                   <button
                     onClick={e => {
@@ -108,9 +110,10 @@ export function ChallengesPage() {
                         deleteChallenge.mutate(challenge.id, { onError: () => toast.error('Failed to delete') })
                       }
                     }}
-                    className="text-xs text-red-500 font-medium px-2 py-1 rounded-lg hover:bg-red-50"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    aria-label="Delete challenge"
                   >
-                    Delete
+                    <Trash2 size={14} />
                   </button>
                 </div>
               )}
@@ -518,8 +521,12 @@ function CommentItem({
           <span className="text-sm font-medium text-gray-800">{profile?.username ?? '…'}</span>
           <span className="text-xs text-gray-400">{date}</span>
           {comment.user_id === currentUserId && (
-            <button onClick={onDelete} className="text-gray-300 hover:text-red-500 text-xs ml-auto">
-              delete
+            <button
+              onClick={onDelete}
+              className="ml-auto w-6 h-6 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+              aria-label="Delete comment"
+            >
+              <Trash2 size={12} />
             </button>
           )}
         </div>
