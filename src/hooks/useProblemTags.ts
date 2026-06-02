@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../providers/AuthProvider'
 import type { ProblemTagDefinition } from '../types'
 
 export function useProblemTagDefinitions() {
@@ -84,6 +85,41 @@ export function useSessionProblemTags(problemIds: string[]) {
       return map
     },
     enabled: problemIds.length > 0,
+  })
+}
+
+export interface TagStat {
+  id: string
+  name: string
+  category: string
+  count: number
+}
+
+export function useMyTagStats() {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['my_tag_stats', user?.id],
+    queryFn: async () => {
+      const { data: problems } = await supabase
+        .from('problems')
+        .select('id')
+        .eq('user_id', user!.id)
+      if (!problems || problems.length === 0) return [] as TagStat[]
+      const { data: assignments, error } = await supabase
+        .from('problem_tag_assignments')
+        .select('tag_id, problem_tag_definitions(id, name, category)')
+        .in('problem_id', problems.map(p => p.id))
+      if (error) throw error
+      const counts: Record<string, TagStat> = {}
+      for (const a of assignments ?? []) {
+        const tag = a.problem_tag_definitions as unknown as { id: string; name: string; category: string }
+        if (!tag) continue
+        if (!counts[tag.id]) counts[tag.id] = { id: tag.id, name: tag.name, category: tag.category, count: 0 }
+        counts[tag.id].count++
+      }
+      return Object.values(counts).sort((a, b) => b.count - a.count)
+    },
+    enabled: !!user?.id,
   })
 }
 

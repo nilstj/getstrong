@@ -21,6 +21,8 @@ import {
 } from '../utils/stats'
 import { BottomSheet } from '../components/BottomSheet'
 import { ReactionBar } from '../components/ReactionBar'
+import { ClimbingDNA } from '../components/ClimbingDNA'
+import { useMyTagStats, useProblemTagDefinitions } from '../hooks/useProblemTags'
 import { useAuth } from '../providers/AuthProvider'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
 import { useFriendWeeklyDetail } from '../hooks/useFriendsActivity'
@@ -49,6 +51,8 @@ export function DashboardPage() {
   const { data: following = [] } = useFollowing()
   const followingIds = following.map(f => f.following_id)
   const { data: friendsActivity = [] } = useFriendsWeeklyActivity()
+  const { data: tagStats = [] } = useMyTagStats()
+  const { data: allTagDefs = [] } = useProblemTagDefinitions()
   const { data: friendsOnWall = [] } = useFriendsOnWall(followingIds)
   const { data: myHypeCount = 0 } = useMyHypeCount()
   const setOnWall = useSetOnWall()
@@ -245,6 +249,11 @@ export function DashboardPage() {
       {/* Power Rankings */}
       {friendsActivity.length >= 2 && (
         <PowerRankings activity={friendsActivity} />
+      )}
+
+      {/* Climbing DNA */}
+      {allTagDefs.length > 0 && (
+        <ClimbingDNA tagStats={tagStats} allTags={allTagDefs} />
       )}
 
       {/* Grade Progression */}
