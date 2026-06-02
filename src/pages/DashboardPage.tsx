@@ -18,6 +18,7 @@ import {
   sessionsByWeek,
 } from '../utils/stats'
 import { BottomSheet } from '../components/BottomSheet'
+import { useAuth } from '../providers/AuthProvider'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
 import { useFriendWeeklyDetail } from '../hooks/useFriendsActivity'
 
@@ -39,9 +40,11 @@ export function DashboardPage() {
   const { data, isLoading, error } = useDashboard()
   const { data: completedChallenges = [] } = useMyCompletedChallenges()
   const { data: receivedChallenges = [] } = useReceivedChallenges()
+  const { user } = useAuth()
+  const { data: myProfile } = useProfile(user?.id)
   const { data: friendsActivity = [] } = useFriendsWeeklyActivity()
-  const [gradeScale, setGradeScale] = useState<'font' | 'v_scale'>('font')
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null)
+  const gradeScale = myProfile?.grade_preference ?? 'font'
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (error) return <div className="p-4 text-red-600">Failed to load dashboard.</div>
@@ -165,27 +168,7 @@ export function DashboardPage() {
 
       {/* Grade Progression */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-bold">Grade Progression</h2>
-          <div className="flex rounded-lg overflow-hidden border text-xs">
-            <button
-              onClick={() => setGradeScale('font')}
-              className={`px-3 py-1.5 font-medium transition-colors ${
-                gradeScale === 'font' ? 'bg-black text-white' : 'bg-white text-gray-600'
-              }`}
-            >
-              Font
-            </button>
-            <button
-              onClick={() => setGradeScale('v_scale')}
-              className={`px-3 py-1.5 font-medium transition-colors ${
-                gradeScale === 'v_scale' ? 'bg-black text-white' : 'bg-white text-gray-600'
-              }`}
-            >
-              V-Scale
-            </button>
-          </div>
-        </div>
+        <h2 className="text-base font-bold mb-3">Grade Progression</h2>
         <GradeProgressionChart data={gradeData} gradeScale={gradeScale} mappings={gradeMappings} />
       </div>
 

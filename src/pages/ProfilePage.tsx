@@ -139,6 +139,26 @@ export function ProfilePage() {
             <p className="text-xs text-gray-500">Followers</p>
           </div>
         </div>
+
+        <div className="w-full">
+          <p className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Grade Scale</p>
+          <div className="flex rounded-xl overflow-hidden border border-gray-200 w-full">
+            {(['font', 'v_scale'] as const).map(scale => (
+              <button
+                key={scale}
+                type="button"
+                onClick={() => updateProfile.mutate({ grade_preference: scale })}
+                className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                  (profile?.grade_preference ?? 'font') === scale
+                    ? 'bg-black text-white'
+                    : 'bg-white text-gray-500'
+                }`}
+              >
+                {scale === 'font' ? 'Font' : 'V-Scale'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Search users */}

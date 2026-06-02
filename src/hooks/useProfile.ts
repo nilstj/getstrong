@@ -7,6 +7,7 @@ export interface Profile {
   username: string | null
   avatar_url: string | null
   is_admin: boolean
+  grade_preference: 'font' | 'v_scale'
   created_at: string
 }
 
@@ -32,7 +33,7 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   return useMutation({
-    mutationFn: async (values: Partial<Pick<Profile, 'username' | 'avatar_url'>>) => {
+    mutationFn: async (values: Partial<Pick<Profile, 'username' | 'avatar_url' | 'grade_preference'>>) => {
       const { data, error } = await supabase
         .from('profiles')
         .update(values)
