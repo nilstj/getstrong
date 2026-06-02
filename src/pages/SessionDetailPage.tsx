@@ -132,13 +132,14 @@ export function SessionDetailPage() {
           })()}
           {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
           <div className="flex items-center gap-2 mt-2">
-            <PartnerAvatars partnerIds={sessionPartners.map(p => p.id)} />
+            <PartnerAvatars partnerIds={sessionPartners} />
             <PartnerPicker
-              currentPartnerIds={sessionPartners.map(p => p.id)}
+              currentPartnerIds={sessionPartners}
               onSave={ids => setSessionPartners.mutate(ids)}
               isSaving={setSessionPartners.isPending}
               label={sessionPartners.length > 0 ? 'Edit partners' : 'Tag friends'}
             />
+
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -533,9 +534,9 @@ function ProblemPartnerRow({ problemId }: { problemId: string }) {
   const setPartners = useSetProblemPartners(problemId)
   return (
     <div className="flex items-center gap-2 mt-1.5">
-      <PartnerAvatars partnerIds={partners.map(p => p.id)} size="xs" />
+      <PartnerAvatars partnerIds={partners} size="xs" />
       <PartnerPicker
-        currentPartnerIds={partners.map(p => p.id)}
+        currentPartnerIds={partners}
         onSave={ids => setPartners.mutate(ids)}
         isSaving={setPartners.isPending}
         label={partners.length > 0 ? 'Edit' : '+ friend'}
@@ -549,9 +550,9 @@ function ExercisePartnerRow({ exerciseId }: { exerciseId: string }) {
   const setPartners = useSetExercisePartners(exerciseId)
   return (
     <div className="flex items-center gap-2 mt-1.5">
-      <PartnerAvatars partnerIds={partners.map(p => p.id)} size="xs" />
+      <PartnerAvatars partnerIds={partners} size="xs" />
       <PartnerPicker
-        currentPartnerIds={partners.map(p => p.id)}
+        currentPartnerIds={partners}
         onSave={ids => setPartners.mutate(ids)}
         isSaving={setPartners.isPending}
         label={partners.length > 0 ? 'Edit' : '+ friend'}

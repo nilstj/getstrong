@@ -179,11 +179,7 @@ export function DashboardPage() {
           </p>
           <div className="space-y-1">
             {taggedSessions.map(s => (
-              <div key={s.sessionId} className="flex items-center gap-2">
-                <span className="text-xs text-sage-700 font-medium">{s.ownerUsername}</span>
-                <span className="text-xs text-sage-500">at {s.location}</span>
-                <span className="text-xs text-sage-400 ml-auto">{s.date}</span>
-              </div>
+              <TaggedSessionRow key={s.sessionId} ownerUserId={s.ownerUserId} location={s.location} date={s.date} />
             ))}
           </div>
         </div>
@@ -421,6 +417,17 @@ function RankingEntry({ userId, medal, value }: { userId: string; medal: string;
       <span className="text-sm">{medal}</span>
       <span className="text-xs font-medium text-gray-700 truncate flex-1">{profile.username}</span>
       <span className="text-xs font-bold text-gray-900">{value}</span>
+    </div>
+  )
+}
+
+function TaggedSessionRow({ ownerUserId, location, date }: { ownerUserId: string; location: string; date: string }) {
+  const { data: profile } = useProfile(ownerUserId)
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-sage-700 font-medium">{profile?.username ?? '…'}</span>
+      <span className="text-xs text-sage-500">at {location}</span>
+      <span className="text-xs text-sage-400 ml-auto">{date}</span>
     </div>
   )
 }
