@@ -22,6 +22,7 @@ export function sendRate(problems: Problem[]): number {
 export interface WeekBucket {
   week: string
   count: number
+  minutes: number
 }
 
 export function sessionsByWeek(sessions: Session[], days = 90): WeekBucket[] {
@@ -31,16 +32,24 @@ export function sessionsByWeek(sessions: Session[], days = 90): WeekBucket[] {
 
   const weekStarts = eachWeekOfInterval({ start: cutoff, end: now }, { weekStartsOn: 1 })
 
-  const weekMap = new Map<string, number>()
+  const weekMap = new Map<string, { count: number; minutes: number }>()
   for (const session of recent) {
     const key = format(startOfWeek(new Date(session.date), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    weekMap.set(key, (weekMap.get(key) ?? 0) + 1)
+    const prev = weekMap.get(key) ?? { count: 0, minutes: 0 }
+    weekMap.set(key, {
+      count: prev.count + 1,
+      minutes: prev.minutes + (session.duration_minutes ?? 0),
+    })
   }
 
-  return weekStarts.map(ws => ({
-    week: format(ws, 'MMM d'),
-    count: weekMap.get(format(ws, 'yyyy-MM-dd')) ?? 0,
-  }))
+  return weekStarts.map(ws => {
+    const entry = weekMap.get(format(ws, 'yyyy-MM-dd'))
+    return {
+      week: format(ws, 'MMM d'),
+      count: entry?.count ?? 0,
+      minutes: entry?.minutes ?? 0,
+    }
+  })
 }
 
 export interface GradeDataPoint {
