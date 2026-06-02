@@ -20,6 +20,7 @@ import {
   sessionsByWeek,
 } from '../utils/stats'
 import { BottomSheet } from '../components/BottomSheet'
+import { ReactionBar } from '../components/ReactionBar'
 import { useAuth } from '../providers/AuthProvider'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
 import { useFriendWeeklyDetail } from '../hooks/useFriendsActivity'
@@ -418,7 +419,7 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
             ) : (
               <div className="space-y-2">
                 {detail.problems.map(p => (
-                  <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
+                  <div key={p.id} className="bg-gray-50 rounded-xl px-3 py-2.5">
                     <div>
                       {p.name && <p className="font-semibold text-sm text-gray-900">{p.name}</p>}
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -436,11 +437,14 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{p.attempts} attempt{p.attempts !== 1 ? 's' : ''}</p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                      p.sent ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                      {p.sent ? 'Sent' : 'Project'}
-                    </span>
+                    <div className="flex items-center justify-between mt-1">
+                      <ReactionBar problemId={p.id} />
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ml-auto ${
+                        p.sent ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {p.sent ? 'Sent' : 'Project'}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -458,13 +462,16 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
             ) : (
               <div className="space-y-2">
                 {detail.attempts.map(a => (
-                  <div key={a.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
-                    <p className="text-sm font-medium text-gray-900">{a.challenges?.title ?? 'Challenge'}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                      a.completed ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                      {a.completed ? 'Completed' : 'Attempted'}
-                    </span>
+                  <div key={a.id} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900">{a.challenges?.title ?? 'Challenge'}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                        a.completed ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {a.completed ? 'Completed' : 'Attempted'}
+                      </span>
+                    </div>
+                    <ReactionBar attemptId={a.id} />
                   </div>
                 ))}
               </div>

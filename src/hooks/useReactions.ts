@@ -76,6 +76,57 @@ export function useRemoveReaction() {
   })
 }
 
+export function useAttemptReactions(attemptId: string) {
+  return useQuery({
+    queryKey: ['attempt_reactions', attemptId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('challenge_attempt_reactions')
+        .select('*')
+        .eq('attempt_id', attemptId)
+      if (error) throw error
+      return data as { id: string; attempt_id: string; user_id: string; emoji: string; created_at: string }[]
+    },
+  })
+}
+
+export function useAddAttemptReaction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ attempt_id, user_id, emoji }: { attempt_id: string; user_id: string; emoji: string }) => {
+      const { data, error } = await supabase
+        .from('challenge_attempt_reactions')
+        .insert({ attempt_id, user_id, emoji })
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    },
+    onSuccess: (_, v) => {
+      queryClient.invalidateQueries({ queryKey: ['attempt_reactions', v.attempt_id] })
+    },
+  })
+}
+
+export function useRemoveAttemptReaction() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  return useMutation({
+    mutationFn: async ({ attempt_id, emoji }: { attempt_id: string; emoji: string }) => {
+      const { error } = await supabase
+        .from('challenge_attempt_reactions')
+        .delete()
+        .eq('attempt_id', attempt_id)
+        .eq('user_id', user!.id)
+        .eq('emoji', emoji)
+      if (error) throw error
+    },
+    onSuccess: (_, v) => {
+      queryClient.invalidateQueries({ queryKey: ['attempt_reactions', v.attempt_id] })
+    },
+  })
+}
+
 export function useMyReactions(problemId: string) {
   const { user } = useAuth()
   return useQuery({

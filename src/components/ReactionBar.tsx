@@ -4,18 +4,28 @@ import {
   useProblemReactions,
   useAddReaction,
   useRemoveReaction,
+  useAttemptReactions,
+  useAddAttemptReaction,
+  useRemoveAttemptReaction,
 } from '../hooks/useReactions'
 
 interface ReactionBarProps {
-  problemId: string
+  problemId?: string
+  attemptId?: string
   compact?: boolean
 }
 
-export function ReactionBar({ problemId, compact = false }: ReactionBarProps) {
+export function ReactionBar({ problemId, attemptId, compact = false }: ReactionBarProps) {
   const { user } = useAuth()
-  const { data: reactions = [] } = useProblemReactions(problemId)
-  const addReaction = useAddReaction()
-  const removeReaction = useRemoveReaction()
+
+  const { data: problemReactions = [] } = useProblemReactions(problemId ?? '')
+  const { data: attemptReactions = [] } = useAttemptReactions(attemptId ?? '')
+  const addProblemReaction = useAddReaction()
+  const removeProblemReaction = useRemoveReaction()
+  const addAttemptReaction = useAddAttemptReaction()
+  const removeAttemptReaction = useRemoveAttemptReaction()
+
+  const reactions = problemId ? problemReactions : attemptReactions
 
   const counts: Record<string, number> = {}
   const myReacted = new Set<string>()
@@ -26,10 +36,18 @@ export function ReactionBar({ problemId, compact = false }: ReactionBarProps) {
 
   const toggle = (key: string) => {
     if (!user) return
-    if (myReacted.has(key)) {
-      removeReaction.mutate({ problem_id: problemId, emoji: key })
-    } else {
-      addReaction.mutate({ problem_id: problemId, user_id: user.id, emoji: key })
+    if (problemId) {
+      if (myReacted.has(key)) {
+        removeProblemReaction.mutate({ problem_id: problemId, emoji: key })
+      } else {
+        addProblemReaction.mutate({ problem_id: problemId, user_id: user.id, emoji: key })
+      }
+    } else if (attemptId) {
+      if (myReacted.has(key)) {
+        removeAttemptReaction.mutate({ attempt_id: attemptId, emoji: key })
+      } else {
+        addAttemptReaction.mutate({ attempt_id: attemptId, user_id: user.id, emoji: key })
+      }
     }
   }
 
