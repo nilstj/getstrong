@@ -1,12 +1,11 @@
 import { useForm } from 'react-hook-form'
-import type { Problem, GradeSystem } from '../types'
+import type { Problem } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
 
 const BOARDS = ['Kilterboard', 'Moonboard', 'TB2'] as const
 
 type FormValues = {
   name: string
-  grade_system: GradeSystem
   grade_value: string
   color: string
   attempts: number
@@ -25,10 +24,12 @@ interface ProblemFormProps {
 }
 
 export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font' }: ProblemFormProps) {
+  const grades = initialGradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
+  const scaleLabel = initialGradeSystem === 'v_scale' ? 'V-Scale' : 'Font'
+
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
       name: '',
-      grade_system: initialGradeSystem,
       grade_value: '',
       color: '',
       attempts: 1,
@@ -41,14 +42,13 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
     },
   })
 
-  const gradeSystem = watch('grade_system')
   const attempts = watch('attempts')
   const board = watch('board')
 
   const submit = (values: FormValues) => {
     onSubmit({
       name: values.name || null,
-      grade_system: values.grade_system,
+      grade_system: initialGradeSystem,
       grade_value: values.grade_value || null,
       color: values.color || null,
       attempts: values.attempts,
@@ -74,56 +74,34 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Grade System</label>
-        <div className="flex rounded-lg overflow-hidden border">
-          {(['v_scale', 'font', 'color'] as const).map(system => (
+        <label className="block text-sm font-medium text-gray-700 mb-1">Grade ({scaleLabel})</label>
+        <select {...register('grade_value')} className="w-full border rounded-lg px-3 py-2.5">
+          <option value="">Select grade</option>
+          {grades.map(g => (
+            <option key={g} value={g}>{g}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Training Board (optional)</label>
+        <div className="flex flex-wrap gap-2">
+          {BOARDS.map(b => (
             <button
-              key={system}
+              key={b}
               type="button"
-              onClick={() => { setValue('grade_system', system); setValue('grade_value', '') }}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                gradeSystem === system ? 'bg-black text-white' : 'bg-white text-gray-600'
+              onClick={() => setValue('board', board === b ? '' : b)}
+              className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                board === b
+                  ? 'bg-black border-black text-white'
+                  : 'bg-white border-gray-300 text-gray-600'
               }`}
             >
-              {system === 'v_scale' ? 'V-Scale' : system === 'font' ? 'Font' : 'Color'}
+              {b}
             </button>
           ))}
         </div>
       </div>
-
-      {gradeSystem !== 'color' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
-          <select {...register('grade_value')} className="w-full border rounded-lg px-3 py-2.5">
-            <option value="">Select grade</option>
-            {(gradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED).map(g => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {gradeSystem !== 'color' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Training Board (optional)</label>
-          <div className="flex flex-wrap gap-2">
-            {BOARDS.map(b => (
-              <button
-                key={b}
-                type="button"
-                onClick={() => setValue('board', board === b ? '' : b)}
-                className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
-                  board === b
-                    ? 'bg-black border-black text-white'
-                    : 'bg-white border-gray-300 text-gray-600'
-                }`}
-              >
-                {b}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {board && (
         <div>
@@ -145,9 +123,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {gradeSystem === 'color' ? 'Color' : 'Gym Color (optional)'}
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Color (optional)</label>
         <input
           {...register('color')}
           type="text"
