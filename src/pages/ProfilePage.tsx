@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useConvertProblemsGradeScale } from '../hooks/useProblems'
 import { Trash2 } from 'lucide-react'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
@@ -18,10 +19,34 @@ export function ProfilePage() {
   const followUser = useFollowUser()
   const unfollowUser = useUnfollowUser()
 
+  const convertProblems = useConvertProblemsGradeScale()
+
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [pendingScale, setPendingScale] = useState<'font' | 'v_scale' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleGradeScaleChange = (scale: 'font' | 'v_scale') => {
+    if (scale === (profile?.grade_preference ?? 'font')) return
+    setPendingScale(scale)
+  }
+
+  const confirmScaleChange = () => {
+    if (!pendingScale) return
+    convertProblems.mutate(pendingScale, {
+      onSuccess: (count) => {
+        updateProfile.mutate({ grade_preference: pendingScale }, {
+          onSuccess: () => {
+            toast.success(`Scale updated${count > 0 ? ` — ${count} problem${count !== 1 ? 's' : ''} converted` : ''}`)
+            setPendingScale(null)
+          },
+          onError: () => toast.error('Failed to update scale'),
+        })
+      },
+      onError: () => toast.error('Failed to convert problems'),
+    })
+  }
 
   const { data: searchResults = [] } = useSearchUsers(searchQuery)
 
@@ -142,22 +167,47 @@ export function ProfilePage() {
 
         <div className="w-full">
           <p className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Grade Scale</p>
-          <div className="flex rounded-xl overflow-hidden border border-gray-200 w-full">
-            {(['font', 'v_scale'] as const).map(scale => (
-              <button
-                key={scale}
-                type="button"
-                onClick={() => updateProfile.mutate({ grade_preference: scale })}
-                className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-                  (profile?.grade_preference ?? 'font') === scale
-                    ? 'bg-black text-white'
-                    : 'bg-white text-gray-500'
-                }`}
-              >
-                {scale === 'font' ? 'Font' : 'V-Scale'}
-              </button>
-            ))}
-          </div>
+          {pendingScale ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+              <p className="text-sm text-gray-700 text-center">
+                Switch to <strong>{pendingScale === 'font' ? 'Font' : 'V-Scale'}</strong>?
+                All your recorded grades will be converted.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPendingScale(null)}
+                  disabled={convertProblems.isPending}
+                  className="flex-1 py-2 text-sm font-medium border border-gray-200 rounded-lg text-gray-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmScaleChange}
+                  disabled={convertProblems.isPending || updateProfile.isPending}
+                  className="flex-1 py-2 text-sm font-semibold bg-black text-white rounded-lg disabled:opacity-50"
+                >
+                  {convertProblems.isPending ? 'Converting…' : 'Confirm'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex rounded-xl overflow-hidden border border-gray-200 w-full">
+              {(['font', 'v_scale'] as const).map(scale => (
+                <button
+                  key={scale}
+                  type="button"
+                  onClick={() => handleGradeScaleChange(scale)}
+                  className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                    (profile?.grade_preference ?? 'font') === scale
+                      ? 'bg-black text-white'
+                      : 'bg-white text-gray-500'
+                  }`}
+                >
+                  {scale === 'font' ? 'Font' : 'V-Scale'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
