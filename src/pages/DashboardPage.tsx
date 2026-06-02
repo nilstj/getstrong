@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { LogOut } from 'lucide-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useMyCompletedChallenges, useReceivedChallenges } from '../hooks/useChallenges'
+import { useFriendsWeeklyActivity } from '../hooks/useFriendsActivity'
+import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
-import { StatCard } from '../components/StatCard'
 import { SessionCard } from '../components/SessionCard'
 import { GradeProgressionChart } from '../components/GradeProgressionChart'
 import { SessionFrequencyChart } from '../components/SessionFrequencyChart'
@@ -15,6 +17,7 @@ import {
   hardestSentPerSession,
   sessionsByWeek,
 } from '../utils/stats'
+import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
 
 const BADGES = [
   { threshold: 10, label: 'Sharma', emoji: '🏆', color: 'bg-yellow-50 border-yellow-300 text-yellow-800' },
@@ -34,6 +37,7 @@ export function DashboardPage() {
   const { data, isLoading, error } = useDashboard()
   const { data: completedChallenges = [] } = useMyCompletedChallenges()
   const { data: receivedChallenges = [] } = useReceivedChallenges()
+  const { data: friendsActivity = [] } = useFriendsWeeklyActivity()
   const [gradeScale, setGradeScale] = useState<'font' | 'v_scale'>('font')
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
@@ -50,83 +54,111 @@ export function DashboardPage() {
   const next = getNextBadge(completedCount)
 
   return (
-    <div className="p-4 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 space-y-5 pb-28">
+      {/* Header */}
+      <div className="flex items-center justify-between pt-1">
         <h1 className="text-2xl font-black tracking-tight">GetStrong</h1>
         <button
           onClick={() => supabase.auth.signOut()}
-          className="text-sm text-gray-400 hover:text-gray-600"
+          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          aria-label="Log out"
         >
-          Log out
+          <LogOut size={16} />
         </button>
       </div>
 
+      {/* Challenge invite notification */}
       {receivedChallenges.length > 0 && (
         <Link
           to="/challenges"
-          className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3"
+          className="flex items-center gap-3 bg-black text-white rounded-2xl px-4 py-3"
         >
-          <span className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+          <span className="w-6 h-6 bg-white text-black rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">
             {receivedChallenges.length}
           </span>
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">
-              {receivedChallenges.length === 1
-                ? 'You have a new challenge!'
-                : `You have ${receivedChallenges.length} new challenges!`}
-            </p>
-            <p className="text-xs text-gray-500">
-              from {[...new Set(receivedChallenges.map(r => r.profiles?.username).filter(Boolean))].join(', ')}
-            </p>
-          </div>
-          <span className="ml-auto text-gray-400 text-lg">›</span>
+          <p className="text-sm font-medium flex-1">
+            {receivedChallenges.length === 1 ? 'New challenge from ' : `${receivedChallenges.length} new challenges from `}
+            {[...new Set(receivedChallenges.map(r => r.profiles?.username).filter(Boolean))].join(', ')}
+          </p>
+          <span className="text-white/60 text-base">›</span>
         </Link>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Sessions" value={totalSessions(sessions)} />
-        <StatCard label="Problems" value={totalProblems(problems)} />
-        <StatCard label="Sends" value={totalSends(problems)} />
-        <StatCard label="Send Rate" value={`${sendRate(problems)}%`} />
-      </div>
-
-      <div>
-        <h2 className="text-base font-semibold mb-3">Challenges</h2>
-        <div className="bg-white border rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-3xl font-bold">{completedCount}</p>
-              <p className="text-xs text-gray-500 mt-0.5">completed</p>
+      {/* Compact stats + badge row */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-4">
+        {/* Stats row */}
+        <div className="grid grid-cols-4 divide-x divide-gray-100">
+          {[
+            { label: 'Sessions', value: totalSessions(sessions) },
+            { label: 'Problems', value: totalProblems(problems) },
+            { label: 'Sends', value: totalSends(problems) },
+            { label: 'Rate', value: `${sendRate(problems)}%` },
+          ].map(s => (
+            <div key={s.label} className="text-center px-2 first:pl-0 last:pr-0">
+              <p className="text-xl font-bold tracking-tight">{s.value}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">{s.label}</p>
             </div>
-            {badge ? (
-              <div className={`flex items-center gap-2 border rounded-xl px-4 py-2 ${badge.color}`}>
-                <span className="text-2xl">{badge.emoji}</span>
-                <span className="font-bold text-lg">{badge.label}</span>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-100 my-3" />
+
+        {/* Challenge badge row */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold">{completedCount}</span>
+              <span className="text-xs text-gray-400">challenges done</span>
+              {badge && (
+                <span className={`ml-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${badge.color}`}>
+                  {badge.emoji} {badge.label}
+                </span>
+              )}
+            </div>
+            {next && (
+              <div className="mt-1.5">
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-black rounded-full transition-all"
+                    style={{ width: `${Math.min((completedCount / next.threshold) * 100, 100)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-0.5">{completedCount}/{next.threshold} to {next.label}</p>
               </div>
-            ) : (
-              <div className="border rounded-xl px-4 py-2 text-gray-400 text-sm">No badge yet</div>
             )}
           </div>
-          {next && (
-            <div>
-              <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Progress to {next.label}</span>
-                <span>{completedCount}/{next.threshold}</span>
-              </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-black rounded-full transition-all"
-                  style={{ width: `${Math.min((completedCount / next.threshold) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
+      {/* Friends activity this week */}
+      {friendsActivity.length > 0 && (
+        <div>
+          <h2 className="text-base font-bold mb-2">Friends this week</h2>
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Athlete</th>
+                  <th className="text-center px-2 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Problems</th>
+                  <th className="text-center px-2 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sends</th>
+                  <th className="text-center px-2 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Challenges</th>
+                </tr>
+              </thead>
+              <tbody>
+                {friendsActivity.map((friend, i) => (
+                  <FriendRow key={friend.userId} friend={friend} last={i === friendsActivity.length - 1} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Grade Progression */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold">Grade Progression</h2>
+          <h2 className="text-base font-bold">Grade Progression</h2>
           <div className="flex rounded-lg overflow-hidden border text-xs">
             <button
               onClick={() => setGradeScale('font')}
@@ -146,20 +178,18 @@ export function DashboardPage() {
             </button>
           </div>
         </div>
-        <GradeProgressionChart
-          data={gradeData}
-          gradeScale={gradeScale}
-          mappings={gradeMappings}
-        />
+        <GradeProgressionChart data={gradeData} gradeScale={gradeScale} mappings={gradeMappings} />
       </div>
 
+      {/* Sessions per Week */}
       <div>
-        <h2 className="text-base font-semibold mb-3">Sessions per Week</h2>
+        <h2 className="text-base font-bold mb-3">Sessions per Week</h2>
         <SessionFrequencyChart data={weekData} />
       </div>
 
+      {/* Recent Sessions */}
       <div>
-        <h2 className="text-base font-semibold mb-3">Recent Sessions</h2>
+        <h2 className="text-base font-bold mb-2">Recent Sessions</h2>
         <div className="space-y-2">
           {recentSessions.map(session => (
             <SessionCard
@@ -176,5 +206,39 @@ export function DashboardPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function FriendRow({ friend, last }: { friend: FriendWeeklySummary; last: boolean }) {
+  const { data: profile } = useProfile(friend.userId)
+  if (!profile) return null
+  return (
+    <tr className={last ? '' : 'border-b border-gray-100'}>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-500 font-medium text-xs flex-shrink-0">
+            {profile.avatar_url
+              ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              : profile.username?.[0]?.toUpperCase() ?? '?'}
+          </div>
+          <span className="font-medium text-gray-900 text-sm">{profile.username}</span>
+        </div>
+      </td>
+      <td className="text-center px-2 py-3 font-semibold text-gray-800">{friend.problems}</td>
+      <td className="text-center px-2 py-3">
+        {friend.sends > 0
+          ? <span className="font-semibold text-gray-800">{friend.sends}</span>
+          : <span className="text-gray-300">—</span>}
+      </td>
+      <td className="text-center px-2 py-3">
+        {friend.challengeAttempts > 0 ? (
+          <span className="font-semibold text-gray-800">
+            {friend.challengesCompleted > 0
+              ? <span>{friend.challengesCompleted}<span className="text-gray-400 font-normal">/{friend.challengeAttempts}</span></span>
+              : friend.challengeAttempts}
+          </span>
+        ) : <span className="text-gray-300">—</span>}
+      </td>
+    </tr>
   )
 }
