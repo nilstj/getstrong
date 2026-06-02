@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import type { Problem } from '../types'
+import type { Problem, ProblemTagDefinition } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
+import { useProblemTagDefinitions } from '../hooks/useProblemTags'
 
 const BOARDS = ['Kilterboard', 'Moonboard', 'TB2'] as const
 
@@ -18,7 +20,7 @@ type FormValues = {
 }
 
 interface ProblemFormProps {
-  onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'>) => void
+  onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'> & { tagIds?: string[] }) => void
   isSubmitting: boolean
   initialGradeSystem?: 'font' | 'v_scale'
 }
@@ -26,6 +28,23 @@ interface ProblemFormProps {
 export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font' }: ProblemFormProps) {
   const grades = initialGradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
   const scaleLabel = initialGradeSystem === 'v_scale' ? 'V-Scale' : 'Font'
+  const { data: tagDefinitions = [] } = useProblemTagDefinitions()
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
+
+  const toggleTag = (id: string) => {
+    setSelectedTagIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  // Group tags by category
+  const tagsByCategory = tagDefinitions.reduce<Record<string, ProblemTagDefinition[]>>((acc, tag) => {
+    if (!acc[tag.category]) acc[tag.category] = []
+    acc[tag.category].push(tag)
+    return acc
+  }, {})
 
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
@@ -47,6 +66,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
 
   const submit = (values: FormValues) => {
     onSubmit({
+      tagIds: Array.from(selectedTagIds),
       name: values.name || null,
       grade_system: initialGradeSystem,
       grade_value: values.grade_value || null,
@@ -187,6 +207,35 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
           className="w-full border rounded-lg px-3 py-2 text-sm"
         />
       </div>
+
+      {Object.keys(tagsByCategory).length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tags (optional)</label>
+          <div className="space-y-2">
+            {Object.entries(tagsByCategory).map(([category, tags]) => (
+              <div key={category}>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 capitalize">{category}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map(tag => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => toggleTag(tag.id)}
+                      className={`text-sm px-3 py-1 rounded-full border font-medium transition-colors ${
+                        selectedTagIds.has(tag.id)
+                          ? 'bg-black border-black text-white'
+                          : 'bg-white border-gray-300 text-gray-600'
+                      }`}
+                    >
+                      {tag.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         type="submit"

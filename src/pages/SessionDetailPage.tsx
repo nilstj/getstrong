@@ -15,6 +15,7 @@ import { useSessionChallengeAttempts, useAddChallengeAttempt, useChallenges, use
 import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
 import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStrengthTests } from '../hooks/useStrengthTests'
 import { useProfile } from '../hooks/useProfile'
+import { useSessionProblemTags } from '../hooks/useProblemTags'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 import { ReactionBar } from '../components/ReactionBar'
 
@@ -49,6 +50,7 @@ export function SessionDetailPage() {
   const logTestResult = useLogTestResult()
   const deleteTestResult = useDeleteTestResult()
   const { data: myProfile } = useProfile()
+  const { data: problemTagsMap = {} } = useSessionProblemTags(problems.map(p => p.id))
   const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export function SessionDetailPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (!session) return <div className="p-4 text-red-600">Session not found.</div>
 
-  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'>) => {
+  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'> & { tagIds?: string[] }) => {
     addProblem.mutate(
       { ...values, session_id: id! },
       {
@@ -183,6 +185,15 @@ export function SessionDetailPage() {
                   </a>
                 )}
                 {problem.notes && <p className="text-gray-500 text-sm mt-0.5">{problem.notes}</p>}
+                {(problemTagsMap[problem.id] ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {(problemTagsMap[problem.id] ?? []).map(tag => (
+                      <span key={tag.id} className="text-[10px] bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 font-medium">
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <ReactionBar problemId={problem.id} compact />
               </div>
             ))}

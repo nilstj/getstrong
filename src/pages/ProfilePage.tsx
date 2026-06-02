@@ -5,6 +5,7 @@ import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '.
 import { useFollowing, useFollowUser, useUnfollowUser, useFollowersCount } from '../hooks/useFollows'
 import { useExerciseTemplates, useCreateExerciseTemplate, useDeleteExerciseTemplate } from '../hooks/useExerciseTemplates'
 import { useStrengthTests, useCreateStrengthTest, useDeleteStrengthTest } from '../hooks/useStrengthTests'
+import { useProblemTagDefinitions, useCreateProblemTagDefinition, useDeleteProblemTagDefinition } from '../hooks/useProblemTags'
 import toast from 'react-hot-toast'
 import type { ExerciseType } from '../types'
 
@@ -219,6 +220,7 @@ export function ProfilePage() {
       {/* Admin sections */}
       {profile?.is_admin && (
         <>
+          <ProblemTagsAdmin />
           <StrengthTestsAdmin />
           <ExerciseLibraryAdmin />
         </>
@@ -258,6 +260,96 @@ function FollowingItem({ userId, onUnfollow }: { userId: string; onUnfollow: (id
       >
         Following
       </button>
+    </div>
+  )
+}
+
+const SUGGESTED_CATEGORIES = ['holds', 'style', 'wall type']
+const SUGGESTED_TAGS: Record<string, string[]> = {
+  holds: ['Jugs', 'Crimps', 'Pinches', 'Slopers', 'Pockets', 'Sidepulls', 'Underclings', 'Gastons'],
+  style: ['Techy', 'Dynamic', 'Static', 'Compression', 'Balance', 'Contact', 'Power'],
+  'wall type': ['Slab', 'Vertical', 'Overhang', 'Roof', 'Cave'],
+}
+
+function ProblemTagsAdmin() {
+  const { data: tags = [] } = useProblemTagDefinitions()
+  const createTag = useCreateProblemTagDefinition()
+  const deleteTag = useDeleteProblemTagDefinition()
+  const [name, setName] = useState('')
+  const [category, setCategory] = useState('holds')
+
+  const tagsByCategory = tags.reduce<Record<string, typeof tags>>((acc, t) => {
+    if (!acc[t.category]) acc[t.category] = []
+    acc[t.category].push(t)
+    return acc
+  }, {})
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold mb-3">Problem Tags (Admin)</h2>
+      <div className="space-y-3 mb-4">
+        {Object.entries(tagsByCategory).map(([cat, catTags]) => (
+          <div key={cat}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 capitalize">{cat}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {catTags.map(t => (
+                <div key={t.id} className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full pl-3 pr-1.5 py-1">
+                  <span className="text-sm text-gray-700">{t.name}</span>
+                  <button
+                    onClick={() => deleteTag.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        {tags.length === 0 && <p className="text-sm text-gray-400">No tags yet. Add some below or use suggestions.</p>}
+      </div>
+
+      <div className="border rounded-2xl p-4 space-y-3">
+        <p className="text-sm font-semibold text-gray-700">Add Tag</p>
+        <div className="flex gap-2">
+          <select value={category} onChange={e => setCategory(e.target.value)} className="border rounded-xl px-3 py-2 text-sm flex-shrink-0">
+            {SUGGESTED_CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
+          </select>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Tag name" className="flex-1 border rounded-xl px-3 py-2 text-sm" />
+        </div>
+        <button
+          onClick={() => createTag.mutate({ name: name.trim(), category }, {
+            onSuccess: () => { setName(''); toast.success('Tag added') },
+            onError: () => toast.error('Failed (name may already exist)'),
+          })}
+          disabled={!name.trim() || createTag.isPending}
+          className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+        >
+          {createTag.isPending ? 'Adding…' : 'Add Tag'}
+        </button>
+
+        <div>
+          <p className="text-xs text-gray-400 mb-2">Quick add suggestions:</p>
+          <div className="space-y-2">
+            {Object.entries(SUGGESTED_TAGS).map(([cat, suggestions]) => (
+              <div key={cat}>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 capitalize">{cat}</p>
+                <div className="flex flex-wrap gap-1">
+                  {suggestions.filter(s => !tags.some(t => t.name === s)).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => createTag.mutate({ name: s, category: cat }, { onError: () => toast.error('Already exists') })}
+                      className="text-xs border border-dashed border-gray-300 text-gray-500 rounded-full px-2.5 py-0.5 hover:border-black hover:text-black transition-colors"
+                    >
+                      + {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

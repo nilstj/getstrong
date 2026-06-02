@@ -48,7 +48,7 @@ export function useDeleteProblem() {
 export function useAddProblem() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (values: Omit<Problem, 'id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'>) => {
+    mutationFn: async (values: Omit<Problem, 'id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'> & { tagIds?: string[] }) => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
@@ -67,18 +67,27 @@ export function useAddProblem() {
         }
       }
 
+      const { tagIds, ...problemValues } = values
       const { data, error } = await supabase
         .from('problems')
-        .insert({ ...values, user_id: session.user.id, grade_value_font, grade_value_vscale })
+        .insert({ ...problemValues, user_id: session.user.id, grade_value_font, grade_value_vscale })
         .select()
         .single()
       if (error) throw error
+
+      if (tagIds && tagIds.length > 0) {
+        await supabase
+          .from('problem_tag_assignments')
+          .insert(tagIds.map(tag_id => ({ problem_id: data.id, tag_id })))
+      }
+
       return data as Problem
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['problems', variables.session_id] })
       queryClient.invalidateQueries({ queryKey: ['problems'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['session_problem_tags'] })
     },
   })
 }

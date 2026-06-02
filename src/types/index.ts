@@ -99,6 +99,14 @@ export interface ExerciseTemplate {
   created_at: string
 }
 
+export interface ProblemTagDefinition {
+  id: string
+  name: string
+  category: string
+  created_by: string
+  created_at: string
+}
+
 export interface ProblemReaction {
   id: string
   problem_id: string
