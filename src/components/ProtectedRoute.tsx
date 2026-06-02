@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../providers/AuthProvider'
 import { BottomNav } from './BottomNav'
+import { AppBar } from './AppBar'
 
 export function ProtectedRoute() {
   const { user, loading } = useAuth()
@@ -16,7 +17,8 @@ export function ProtectedRoute() {
   if (!user) return <Navigate to="/login" replace />
 
   return (
-    <div className="min-h-screen pb-16">
+    <div className="min-h-screen pt-12 pb-20">
+      <AppBar />
       <Outlet />
       <BottomNav />
     </div>

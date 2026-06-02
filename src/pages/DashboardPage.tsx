@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useMyCompletedChallenges, useReceivedChallenges } from '../hooks/useChallenges'
 import { useFriendsWeeklyActivity } from '../hooks/useFriendsActivity'
 import { useProfile } from '../hooks/useProfile'
 import { useFollowing } from '../hooks/useFollows'
 import { useSetOnWall, useFriendsOnWall, useSendHype, useMyHypeCount } from '../hooks/useOnWall'
-import { supabase } from '../lib/supabase'
 import { SessionCard } from '../components/SessionCard'
 import { GradeProgressionChart } from '../components/GradeProgressionChart'
 import { SessionFrequencyChart } from '../components/SessionFrequencyChart'
@@ -79,18 +77,6 @@ export function DashboardPage() {
 
   return (
     <div className="p-4 space-y-5 pb-28">
-      {/* Header */}
-      <div className="flex items-center justify-between pt-1">
-        <h1 className="text-2xl font-black tracking-tight">GetStrong</h1>
-        <button
-          onClick={() => supabase.auth.signOut()}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-          aria-label="Log out"
-        >
-          <LogOut size={16} />
-        </button>
-      </div>
-
       {/* On the Wall */}
       {isOnWall ? (
         <div className="bg-sage-700 text-white rounded-2xl px-4 py-3 flex items-center gap-3">
