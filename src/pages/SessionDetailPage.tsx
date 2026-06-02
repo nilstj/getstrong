@@ -22,6 +22,12 @@ import { ReactionBar } from '../components/ReactionBar'
 
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
+function SendBadge({ sent, attempts }: { sent: boolean; attempts: number }) {
+  if (!sent) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-200 text-gray-600">Project</span>
+  if (attempts === 1) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-yellow-300 text-yellow-900">Flash ⚡</span>
+  return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Sent</span>
+}
+
 function displayGrade(problem: import('../types').Problem, preference: 'font' | 'v_scale'): string {
   if (preference === 'v_scale' && problem.grade_value_vscale) return problem.grade_value_vscale
   if (problem.grade_value_font) return problem.grade_value_font
@@ -161,11 +167,7 @@ export function SessionDetailPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      problem.sent ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {problem.sent ? 'Sent' : 'Project'}
-                    </span>
+                    <SendBadge sent={problem.sent} attempts={problem.attempts} />
                     <button
                       onClick={() => setEditingProblem(problem)}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"

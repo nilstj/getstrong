@@ -449,9 +449,10 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                     <div className="flex items-center justify-between mt-1">
                       <ReactionBar problemId={p.id} />
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ml-auto ${
-                        p.sent ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
+                        p.sent && p.attempts === 1 ? 'bg-yellow-300 text-yellow-900' :
+                      p.sent ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
                       }`}>
-                        {p.sent ? 'Sent' : 'Project'}
+                        {p.sent && p.attempts === 1 ? 'Flash ⚡' : p.sent ? 'Sent' : 'Project'}
                       </span>
                     </div>
                   </div>
