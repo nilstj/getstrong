@@ -99,6 +99,52 @@ export interface ExerciseTemplate {
   created_at: string
 }
 
+export interface ProblemReaction {
+  id: string
+  problem_id: string
+  user_id: string
+  emoji: string
+  created_at: string
+}
+
+export interface HypeMessage {
+  id: string
+  to_user_id: string
+  from_user_id: string
+  created_at: string
+}
+
+export interface SharedProject {
+  id: string
+  title: string
+  description: string | null
+  grade_value_font: string | null
+  grade_value_vscale: string | null
+  board: string | null
+  board_angle: number | null
+  gym: string | null
+  creator_id: string
+  created_at: string
+}
+
+export interface ProjectAttempt {
+  id: string
+  project_id: string
+  user_id: string
+  sent: boolean
+  created_at: string
+}
+
+export interface ChallengeBeta {
+  id: string
+  challenge_id: string
+  user_id: string
+  crux: string | null
+  footwork: string | null
+  sequence: string | null
+  created_at: string
+}
+
 export interface ChallengeComment {
   id: string
   challenge_id: string

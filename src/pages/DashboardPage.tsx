@@ -5,6 +5,8 @@ import { useDashboard } from '../hooks/useDashboard'
 import { useMyCompletedChallenges, useReceivedChallenges } from '../hooks/useChallenges'
 import { useFriendsWeeklyActivity } from '../hooks/useFriendsActivity'
 import { useProfile } from '../hooks/useProfile'
+import { useFollowing } from '../hooks/useFollows'
+import { useSetOnWall, useFriendsOnWall, useSendHype, useMyHypeCount } from '../hooks/useOnWall'
 import { supabase } from '../lib/supabase'
 import { SessionCard } from '../components/SessionCard'
 import { GradeProgressionChart } from '../components/GradeProgressionChart'
@@ -21,6 +23,7 @@ import { BottomSheet } from '../components/BottomSheet'
 import { useAuth } from '../providers/AuthProvider'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
 import { useFriendWeeklyDetail } from '../hooks/useFriendsActivity'
+import toast from 'react-hot-toast'
 
 const BADGES = [
   { threshold: 10, label: 'Sharma', emoji: '🏆', color: 'bg-yellow-50 border-yellow-300 text-yellow-800' },
@@ -42,9 +45,17 @@ export function DashboardPage() {
   const { data: receivedChallenges = [] } = useReceivedChallenges()
   const { user } = useAuth()
   const { data: myProfile } = useProfile(user?.id)
+  const { data: following = [] } = useFollowing()
+  const followingIds = following.map(f => f.following_id)
   const { data: friendsActivity = [] } = useFriendsWeeklyActivity()
+  const { data: friendsOnWall = [] } = useFriendsOnWall(followingIds)
+  const { data: myHypeCount = 0 } = useMyHypeCount()
+  const setOnWall = useSetOnWall()
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null)
+  const [wallLabelInput, setWallLabelInput] = useState('')
+  const [showWallInput, setShowWallInput] = useState(false)
   const gradeScale = myProfile?.grade_preference ?? 'font'
+  const isOnWall = !!myProfile?.on_wall_at
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (error) return <div className="p-4 text-red-600">Failed to load dashboard.</div>
@@ -72,6 +83,69 @@ export function DashboardPage() {
           <LogOut size={16} />
         </button>
       </div>
+
+      {/* On the Wall */}
+      {isOnWall ? (
+        <div className="bg-black text-white rounded-2xl px-4 py-3 flex items-center gap-3">
+          <span className="text-xl animate-bounce">🧗</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">You're on the wall!</p>
+            {myProfile?.on_wall_label && (
+              <p className="text-xs text-white/60 truncate">{myProfile.on_wall_label}</p>
+            )}
+            {myHypeCount > 0 && (
+              <p className="text-xs text-yellow-300 font-medium mt-0.5">🔥 {myHypeCount} hype{myHypeCount !== 1 ? 's' : ''}!</p>
+            )}
+          </div>
+          <button
+            onClick={() => setOnWall.mutate(null, { onSuccess: () => toast.success('Status cleared') })}
+            className="text-xs text-white/60 hover:text-white font-medium"
+          >
+            Done
+          </button>
+        </div>
+      ) : showWallInput ? (
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 space-y-2">
+          <input
+            autoFocus
+            value={wallLabelInput}
+            onChange={e => setWallLabelInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                setOnWall.mutate(wallLabelInput || 'On the wall', {
+                  onSuccess: () => { setShowWallInput(false); setWallLabelInput('') },
+                })
+              }
+              if (e.key === 'Escape') setShowWallInput(false)
+            }}
+            placeholder="What are you projecting? (e.g. Green V7 at Boulders)"
+            className="w-full text-sm bg-white border border-gray-200 rounded-xl px-3 py-2"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowWallInput(false)}
+              className="flex-1 py-1.5 text-sm text-gray-500 border border-gray-200 rounded-xl"
+            >Cancel</button>
+            <button
+              onClick={() => setOnWall.mutate(wallLabelInput || 'On the wall', {
+                onSuccess: () => { setShowWallInput(false); setWallLabelInput('') },
+              })}
+              disabled={setOnWall.isPending}
+              className="flex-1 py-1.5 text-sm font-semibold bg-black text-white rounded-xl disabled:opacity-50"
+            >
+              {setOnWall.isPending ? '…' : "I'm on the wall 🧗"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowWallInput(true)}
+          className="w-full flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-2.5 text-sm text-gray-500 hover:border-gray-300 transition-colors"
+        >
+          <span>🧗</span>
+          <span>Announce you're on the wall…</span>
+        </button>
+      )}
 
       {/* Challenge invite notification */}
       {receivedChallenges.length > 0 && (
@@ -157,6 +231,7 @@ export function DashboardPage() {
                     key={friend.userId}
                     friend={friend}
                     last={i === friendsActivity.length - 1}
+                    onWall={friendsOnWall.find(f => f.id === friend.userId) ?? null}
                     onClick={() => setSelectedFriend(friend.userId)}
                   />
                 ))}
@@ -164,6 +239,11 @@ export function DashboardPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Power Rankings */}
+      {friendsActivity.length >= 2 && (
+        <PowerRankings activity={friendsActivity} />
       )}
 
       {/* Grade Progression */}
@@ -208,8 +288,11 @@ export function DashboardPage() {
   )
 }
 
-function FriendRow({ friend, last, onClick }: { friend: FriendWeeklySummary; last: boolean; onClick: () => void }) {
+interface OnWallProfile { id: string; username: string | null; avatar_url: string | null; on_wall_at: string; on_wall_label: string | null }
+
+function FriendRow({ friend, last, onWall, onClick }: { friend: FriendWeeklySummary; last: boolean; onWall: OnWallProfile | null; onClick: () => void }) {
   const { data: profile } = useProfile(friend.userId)
+  const sendHype = useSendHype(friend.userId)
   if (!profile) return null
   return (
     <tr
@@ -218,13 +301,36 @@ function FriendRow({ friend, last, onClick }: { friend: FriendWeeklySummary; las
     >
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-500 font-medium text-xs flex-shrink-0">
-            {profile.avatar_url
-              ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              : profile.username?.[0]?.toUpperCase() ?? '?'}
+          <div className="relative">
+            <div className="w-7 h-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-500 font-medium text-xs flex-shrink-0">
+              {profile.avatar_url
+                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                : profile.username?.[0]?.toUpperCase() ?? '?'}
+            </div>
+            {onWall && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+            )}
           </div>
-          <span className="font-medium text-gray-900 text-sm">{profile.username}</span>
-          <span className="text-gray-300 ml-auto text-base">›</span>
+          <div className="min-w-0">
+            <span className="font-medium text-gray-900 text-sm">{profile.username}</span>
+            {onWall && onWall.on_wall_label && (
+              <p className="text-[10px] text-green-600 truncate max-w-[100px]">{onWall.on_wall_label}</p>
+            )}
+          </div>
+          {onWall ? (
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                sendHype.mutate(undefined, { onSuccess: () => toast.success('Hype sent! 🔥') })
+              }}
+              disabled={sendHype.isPending}
+              className="ml-auto text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold"
+            >
+              🔥 Hype
+            </button>
+          ) : (
+            <span className="text-gray-300 ml-auto text-base">›</span>
+          )}
         </div>
       </td>
       <td className="text-center px-2 py-3 font-semibold text-gray-800">{friend.problems}</td>
@@ -243,6 +349,49 @@ function FriendRow({ friend, last, onClick }: { friend: FriendWeeklySummary; las
         ) : <span className="text-gray-300">—</span>}
       </td>
     </tr>
+  )
+}
+
+function PowerRankings({ activity }: { activity: FriendWeeklySummary[] }) {
+  const medals = ['🥇', '🥈', '🥉']
+  const byProblems = [...activity].sort((a, b) => b.problems - a.problems).slice(0, 3)
+  const bySends = [...activity].sort((a, b) => b.sends - a.sends).filter(a => a.sends > 0).slice(0, 3)
+  const byChallenges = [...activity].sort((a, b) => b.challengesCompleted - a.challengesCompleted).filter(a => a.challengesCompleted > 0).slice(0, 3)
+
+  if (byProblems.length < 2) return null
+
+  return (
+    <div>
+      <h2 className="text-base font-bold mb-2">Weekly Rankings</h2>
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { title: '🧗 Problems', list: byProblems, value: (f: FriendWeeklySummary) => f.problems },
+          { title: '✅ Sends', list: bySends, value: (f: FriendWeeklySummary) => f.sends },
+          { title: '🏆 Challenges', list: byChallenges, value: (f: FriendWeeklySummary) => f.challengesCompleted },
+        ].map(cat => (
+          <div key={cat.title} className="bg-white border border-gray-200 rounded-2xl p-3">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{cat.title}</p>
+            {cat.list.length === 0 ? (
+              <p className="text-xs text-gray-300">—</p>
+            ) : cat.list.map((f, i) => (
+              <RankingEntry key={f.userId} userId={f.userId} medal={medals[i]} value={cat.value(f)} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RankingEntry({ userId, medal, value }: { userId: string; medal: string; value: number }) {
+  const { data: profile } = useProfile(userId)
+  if (!profile) return null
+  return (
+    <div className="flex items-center gap-1.5 mb-1 last:mb-0">
+      <span className="text-sm">{medal}</span>
+      <span className="text-xs font-medium text-gray-700 truncate flex-1">{profile.username}</span>
+      <span className="text-xs font-bold text-gray-900">{value}</span>
+    </div>
   )
 }
 

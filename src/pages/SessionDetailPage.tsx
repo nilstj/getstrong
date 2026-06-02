@@ -16,6 +16,7 @@ import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
 import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStrengthTests } from '../hooks/useStrengthTests'
 import { useProfile } from '../hooks/useProfile'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
+import { ReactionBar } from '../components/ReactionBar'
 
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
@@ -182,6 +183,7 @@ export function SessionDetailPage() {
                   </a>
                 )}
                 {problem.notes && <p className="text-gray-500 text-sm mt-0.5">{problem.notes}</p>}
+                <ReactionBar problemId={problem.id} compact />
               </div>
             ))}
           </div>
