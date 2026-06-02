@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form'
 import { useSessionChallengeAttempts, useAddChallengeAttempt, useChallenges, useDeleteChallengeAttempt } from '../hooks/useChallenges'
 import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
 import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStrengthTests } from '../hooks/useStrengthTests'
+import { useProfile } from '../hooks/useProfile'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
@@ -40,6 +41,7 @@ export function SessionDetailPage() {
   const { data: testResults = [] } = useSessionTestResults(id!)
   const logTestResult = useLogTestResult()
   const deleteTestResult = useDeleteTestResult()
+  const { data: myProfile } = useProfile()
   const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
 
   useEffect(() => {
@@ -297,7 +299,11 @@ export function SessionDetailPage() {
           ))}
         </div>
         {sheetTab === 'problem' ? (
-          <ProblemForm onSubmit={handleAddProblem} isSubmitting={addProblem.isPending} />
+          <ProblemForm
+            onSubmit={handleAddProblem}
+            isSubmitting={addProblem.isPending}
+            initialGradeSystem={myProfile?.grade_preference ?? 'font'}
+          />
         ) : sheetTab === 'exercise' ? (
           <ExerciseSelector onSubmit={handleAddExercise} isSubmitting={addExercise.isPending} />
         ) : sheetTab === 'test' ? (

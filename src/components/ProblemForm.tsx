@@ -21,13 +21,14 @@ type FormValues = {
 interface ProblemFormProps {
   onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at'>) => void
   isSubmitting: boolean
+  initialGradeSystem?: 'font' | 'v_scale'
 }
 
-export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
+export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font' }: ProblemFormProps) {
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
       name: '',
-      grade_system: 'font',
+      grade_system: initialGradeSystem,
       grade_value: '',
       color: '',
       attempts: 1,
