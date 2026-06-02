@@ -91,7 +91,7 @@ export function SessionDetailPage() {
           {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
         </div>
         <div className="flex items-center gap-2">
-          <Link to={`/sessions/${id}/edit`} className="text-sm text-indigo-600 font-medium">
+          <Link to={`/sessions/${id}/edit`} className="text-sm text-black font-medium">
             Edit
           </Link>
           {confirmDelete ? (
@@ -122,7 +122,7 @@ export function SessionDetailPage() {
           <h2 className="text-base font-semibold mb-2">Problems ({problems.length})</h2>
           <div className="space-y-2">
             {problems.map(problem => (
-              <div key={problem.id} className="bg-gray-50 rounded-xl p-3">
+              <div key={problem.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     {problem.name && <p className="font-semibold text-gray-900">{problem.name}</p>}
@@ -155,7 +155,7 @@ export function SessionDetailPage() {
                     {problem.attempts} attempt{problem.attempts !== 1 ? 's' : ''}
                   </p>
                   {problem.board && (
-                    <span className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full px-2 py-0.5">
+                    <span className="text-xs bg-gray-50 text-black border border-gray-200 rounded-full px-2 py-0.5">
                       {problem.board}{problem.board_angle != null ? ` ${problem.board_angle}°` : ''}
                     </span>
                   )}
@@ -163,7 +163,7 @@ export function SessionDetailPage() {
                 </div>
                 {problem.beta_video_url && (
                   <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-indigo-500 mt-0.5 inline-block">
+                    className="text-xs text-gray-500 mt-0.5 inline-block">
                     ▶ Beta video
                   </a>
                 )}
@@ -179,7 +179,7 @@ export function SessionDetailPage() {
           <h2 className="text-base font-semibold mb-2">Exercises ({exercises.length})</h2>
           <div className="space-y-2">
             {exercises.map(exercise => (
-              <div key={exercise.id} className="bg-gray-50 rounded-xl p-3">
+              <div key={exercise.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{exercise.name}</p>
@@ -236,7 +236,7 @@ export function SessionDetailPage() {
           <h2 className="text-base font-semibold mb-2">Challenges ({challengeAttempts.length})</h2>
           <div className="space-y-2">
             {challengeAttempts.map(attempt => (
-              <div key={attempt.id} className="bg-gray-50 rounded-xl p-3">
+              <div key={attempt.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{(attempt as any).challenges?.title ?? 'Challenge'}</p>
                   <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ export function SessionDetailPage() {
               type="button"
               onClick={() => setSheetTab(tab)}
               className={`flex-1 py-2 font-medium transition-colors capitalize ${
-                sheetTab === tab ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+                sheetTab === tab ? 'bg-black text-white' : 'bg-white text-gray-600'
               }`}
             >
               {tab}
@@ -369,7 +369,7 @@ function TestLogForm({
         type="button"
         disabled={!testId || !value || isSubmitting}
         onClick={() => onSubmit({ test_id: testId, value: parseFloat(value), session_id: sessionId })}
-        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isSubmitting ? 'Saving...' : 'Log Test Result'}
       </button>
@@ -396,7 +396,7 @@ function ExerciseSelector({
         <button
           type="button"
           onClick={() => setPicked(null)}
-          className="text-sm text-indigo-600 font-medium mb-4 flex items-center gap-1"
+          className="text-sm text-black font-medium mb-4 flex items-center gap-1"
         >
           ← Back
         </button>
@@ -423,7 +423,7 @@ function ExerciseSelector({
                 key={t.id}
                 type="button"
                 onClick={() => setPicked(t)}
-                className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-indigo-300 transition-colors"
+                className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
               >
                 <p className="font-medium text-gray-900">{t.name}</p>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -441,7 +441,7 @@ function ExerciseSelector({
       <button
         type="button"
         onClick={() => setPicked('custom')}
-        className="w-full border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+        className="w-full border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm text-gray-500 hover:border-gray-400 hover:text-black transition-colors"
       >
         + Custom exercise
       </button>
@@ -489,7 +489,7 @@ function ChallengeAttemptForm({
         </select>
       </div>
       <div className="flex items-center gap-3">
-        <input {...register('completed')} id="completed" type="checkbox" className="w-5 h-5 accent-indigo-600" />
+        <input {...register('completed')} id="completed" type="checkbox" className="w-5 h-5 accent-black" />
         <label htmlFor="completed" className="text-sm font-medium text-gray-700">Completed</label>
       </div>
       <div>
@@ -508,7 +508,7 @@ function ChallengeAttemptForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isSubmitting ? 'Saving...' : 'Log Attempt'}
       </button>

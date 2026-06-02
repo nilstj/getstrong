@@ -27,7 +27,7 @@ function TagPills({ tags }: { tags: string[] }) {
   return (
     <div className="flex flex-wrap gap-1 mt-2">
       {tags.map(tag => (
-        <span key={tag} className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full px-2 py-0.5">
+        <span key={tag} className="text-xs bg-gray-50 text-black border border-gray-200 rounded-full px-2 py-0.5">
           {tag}
         </span>
       ))}
@@ -47,7 +47,7 @@ export function ChallengesPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
 
   return (
-    <div className="p-4 space-y-4 pb-24">
+    <div className="p-4 space-y-4 pb-28">
       <h1 className="text-2xl font-bold">Challenges</h1>
 
       {received.length > 0 && (
@@ -58,10 +58,10 @@ export function ChallengesPage() {
               <button
                 key={inv.id}
                 onClick={() => setSelected(inv.challenges)}
-                className="w-full text-left bg-indigo-50 border border-indigo-200 rounded-xl p-4"
+                className="w-full text-left bg-gray-50 border border-gray-200 rounded-2xl p-4"
               >
                 <p className="font-semibold text-gray-900">{inv.challenges.title}</p>
-                <p className="text-xs text-indigo-500 mt-0.5">from {inv.profiles?.username ?? 'someone'}</p>
+                <p className="text-xs text-gray-500 mt-0.5">from {inv.profiles?.username ?? 'someone'}</p>
                 {inv.challenges.description && (
                   <p className="text-sm text-gray-500 mt-1">{inv.challenges.description}</p>
                 )}
@@ -84,7 +84,7 @@ export function ChallengesPage() {
             <div key={challenge.id} className="relative">
               <button
                 onClick={() => setSelected(challenge)}
-                className="w-full text-left bg-white border rounded-xl p-4 hover:border-indigo-300 transition-colors"
+                className="w-full text-left bg-white border rounded-2xl p-4 hover:border-gray-300 transition-colors"
               >
                 <p className="font-semibold text-gray-900 pr-12">{challenge.title}</p>
                 {challenge.description && (
@@ -97,7 +97,7 @@ export function ChallengesPage() {
                 <div className="absolute top-3 right-3 flex gap-1">
                   <button
                     onClick={e => { e.stopPropagation(); setEditing(challenge) }}
-                    className="text-xs text-indigo-500 font-medium px-2 py-1 rounded-lg hover:bg-indigo-50"
+                    className="text-xs text-gray-500 font-medium px-2 py-1 rounded-lg hover:bg-gray-50"
                   >
                     Edit
                   </button>
@@ -223,7 +223,7 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
               onClick={() => toggleTag(tag)}
               className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
                 tags.includes(tag)
-                  ? 'bg-indigo-600 border-indigo-600 text-white'
+                  ? 'bg-black border-black text-white'
                   : 'bg-white border-gray-300 text-gray-600'
               }`}
             >
@@ -244,7 +244,7 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
       <button
         type="submit"
         disabled={isPending}
-        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isPending ? 'Saving...' : existing ? 'Save Changes' : 'Create Challenge'}
       </button>
@@ -284,7 +284,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
           href={challenge.video_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-indigo-600 font-medium"
+          className="inline-flex items-center gap-1.5 text-sm text-black font-medium"
         >
           ▶ Watch demo video
         </a>
@@ -308,7 +308,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
       {completed > 0 && (
         <div>
           <p className="text-sm font-medium text-gray-700 mb-2">Completed by</p>
-          <div className="rounded-xl border overflow-hidden">
+          <div className="rounded-2xl border overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b">
@@ -335,7 +335,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
                 href={a.video_url!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block text-sm text-indigo-600 truncate"
+                className="block text-sm text-black truncate"
               >
                 ▶ {a.video_url}
               </a>
@@ -373,7 +373,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
           <button
             onClick={handleAddComment}
             disabled={!commentText.trim() || addComment.isPending}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+            className="bg-black text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
           >
             Post
           </button>
@@ -382,7 +382,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
 
       <button
         onClick={() => setSendOpen(true)}
-        className="w-full border border-indigo-600 text-indigo-600 py-2.5 rounded-xl font-medium text-sm"
+        className="w-full border border-black text-black py-2.5 rounded-xl font-medium text-sm"
       >
         Send to friends
       </button>
@@ -452,7 +452,7 @@ function SendChallengeForm({
       <button
         onClick={handleSend}
         disabled={selected.size === 0 || sendChallenge.isPending}
-        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {sendChallenge.isPending ? 'Sending...' : `Send to ${selected.size || ''} friend${selected.size !== 1 ? 's' : ''}`}
       </button>
@@ -474,12 +474,12 @@ function FollowingItem({
   return (
     <button
       onClick={onToggle}
-      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-colors ${
-        selected ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 bg-white'
+      className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-colors ${
+        selected ? 'border-black bg-gray-50' : 'border-gray-200 bg-white'
       }`}
     >
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium text-sm">
+        <div className="w-9 h-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-400 font-medium text-sm">
           {profile.avatar_url
             ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
             : profile.username?.[0]?.toUpperCase() ?? '?'}
@@ -487,7 +487,7 @@ function FollowingItem({
         <p className="font-medium text-sm">{profile.username}</p>
       </div>
       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-        selected ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'
+        selected ? 'border-black bg-black' : 'border-gray-300'
       }`}>
         {selected && <span className="text-white text-xs">✓</span>}
       </div>
@@ -508,7 +508,7 @@ function CommentItem({
   const date = new Date(comment.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   return (
     <div className="flex gap-2.5">
-      <div className="w-7 h-7 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium text-xs flex-shrink-0 mt-0.5">
+      <div className="w-7 h-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-400 font-medium text-xs flex-shrink-0 mt-0.5">
         {profile?.avatar_url
           ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
           : profile?.username?.[0]?.toUpperCase() ?? '?'}
@@ -538,7 +538,7 @@ function CompleterRow({ userId, createdAt, last }: { userId: string; createdAt: 
     <tr className={last ? '' : 'border-b'}>
       <td className="px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium text-xs flex-shrink-0">
+          <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-400 font-medium text-xs flex-shrink-0">
             {profile.avatar_url
               ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               : profile.username?.[0]?.toUpperCase() ?? '?'}

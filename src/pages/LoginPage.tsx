@@ -36,16 +36,16 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold text-center mb-8 text-indigo-600">GetStrong</h1>
+        <h1 className="text-3xl font-black tracking-tight text-center mb-8 text-black">GetStrong</h1>
 
-        <div className="flex rounded-xl overflow-hidden border mb-6">
+        <div className="flex rounded-2xl overflow-hidden border mb-6">
           {(['login', 'register'] as const).map(t => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
               className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                tab === t ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+                tab === t ? 'bg-black text-white' : 'bg-white text-gray-600'
               }`}
             >
               {t === 'login' ? 'Log In' : 'Register'}
@@ -85,7 +85,7 @@ export function LoginPage() {
               onChange={e => setEmail(e.target.value)}
               required
               placeholder="you@example.com"
-              className="w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-500"
             />
           </div>
           <div>
@@ -97,13 +97,13 @@ export function LoginPage() {
               required
               minLength={6}
               placeholder="••••••••"
-              className="w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-500"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50 transition-opacity"
+            className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50 transition-opacity"
           >
             {loading ? 'Please wait...' : tab === 'login' ? 'Log In' : 'Create Account'}
           </button>

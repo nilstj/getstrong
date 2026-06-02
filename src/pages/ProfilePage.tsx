@@ -58,12 +58,12 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="p-4 space-y-6 pb-24">
+    <div className="p-4 space-y-6 pb-28">
       {/* Avatar + name */}
       <div className="flex flex-col items-center gap-3 pt-4">
         <div className="relative">
           <div
-            className="w-24 h-24 rounded-full bg-indigo-100 overflow-hidden cursor-pointer"
+            className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             {profile?.avatar_url ? (
@@ -73,14 +73,14 @@ export function ProfilePage() {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl text-indigo-400">
+              <div className="w-full h-full flex items-center justify-center text-3xl text-gray-400">
                 {profile?.username?.[0]?.toUpperCase() ?? '?'}
               </div>
             )}
           </div>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="absolute bottom-0 right-0 w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm"
+            className="absolute bottom-0 right-0 w-7 h-7 bg-black rounded-full flex items-center justify-center text-white text-sm"
             aria-label="Change photo"
           >
             ✎
@@ -107,7 +107,7 @@ export function ProfilePage() {
             <button
               onClick={handleSaveUsername}
               disabled={updateProfile.isPending}
-              className="text-sm text-indigo-600 font-medium"
+              className="text-sm text-black font-medium"
             >
               Save
             </button>
@@ -124,7 +124,7 @@ export function ProfilePage() {
             className="text-center"
           >
             <p className="font-semibold text-lg">{profile?.username ?? 'Set username'}</p>
-            <p className="text-xs text-indigo-500">tap to edit</p>
+            <p className="text-xs text-gray-500">tap to edit</p>
           </button>
         )}
 
@@ -159,9 +159,9 @@ export function ProfilePage() {
             {searchResults
               .filter(u => u.id !== user?.id)
               .map(u => (
-                <div key={u.id} className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                <div key={u.id} className="flex items-center justify-between bg-gray-50 rounded-2xl p-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-400 font-medium">
                       {u.avatar_url ? (
                         <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -175,7 +175,7 @@ export function ProfilePage() {
                     className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
                       isFollowing(u.id)
                         ? 'bg-gray-200 text-gray-600'
-                        : 'bg-indigo-600 text-white'
+                        : 'bg-black text-white'
                     }`}
                   >
                     {isFollowing(u.id) ? 'Following' : 'Follow'}
@@ -219,9 +219,9 @@ function FollowingItem({ userId, onUnfollow }: { userId: string; onUnfollow: (id
   const { data: profile } = useProfile(userId)
   if (!profile) return null
   return (
-    <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+    <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-3">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-indigo-100 overflow-hidden flex items-center justify-center text-indigo-400 font-medium">
+        <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-400 font-medium">
           {profile.avatar_url ? (
             <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -279,12 +279,12 @@ function StrengthTestsAdmin() {
           </div>
         ))}
       </div>
-      <div className="border rounded-xl p-4 space-y-3">
+      <div className="border rounded-2xl p-4 space-y-3">
         <p className="text-sm font-medium text-gray-700">Add Test</p>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Test name (e.g. Max weight 10mm edge)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
         <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="Unit (e.g. kg, seconds)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
         <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
-        <button onClick={handleAdd} disabled={!name.trim() || createTest.isPending} className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
+        <button onClick={handleAdd} disabled={!name.trim() || createTest.isPending} className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
           {createTest.isPending ? 'Adding...' : 'Add Test'}
         </button>
       </div>
@@ -341,13 +341,13 @@ function ExerciseLibraryAdmin() {
         ))}
       </div>
 
-      <div className="border rounded-xl p-4 space-y-3">
+      <div className="border rounded-2xl p-4 space-y-3">
         <p className="text-sm font-medium text-gray-700">Add Exercise</p>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Exercise name" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
         <div className="flex rounded-lg overflow-hidden border">
           {(['reps', 'time'] as const).map(t => (
             <button key={t} type="button" onClick={() => setType(t)}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${type === t ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`}>
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${type === t ? 'bg-black text-white' : 'bg-white text-gray-600'}`}>
               {t === 'reps' ? 'Reps' : 'Time'}
             </button>
           ))}
@@ -360,7 +360,7 @@ function ExerciseLibraryAdmin() {
           </select>
         )}
         <button onClick={handleAdd} disabled={!name.trim() || createTemplate.isPending}
-          className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
+          className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
           {createTemplate.isPending ? 'Adding...' : 'Add to Library'}
         </button>
       </div>

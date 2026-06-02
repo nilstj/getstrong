@@ -81,7 +81,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
               type="button"
               onClick={() => { setValue('grade_system', system); setValue('grade_value', '') }}
               className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                gradeSystem === system ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+                gradeSystem === system ? 'bg-black text-white' : 'bg-white text-gray-600'
               }`}
             >
               {system === 'v_scale' ? 'V-Scale' : system === 'font' ? 'Font' : 'Color'}
@@ -113,7 +113,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
                 onClick={() => setValue('board', board === b ? '' : b)}
                 className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
                   board === b
-                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    ? 'bg-black border-black text-white'
                     : 'bg-white border-gray-300 text-gray-600'
                 }`}
               >
@@ -134,7 +134,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
               min="30"
               max="70"
               step="5"
-              className="flex-1 accent-indigo-600"
+              className="flex-1 accent-black"
             />
             <span className="text-sm font-semibold text-gray-700 w-12 text-right">
               {watch('board_angle') !== '' ? `${watch('board_angle')}°` : '—'}
@@ -177,7 +177,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <input {...register('sent')} id="sent" type="checkbox" className="w-5 h-5 accent-indigo-600" />
+        <input {...register('sent')} id="sent" type="checkbox" className="w-5 h-5 accent-black" />
         <label htmlFor="sent" className="text-sm font-medium text-gray-700">Sent (completed)</label>
       </div>
 
@@ -214,7 +214,7 @@ export function ProblemForm({ onSubmit, isSubmitting }: ProblemFormProps) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isSubmitting ? 'Saving...' : 'Add Problem'}
       </button>

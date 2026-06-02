@@ -83,7 +83,7 @@ export function ExerciseForm({
             <label
               key={t}
               className={`flex-1 py-2 text-sm font-medium text-center cursor-pointer transition-colors ${
-                exerciseType === t ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+                exerciseType === t ? 'bg-black text-white' : 'bg-white text-gray-600'
               }`}
             >
               <input {...register('type')} type="radio" value={t} className="sr-only" />
@@ -189,7 +189,7 @@ export function ExerciseForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isSubmitting ? 'Saving...' : 'Add Exercise'}
       </button>

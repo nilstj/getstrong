@@ -52,7 +52,7 @@ export function DashboardPage() {
   return (
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-black tracking-tight">GetStrong</h1>
         <button
           onClick={() => supabase.auth.signOut()}
           className="text-sm text-gray-400 hover:text-gray-600"
@@ -64,22 +64,22 @@ export function DashboardPage() {
       {receivedChallenges.length > 0 && (
         <Link
           to="/challenges"
-          className="flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3"
+          className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3"
         >
-          <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+          <span className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
             {receivedChallenges.length}
           </span>
           <div>
-            <p className="font-semibold text-indigo-900 text-sm">
+            <p className="font-semibold text-gray-900 text-sm">
               {receivedChallenges.length === 1
                 ? 'You have a new challenge!'
                 : `You have ${receivedChallenges.length} new challenges!`}
             </p>
-            <p className="text-xs text-indigo-500">
+            <p className="text-xs text-gray-500">
               from {[...new Set(receivedChallenges.map(r => r.profiles?.username).filter(Boolean))].join(', ')}
             </p>
           </div>
-          <span className="ml-auto text-indigo-400 text-lg">›</span>
+          <span className="ml-auto text-gray-400 text-lg">›</span>
         </Link>
       )}
 
@@ -92,7 +92,7 @@ export function DashboardPage() {
 
       <div>
         <h2 className="text-base font-semibold mb-3">Challenges</h2>
-        <div className="bg-white border rounded-xl p-4 space-y-3">
+        <div className="bg-white border rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-3xl font-bold">{completedCount}</p>
@@ -115,7 +115,7 @@ export function DashboardPage() {
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-indigo-500 rounded-full transition-all"
+                  className="h-full bg-black rounded-full transition-all"
                   style={{ width: `${Math.min((completedCount / next.threshold) * 100, 100)}%` }}
                 />
               </div>
@@ -131,7 +131,7 @@ export function DashboardPage() {
             <button
               onClick={() => setGradeScale('font')}
               className={`px-3 py-1.5 font-medium transition-colors ${
-                gradeScale === 'font' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+                gradeScale === 'font' ? 'bg-black text-white' : 'bg-white text-gray-600'
               }`}
             >
               Font
@@ -139,7 +139,7 @@ export function DashboardPage() {
             <button
               onClick={() => setGradeScale('v_scale')}
               className={`px-3 py-1.5 font-medium transition-colors ${
-                gradeScale === 'v_scale' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+                gradeScale === 'v_scale' ? 'bg-black text-white' : 'bg-white text-gray-600'
               }`}
             >
               V-Scale

@@ -19,18 +19,18 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[92vh] overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-100 z-10">
+          <h2 className="text-base font-bold tracking-tight">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 text-2xl leading-none w-8 h-8 flex items-center justify-center"
+            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-lg leading-none"
             aria-label="Close"
           >
             ×
           </button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className="p-5 pb-10">{children}</div>
       </div>
     </div>
   )

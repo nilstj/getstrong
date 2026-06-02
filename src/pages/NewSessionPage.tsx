@@ -79,7 +79,7 @@ export function NewSessionPage() {
         <button
           type="submit"
           disabled={createSession.isPending}
-          className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"
+          className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
         >
           {createSession.isPending ? 'Creating...' : 'Start Session'}
         </button>
