@@ -125,9 +125,12 @@ export function PartnerAvatars({ partnerIds, size = 'sm' }: PartnerAvatarsProps)
 function PartnerAvatar({ userId, dim }: { userId: string; dim: string }) {
   const { data: profile } = useProfile(userId)
   return (
-    <div className={`${dim} rounded-full bg-sage-100 border border-white overflow-hidden flex items-center justify-center text-sage-700 font-medium`}>
+    <div
+      className={`${dim} rounded-full bg-sage-100 border border-white overflow-hidden flex items-center justify-center text-sage-700 font-medium cursor-default`}
+      title={profile?.username ?? ''}
+    >
       {profile?.avatar_url
-        ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+        ? <img src={profile.avatar_url} alt={profile.username ?? ''} className="w-full h-full object-cover" />
         : profile?.username?.[0]?.toUpperCase() ?? '?'}
     </div>
   )
