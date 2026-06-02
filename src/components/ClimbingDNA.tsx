@@ -85,7 +85,7 @@ export function ClimbingDNA({ tagStats, allTags }: ClimbingDNAProps) {
         <div>
           <h2 className="text-base font-black tracking-tight">Climbing DNA 🧬</h2>
           {totalTagged > 0 && (
-            <p className="text-xs text-gray-400 mt-0.5">{totalTagged} tagged problem{totalTagged !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{totalTagged} tag{totalTagged !== 1 ? 's' : ''}</p>
           )}
         </div>
         {top && (
