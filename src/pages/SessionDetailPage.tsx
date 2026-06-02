@@ -18,6 +18,12 @@ import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStreng
 import { useProfile } from '../hooks/useProfile'
 import { useSessionProblemTags } from '../hooks/useProblemTags'
 import { INTENSITY_OPTIONS } from '../types'
+import {
+  useSessionPartners, useSetSessionPartners,
+  useProblemPartners, useSetProblemPartners,
+  useExercisePartners, useSetExercisePartners,
+} from '../hooks/usePartners'
+import { PartnerPicker, PartnerAvatars } from '../components/PartnerPicker'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 import { ReactionBar } from '../components/ReactionBar'
 
@@ -65,6 +71,8 @@ export function SessionDetailPage() {
   const deleteTestResult = useDeleteTestResult()
   const { data: myProfile } = useProfile()
   const { data: problemTagsMap = {} } = useSessionProblemTags(problems.map(p => p.id))
+  const { data: sessionPartners = [] } = useSessionPartners(id!)
+  const setSessionPartners = useSetSessionPartners(id!)
   const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
 
   useEffect(() => {
@@ -123,6 +131,15 @@ export function SessionDetailPage() {
             ) : null
           })()}
           {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
+          <div className="flex items-center gap-2 mt-2">
+            <PartnerAvatars partnerIds={sessionPartners.map(p => p.id)} />
+            <PartnerPicker
+              currentPartnerIds={sessionPartners.map(p => p.id)}
+              onSave={ids => setSessionPartners.mutate(ids)}
+              isSaving={setSessionPartners.isPending}
+              label={sessionPartners.length > 0 ? 'Edit partners' : 'Tag friends'}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <Link
@@ -218,6 +235,7 @@ export function SessionDetailPage() {
                     ))}
                   </div>
                 )}
+                <ProblemPartnerRow problemId={problem.id} />
                 <ReactionBar problemId={problem.id} compact />
               </div>
             ))}
@@ -242,6 +260,7 @@ export function SessionDetailPage() {
                       {exercise.weight_kg != null && ` · ${exercise.weight_kg}kg`}
                     </p>
                     {exercise.notes && <p className="text-gray-500 text-sm mt-0.5">{exercise.notes}</p>}
+                    <ExercisePartnerRow exerciseId={exercise.id} />
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -506,6 +525,38 @@ function EditAttemptSheet({
         </button>
       </div>
     </BottomSheet>
+  )
+}
+
+function ProblemPartnerRow({ problemId }: { problemId: string }) {
+  const { data: partners = [] } = useProblemPartners(problemId)
+  const setPartners = useSetProblemPartners(problemId)
+  return (
+    <div className="flex items-center gap-2 mt-1.5">
+      <PartnerAvatars partnerIds={partners.map(p => p.id)} size="xs" />
+      <PartnerPicker
+        currentPartnerIds={partners.map(p => p.id)}
+        onSave={ids => setPartners.mutate(ids)}
+        isSaving={setPartners.isPending}
+        label={partners.length > 0 ? 'Edit' : '+ friend'}
+      />
+    </div>
+  )
+}
+
+function ExercisePartnerRow({ exerciseId }: { exerciseId: string }) {
+  const { data: partners = [] } = useExercisePartners(exerciseId)
+  const setPartners = useSetExercisePartners(exerciseId)
+  return (
+    <div className="flex items-center gap-2 mt-1.5">
+      <PartnerAvatars partnerIds={partners.map(p => p.id)} size="xs" />
+      <PartnerPicker
+        currentPartnerIds={partners.map(p => p.id)}
+        onSave={ids => setPartners.mutate(ids)}
+        isSaving={setPartners.isPending}
+        label={partners.length > 0 ? 'Edit' : '+ friend'}
+      />
+    </div>
   )
 }
 

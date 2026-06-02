@@ -23,6 +23,7 @@ import { BottomSheet } from '../components/BottomSheet'
 import { ReactionBar } from '../components/ReactionBar'
 import { ClimbingDNA } from '../components/ClimbingDNA'
 import { useMyTagStats, useProblemTagDefinitions } from '../hooks/useProblemTags'
+import { useMyTaggedSessions } from '../hooks/usePartners'
 import { useAuth } from '../providers/AuthProvider'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
 import { useFriendWeeklyDetail } from '../hooks/useFriendsActivity'
@@ -53,6 +54,7 @@ export function DashboardPage() {
   const { data: friendsActivity = [] } = useFriendsWeeklyActivity()
   const { data: tagStats = [] } = useMyTagStats()
   const { data: allTagDefs = [] } = useProblemTagDefinitions()
+  const { data: taggedSessions = [] } = useMyTaggedSessions()
   const { data: friendsOnWall = [] } = useFriendsOnWall(followingIds)
   const { data: myHypeCount = 0 } = useMyHypeCount()
   const setOnWall = useSetOnWall()
@@ -167,6 +169,24 @@ export function DashboardPage() {
           </p>
           <span className="text-white/60 text-base">›</span>
         </Link>
+      )}
+
+      {/* Tagged in sessions this week */}
+      {taggedSessions.length > 0 && (
+        <div className="bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3">
+          <p className="text-sm font-semibold text-sage-800 mb-1.5">
+            👥 You climbed with friends this week
+          </p>
+          <div className="space-y-1">
+            {taggedSessions.map(s => (
+              <div key={s.sessionId} className="flex items-center gap-2">
+                <span className="text-xs text-sage-700 font-medium">{s.ownerUsername}</span>
+                <span className="text-xs text-sage-500">at {s.location}</span>
+                <span className="text-xs text-sage-400 ml-auto">{s.date}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Compact stats + badge row */}
