@@ -1,10 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, CalendarDays, Plus, Trophy, User } from 'lucide-react'
 import { useReceivedChallenges } from '../hooks/useChallenges'
+import { useReceivedFollowRequests } from '../hooks/useFollows'
 
 export function BottomNav() {
   const navigate = useNavigate()
   const { data: received = [] } = useReceivedChallenges()
+  const { data: followRequests = [] } = useReceivedFollowRequests()
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${
@@ -57,7 +59,12 @@ export function BottomNav() {
       <NavLink to="/profile" className={linkClass}>
         {({ isActive }) => (
           <>
-            <User size={22} strokeWidth={isActive ? 2.5 : 1.75} />
+            <div className="relative">
+              <User size={22} strokeWidth={isActive ? 2.5 : 1.75} />
+              {followRequests.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+              )}
+            </div>
             <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Profile</span>
           </>
         )}

@@ -2,7 +2,12 @@ import { useState, useRef } from 'react'
 import { Trash2, Pencil } from 'lucide-react'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
-import { useFollowing, useFollowUser, useUnfollowUser, useFollowersCount } from '../hooks/useFollows'
+import {
+  useFollowing, useFollowersCount, useRemoveFriend,
+  useSentFollowRequests, useReceivedFollowRequests,
+  useSendFollowRequest, useCancelFollowRequest,
+  useAcceptFollowRequest, useDeclineFollowRequest,
+} from '../hooks/useFollows'
 import { useExerciseTemplates, useCreateExerciseTemplate, useUpdateExerciseTemplate, useDeleteExerciseTemplate } from '../hooks/useExerciseTemplates'
 import { useStrengthTests, useCreateStrengthTest, useUpdateStrengthTest, useDeleteStrengthTest } from '../hooks/useStrengthTests'
 import { useProblemTagDefinitions, useCreateProblemTagDefinition, useDeleteProblemTagDefinition } from '../hooks/useProblemTags'
@@ -14,10 +19,15 @@ export function ProfilePage() {
   const { data: profile, isLoading } = useProfile()
   const { data: following = [] } = useFollowing()
   const { data: followersCount = 0 } = useFollowersCount(user?.id ?? '')
+  const { data: sentRequests = new Set<string>() } = useSentFollowRequests()
+  const { data: receivedRequests = [] } = useReceivedFollowRequests()
   const updateProfile = useUpdateProfile()
   const uploadAvatar = useUploadAvatar()
-  const followUser = useFollowUser()
-  const unfollowUser = useUnfollowUser()
+  const removeFriend = useRemoveFriend()
+  const sendRequest = useSendFollowRequest()
+  const cancelRequest = useCancelFollowRequest()
+  const acceptRequest = useAcceptFollowRequest()
+  const declineRequest = useDeclineFollowRequest()
 
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
@@ -25,6 +35,9 @@ export function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: searchResults = [] } = useSearchUsers(searchQuery)
+
+  const isFollowing = (userId: string) => following.some(f => f.following_id === userId)
+  const isPending = (userId: string) => sentRequests.has(userId)
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
 
@@ -43,20 +56,6 @@ export function ProfilePage() {
       onSuccess: () => { setEditingUsername(false); toast.success('Username updated') },
       onError: () => toast.error('Username already taken'),
     })
-  }
-
-  const isFollowing = (userId: string) => following.some(f => f.following_id === userId)
-
-  const handleToggleFollow = (userId: string) => {
-    if (isFollowing(userId)) {
-      unfollowUser.mutate(userId, {
-        onError: () => toast.error('Failed to unfollow'),
-      })
-    } else {
-      followUser.mutate(userId, {
-        onError: () => toast.error('Failed to follow'),
-      })
-    }
   }
 
   return (
@@ -193,27 +192,69 @@ export function ProfilePage() {
                     </div>
                     <p className="font-medium text-sm">{u.username}</p>
                   </div>
-                  <button
-                    onClick={() => handleToggleFollow(u.id)}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-                      isFollowing(u.id)
-                        ? 'bg-gray-200 text-gray-600'
-                        : 'bg-sage-700 text-white'
-                    }`}
-                  >
-                    {isFollowing(u.id) ? 'Following' : 'Follow'}
-                  </button>
+                  {isFollowing(u.id) ? (
+                    <button
+                      onClick={() => removeFriend.mutate(u.id, { onError: () => toast.error('Failed') })}
+                      className="text-xs font-medium px-3 py-1.5 rounded-full bg-gray-200 text-gray-600"
+                    >
+                      Friends
+                    </button>
+                  ) : isPending(u.id) ? (
+                    <button
+                      onClick={() => cancelRequest.mutate(u.id, { onError: () => toast.error('Failed') })}
+                      className="text-xs font-medium px-3 py-1.5 rounded-full bg-sage-100 text-sage-700 border border-sage-300"
+                    >
+                      Requested
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => sendRequest.mutate(u.id, { onSuccess: () => toast.success('Request sent'), onError: () => toast.error('Failed') })}
+                      className="text-xs font-medium px-3 py-1.5 rounded-full bg-sage-700 text-white"
+                    >
+                      Add friend
+                    </button>
+                  )}
                 </div>
               ))}
           </div>
         )}
       </div>
 
+      {/* Incoming friend requests */}
+      {receivedRequests.length > 0 && searchQuery.length < 2 && (
+        <div>
+          <h2 className="text-base font-semibold mb-2">
+            Friend Requests
+            <span className="ml-2 text-xs bg-red-500 text-white rounded-full px-1.5 py-0.5 font-bold">{receivedRequests.length}</span>
+          </h2>
+          <div className="space-y-2">
+            {receivedRequests.map(req => (
+              <FriendRequestRow
+                key={req.id}
+                requestId={req.id}
+                requesterId={req.requester_id}
+                onAccept={() => acceptRequest.mutate({ requestId: req.id, requesterId: req.requester_id }, { onSuccess: () => toast.success('Friend added!'), onError: () => toast.error('Failed') })}
+                onDecline={() => declineRequest.mutate(req.id, { onSuccess: () => toast.success('Request declined'), onError: () => toast.error('Failed') })}
+                isPending={acceptRequest.isPending || declineRequest.isPending}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Following list */}
       {following.length > 0 && searchQuery.length < 2 && (
         <div>
-          <h2 className="text-base font-semibold mb-2">Following</h2>
-          <FollowingList followingIds={following.map(f => f.following_id)} onUnfollow={userId => unfollowUser.mutate(userId)} />
+          <h2 className="text-base font-semibold mb-2">Friends</h2>
+          <div className="space-y-2">
+            {following.map(f => (
+              <FollowingItem
+                key={f.following_id}
+                userId={f.following_id}
+                onRemove={() => removeFriend.mutate(f.following_id, { onError: () => toast.error('Failed') })}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -229,36 +270,62 @@ export function ProfilePage() {
   )
 }
 
-function FollowingList({ followingIds, onUnfollow }: { followingIds: string[]; onUnfollow: (id: string) => void }) {
+function FriendRequestRow({
+  requesterId, onAccept, onDecline, isPending,
+}: {
+  requestId?: string; requesterId: string
+  onAccept: () => void; onDecline: () => void; isPending: boolean
+}) {
+  const { data: profile } = useProfile(requesterId)
+  if (!profile) return null
   return (
-    <div className="space-y-2">
-      {followingIds.map(id => (
-        <FollowingItem key={id} userId={id} onUnfollow={onUnfollow} />
-      ))}
+    <div className="flex items-center justify-between bg-sage-50 border border-sage-200 rounded-2xl p-3">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-400 font-medium">
+          {profile.avatar_url
+            ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            : profile.username?.[0]?.toUpperCase() ?? '?'}
+        </div>
+        <p className="font-medium text-sm">{profile.username}</p>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={onDecline}
+          disabled={isPending}
+          className="text-xs font-medium px-3 py-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50"
+        >
+          Decline
+        </button>
+        <button
+          onClick={onAccept}
+          disabled={isPending}
+          className="text-xs font-medium px-3 py-1.5 rounded-full bg-sage-700 text-white disabled:opacity-50"
+        >
+          Accept
+        </button>
+      </div>
     </div>
   )
 }
 
-function FollowingItem({ userId, onUnfollow }: { userId: string; onUnfollow: (id: string) => void }) {
+function FollowingItem({ userId, onRemove }: { userId: string; onRemove: () => void }) {
   const { data: profile } = useProfile(userId)
   if (!profile) return null
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-3">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-400 font-medium">
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-          ) : (
-            profile.username?.[0]?.toUpperCase() ?? '?'
-          )}
+          {profile.avatar_url
+            ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            : profile.username?.[0]?.toUpperCase() ?? '?'}
         </div>
         <p className="font-medium text-sm">{profile.username}</p>
       </div>
       <button
-        onClick={() => onUnfollow(userId)}
+        onClick={onRemove}
         className="text-xs font-medium px-3 py-1.5 rounded-full bg-gray-200 text-gray-600"
       >
-        Following
+        Remove
       </button>
     </div>
   )
