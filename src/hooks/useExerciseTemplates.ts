@@ -36,6 +36,25 @@ export function useCreateExerciseTemplate() {
   })
 }
 
+export function useUpdateExerciseTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...values }: Pick<ExerciseTemplate, 'id' | 'name' | 'type' | 'description' | 'test_id'>) => {
+      const { data, error } = await supabase
+        .from('exercise_templates')
+        .update(values)
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as ExerciseTemplate
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exercise_templates'] })
+    },
+  })
+}
+
 export function useDeleteExerciseTemplate() {
   const queryClient = useQueryClient()
   return useMutation({

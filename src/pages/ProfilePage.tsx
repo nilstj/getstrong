@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Pencil } from 'lucide-react'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
 import { useFollowing, useFollowUser, useUnfollowUser, useFollowersCount } from '../hooks/useFollows'
-import { useExerciseTemplates, useCreateExerciseTemplate, useDeleteExerciseTemplate } from '../hooks/useExerciseTemplates'
-import { useStrengthTests, useCreateStrengthTest, useDeleteStrengthTest } from '../hooks/useStrengthTests'
+import { useExerciseTemplates, useCreateExerciseTemplate, useUpdateExerciseTemplate, useDeleteExerciseTemplate } from '../hooks/useExerciseTemplates'
+import { useStrengthTests, useCreateStrengthTest, useUpdateStrengthTest, useDeleteStrengthTest } from '../hooks/useStrengthTests'
 import { useProblemTagDefinitions, useCreateProblemTagDefinition, useDeleteProblemTagDefinition } from '../hooks/useProblemTags'
 import toast from 'react-hot-toast'
 import type { ExerciseType } from '../types'
@@ -357,20 +357,18 @@ function ProblemTagsAdmin() {
 function StrengthTestsAdmin() {
   const { data: tests = [] } = useStrengthTests()
   const createTest = useCreateStrengthTest()
+  const updateTest = useUpdateStrengthTest()
   const deleteTest = useDeleteStrengthTest()
   const [name, setName] = useState('')
   const [unit, setUnit] = useState('kg')
   const [description, setDescription] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editUnit, setEditUnit] = useState('')
+  const [editDesc, setEditDesc] = useState('')
 
-  const handleAdd = () => {
-    if (!name.trim()) return
-    createTest.mutate(
-      { name: name.trim(), unit: unit.trim() || 'kg', description: description.trim() || null },
-      {
-        onSuccess: () => { setName(''); setDescription(''); toast.success('Test added') },
-        onError: () => toast.error('Failed to add test'),
-      },
-    )
+  const startEdit = (t: import('../types').StrengthTest) => {
+    setEditingId(t.id); setEditName(t.name); setEditUnit(t.unit); setEditDesc(t.description ?? '')
   }
 
   return (
@@ -379,18 +377,38 @@ function StrengthTestsAdmin() {
       <div className="space-y-2 mb-4">
         {tests.length === 0 && <p className="text-sm text-gray-400 text-center py-4">No tests yet.</p>}
         {tests.map(t => (
-          <div key={t.id} className="flex items-center justify-between bg-blue-50 rounded-xl px-4 py-3">
-            <div>
-              <p className="font-medium text-sm">{t.name}</p>
-              <p className="text-xs text-gray-400">{t.unit}{t.description ? ` · ${t.description}` : ''}</p>
-            </div>
-            <button
-              onClick={() => deleteTest.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              aria-label="Delete"
-            >
-              <Trash2 size={15} />
-            </button>
+          <div key={t.id} className="bg-blue-50 rounded-2xl px-4 py-3">
+            {editingId === t.id ? (
+              <div className="space-y-2">
+                <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Test name" />
+                <input value={editUnit} onChange={e => setEditUnit(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Unit" />
+                <input value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Description (optional)" />
+                <div className="flex gap-2">
+                  <button onClick={() => setEditingId(null)} className="flex-1 py-1.5 text-sm border border-gray-200 rounded-xl text-gray-600">Cancel</button>
+                  <button
+                    onClick={() => updateTest.mutate(
+                      { id: t.id, name: editName.trim(), unit: editUnit.trim() || 'kg', description: editDesc.trim() || null },
+                      { onSuccess: () => { setEditingId(null); toast.success('Test updated') }, onError: () => toast.error('Failed') }
+                    )}
+                    disabled={!editName.trim() || updateTest.isPending}
+                    className="flex-1 py-1.5 text-sm bg-black text-white rounded-xl font-semibold disabled:opacity-50"
+                  >
+                    {updateTest.isPending ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">{t.name}</p>
+                  <p className="text-xs text-gray-400">{t.unit}{t.description ? ` · ${t.description}` : ''}</p>
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => startEdit(t)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-blue-100 transition-colors"><Pencil size={14} /></button>
+                  <button onClick={() => deleteTest.mutate(t.id, { onError: () => toast.error('Failed to delete') })} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -399,7 +417,14 @@ function StrengthTestsAdmin() {
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Test name (e.g. Max weight 10mm edge)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
         <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="Unit (e.g. kg, seconds)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
         <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
-        <button onClick={handleAdd} disabled={!name.trim() || createTest.isPending} className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
+        <button
+          onClick={() => createTest.mutate({ name: name.trim(), unit: unit.trim() || 'kg', description: description.trim() || null }, {
+            onSuccess: () => { setName(''); setDescription(''); toast.success('Test added') },
+            onError: () => toast.error('Failed to add test'),
+          })}
+          disabled={!name.trim() || createTest.isPending}
+          className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+        >
           {createTest.isPending ? 'Adding...' : 'Add Test'}
         </button>
       </div>
@@ -411,11 +436,21 @@ function ExerciseLibraryAdmin() {
   const { data: templates = [] } = useExerciseTemplates()
   const { data: tests = [] } = useStrengthTests()
   const createTemplate = useCreateExerciseTemplate()
+  const updateTemplate = useUpdateExerciseTemplate()
   const deleteTemplate = useDeleteExerciseTemplate()
   const [name, setName] = useState('')
   const [type, setType] = useState<ExerciseType>('reps')
   const [description, setDescription] = useState('')
   const [testId, setTestId] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editType, setEditType] = useState<ExerciseType>('reps')
+  const [editDesc, setEditDesc] = useState('')
+  const [editTestId, setEditTestId] = useState('')
+
+  const startEdit = (t: import('../types').ExerciseTemplate) => {
+    setEditingId(t.id); setEditName(t.name); setEditType(t.type); setEditDesc(t.description ?? ''); setEditTestId(t.test_id ?? '')
+  }
 
   const handleAdd = () => {
     if (!name.trim()) return
@@ -437,22 +472,55 @@ function ExerciseLibraryAdmin() {
           <p className="text-sm text-gray-400 text-center py-4">No exercises yet.</p>
         )}
         {templates.map(t => (
-          <div key={t.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-            <div>
-              <p className="font-medium text-sm">{t.name}</p>
-              <p className="text-xs text-gray-400 capitalize">
-                {t.type}
-                {t.description ? ` · ${t.description}` : ''}
-                {t.test_id && ` · % ${tests.find(ts => ts.id === t.test_id)?.name ?? 'test'}`}
-              </p>
-            </div>
-            <button
-              onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              aria-label="Delete"
-            >
-              <Trash2 size={15} />
-            </button>
+          <div key={t.id} className="bg-gray-50 rounded-2xl px-4 py-3">
+            {editingId === t.id ? (
+              <div className="space-y-2">
+                <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Exercise name" />
+                <div className="flex rounded-xl overflow-hidden border">
+                  {(['reps', 'time'] as const).map(v => (
+                    <button key={v} type="button" onClick={() => setEditType(v)}
+                      className={`flex-1 py-1.5 text-sm font-medium transition-colors ${editType === v ? 'bg-black text-white' : 'bg-white text-gray-600'}`}>
+                      {v === 'reps' ? 'Reps' : 'Time'}
+                    </button>
+                  ))}
+                </div>
+                <input value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Description (optional)" />
+                {tests.length > 0 && (
+                  <select value={editTestId} onChange={e => setEditTestId(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm">
+                    <option value="">No linked test</option>
+                    {tests.map(ts => <option key={ts.id} value={ts.id}>{ts.name} ({ts.unit})</option>)}
+                  </select>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={() => setEditingId(null)} className="flex-1 py-1.5 text-sm border border-gray-200 rounded-xl text-gray-600">Cancel</button>
+                  <button
+                    onClick={() => updateTemplate.mutate(
+                      { id: t.id, name: editName.trim(), type: editType, description: editDesc.trim() || null, test_id: editTestId || null },
+                      { onSuccess: () => { setEditingId(null); toast.success('Exercise updated') }, onError: () => toast.error('Failed') }
+                    )}
+                    disabled={!editName.trim() || updateTemplate.isPending}
+                    className="flex-1 py-1.5 text-sm bg-black text-white rounded-xl font-semibold disabled:opacity-50"
+                  >
+                    {updateTemplate.isPending ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">{t.name}</p>
+                  <p className="text-xs text-gray-400 capitalize">
+                    {t.type}
+                    {t.description ? ` · ${t.description}` : ''}
+                    {t.test_id && ` · % ${tests.find(ts => ts.id === t.test_id)?.name ?? 'test'}`}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => startEdit(t)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"><Pencil size={14} /></button>
+                  <button onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

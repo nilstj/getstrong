@@ -112,6 +112,25 @@ export function useCreateStrengthTest() {
   })
 }
 
+export function useUpdateStrengthTest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...values }: Pick<StrengthTest, 'id' | 'name' | 'description' | 'unit'>) => {
+      const { data, error } = await supabase
+        .from('strength_tests')
+        .update(values)
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as StrengthTest
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['strength_tests'] })
+    },
+  })
+}
+
 export function useDeleteStrengthTest() {
   const queryClient = useQueryClient()
   return useMutation({
