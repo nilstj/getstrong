@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useCreateSession } from '../hooks/useSessions'
+import { INTENSITY_OPTIONS } from '../types'
+import type { SessionIntensity } from '../types'
 
 type FormValues = {
   date: string
@@ -13,6 +16,7 @@ type FormValues = {
 export function NewSessionPage() {
   const navigate = useNavigate()
   const createSession = useCreateSession()
+  const [intensity, setIntensity] = useState<SessionIntensity | null>(null)
   const { register, handleSubmit } = useForm<FormValues>({
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
@@ -28,6 +32,7 @@ export function NewSessionPage() {
         date: values.date,
         location: values.location,
         duration_minutes: values.duration_minutes ? parseInt(values.duration_minutes) : null,
+        intensity,
         notes: values.notes || null,
       },
       {
@@ -67,6 +72,24 @@ export function NewSessionPage() {
             placeholder="90"
             className="w-full border rounded-lg px-3 py-2.5"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Intensity (optional)</label>
+          <div className="flex gap-2 flex-wrap">
+            {INTENSITY_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setIntensity(intensity === opt.value ? null : opt.value)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                  intensity === opt.value ? opt.active : 'bg-white border-gray-200 text-gray-600'
+                }`}
+              >
+                <span>{opt.emoji}</span>
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>

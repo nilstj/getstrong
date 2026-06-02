@@ -1,12 +1,23 @@
 export type GradeSystem = 'v_scale' | 'font' | 'color'
 export type ExerciseType = 'reps' | 'time'
 
+export type SessionIntensity = 'boring' | 'sunshine' | 'hard' | 'really_hard' | 'to_the_max'
+
+export const INTENSITY_OPTIONS: { value: SessionIntensity; label: string; emoji: string; active: string; badge: string }[] = [
+  { value: 'boring',      label: 'Boring',      emoji: '😴', active: 'bg-gray-400 text-white border-gray-400',           badge: 'bg-gray-100 text-gray-600' },
+  { value: 'sunshine',    label: 'Sunshine',    emoji: '☀️', active: 'bg-yellow-400 text-white border-yellow-400',       badge: 'bg-yellow-100 text-yellow-700' },
+  { value: 'hard',        label: 'Hard',        emoji: '💪', active: 'bg-orange-500 text-white border-orange-500',       badge: 'bg-orange-100 text-orange-700' },
+  { value: 'really_hard', label: 'Really Hard', emoji: '🔥', active: 'bg-red-500 text-white border-red-500',             badge: 'bg-red-100 text-red-700' },
+  { value: 'to_the_max',  label: 'To the Max',  emoji: '🤯', active: 'bg-purple-600 text-white border-purple-600',       badge: 'bg-purple-100 text-purple-700' },
+]
+
 export interface Session {
   id: string
   user_id: string
   date: string
   location: string
   duration_minutes: number | null
+  intensity: SessionIntensity | null
   notes: string | null
   created_at: string
 }

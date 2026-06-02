@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Session, Problem } from '../types'
+import { INTENSITY_OPTIONS } from '../types'
 import { sendRate } from '../utils/stats'
 
 interface SessionCardProps {
@@ -21,10 +22,18 @@ export function SessionCard({ session, problems }: SessionCardProps) {
             <p className="text-sm text-gray-400">{session.duration_minutes} min</p>
           )}
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end gap-1">
+          {session.intensity && (() => {
+            const opt = INTENSITY_OPTIONS.find(o => o.value === session.intensity)
+            return opt ? (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${opt.badge}`}>
+                {opt.emoji} {opt.label}
+              </span>
+            ) : null
+          })()}
           <p className="text-sm font-medium text-gray-700">{problems.length} problem{problems.length !== 1 ? 's' : ''}</p>
           {problems.length > 0 && (
-            <span className="text-xs bg-sage-700 text-white px-2 py-0.5 rounded-full font-medium mt-1 inline-block">
+            <span className="text-xs bg-sage-700 text-white px-2 py-0.5 rounded-full font-medium inline-block">
               {sendRate(problems)}% sent
             </span>
           )}

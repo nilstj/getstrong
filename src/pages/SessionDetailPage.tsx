@@ -17,6 +17,7 @@ import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
 import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStrengthTests } from '../hooks/useStrengthTests'
 import { useProfile } from '../hooks/useProfile'
 import { useSessionProblemTags } from '../hooks/useProblemTags'
+import { INTENSITY_OPTIONS } from '../types'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 import { ReactionBar } from '../components/ReactionBar'
 
@@ -113,6 +114,14 @@ export function SessionDetailPage() {
           {session.duration_minutes && (
             <p className="text-gray-400 text-sm">{session.duration_minutes} min</p>
           )}
+          {session.intensity && (() => {
+            const opt = INTENSITY_OPTIONS.find(o => o.value === session.intensity)
+            return opt ? (
+              <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium mt-1 ${opt.badge}`}>
+                {opt.emoji} {opt.label}
+              </span>
+            ) : null
+          })()}
           {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
         </div>
         <div className="flex items-center gap-1">
