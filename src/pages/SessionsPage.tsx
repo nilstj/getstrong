@@ -1,6 +1,7 @@
 import { useSessions } from '../hooks/useSessions'
 import { useAllProblems } from '../hooks/useProblems'
 import { SessionCard } from '../components/SessionCard'
+import { SessionCalendar } from '../components/SessionCalendar'
 
 export function SessionsPage() {
   const { data: sessions = [], isLoading } = useSessions()
@@ -12,7 +13,7 @@ export function SessionsPage() {
 
   return (
     <div className="p-4 space-y-3">
-      <h1 className="text-2xl font-bold">Sessions</h1>
+      <SessionCalendar sessions={sessions} problems={problems} />
       {sessions.map(session => (
         <SessionCard
           key={session.id}
