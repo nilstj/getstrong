@@ -200,6 +200,7 @@ export function DashboardPage() {
       {selectedFriend && (
         <FriendDetailSheet
           userId={selectedFriend}
+          gradeScale={gradeScale}
           onClose={() => setSelectedFriend(null)}
         />
       )}
@@ -245,7 +246,7 @@ function FriendRow({ friend, last, onClick }: { friend: FriendWeeklySummary; las
   )
 }
 
-function FriendDetailSheet({ userId, onClose }: { userId: string; onClose: () => void }) {
+function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gradeScale: 'font' | 'v_scale'; onClose: () => void }) {
   const { data: profile } = useProfile(userId)
   const { data: detail, isLoading } = useFriendWeeklyDetail(userId)
 
@@ -272,7 +273,11 @@ function FriendDetailSheet({ userId, onClose }: { userId: string; onClose: () =>
                     <div>
                       {p.name && <p className="font-semibold text-sm text-gray-900">{p.name}</p>}
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-medium">{p.grade_value ?? p.color ?? '—'}</span>
+                        <span className="text-sm font-medium">
+                          {gradeScale === 'v_scale' && p.grade_value_vscale
+                            ? p.grade_value_vscale
+                            : (p.grade_value_font ?? p.color ?? '—')}
+                        </span>
                         {p.board && (
                           <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2 py-0.5">
                             {p.board}{p.board_angle != null ? ` ${p.board_angle}°` : ''}

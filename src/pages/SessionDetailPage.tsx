@@ -19,6 +19,12 @@ import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate }
 
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
+function displayGrade(problem: import('../types').Problem, preference: 'font' | 'v_scale'): string {
+  if (preference === 'v_scale' && problem.grade_value_vscale) return problem.grade_value_vscale
+  if (problem.grade_value_font) return problem.grade_value_font
+  return problem.grade_value ?? '—'
+}
+
 export function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -52,7 +58,7 @@ export function SessionDetailPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (!session) return <div className="p-4 text-red-600">Session not found.</div>
 
-  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at'>) => {
+  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'>) => {
     addProblem.mutate(
       { ...values, session_id: id! },
       {
@@ -138,12 +144,9 @@ export function SessionDetailPage() {
                   <div>
                     {problem.name && <p className="font-semibold text-gray-900">{problem.name}</p>}
                     <span className={problem.name ? 'text-sm text-gray-500' : 'font-medium'}>
-                      {problem.grade_value ?? '—'}
-                      {problem.grade_value && problem.color && (
+                      {displayGrade(problem, myProfile?.grade_preference ?? 'font')}
+                      {problem.color && (
                         <span className="text-gray-400 text-sm font-normal ml-1">· {problem.color}</span>
-                      )}
-                      {!problem.grade_value && problem.color && (
-                        <span>{problem.color}</span>
                       )}
                     </span>
                   </div>

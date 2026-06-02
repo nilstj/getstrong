@@ -18,6 +18,8 @@ export interface Problem {
   name: string | null
   grade_system: GradeSystem
   grade_value: string | null
+  grade_value_font: string | null
+  grade_value_vscale: string | null
   color: string | null
   attempts: number
   sent: boolean

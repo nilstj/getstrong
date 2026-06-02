@@ -18,7 +18,7 @@ type FormValues = {
 }
 
 interface ProblemFormProps {
-  onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at'>) => void
+  onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'>) => void
   isSubmitting: boolean
   initialGradeSystem?: 'font' | 'v_scale'
 }
