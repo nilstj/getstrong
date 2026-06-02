@@ -425,17 +425,21 @@ function EditProblemSheet({
   onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'>, tagIds: string[]) => void
   isSaving: boolean
 }) {
-  const { data: currentTags = [] } = useProblemTags(problem.id)
+  const { data: currentTags, isLoading: tagsLoading } = useProblemTags(problem.id)
   return (
     <BottomSheet open onClose={onClose} title="Edit Problem">
+      {tagsLoading || currentTags === undefined ? (
+        <div className="py-8 text-center text-sm text-gray-400">Loading…</div>
+      ) : (
       <ProblemForm
-        key={problem.id}
+        key={problem.id + '-' + currentTags.map(t => t.id).join(',')}
         existing={problem}
         existingTagIds={currentTags.map(t => t.id)}
         initialGradeSystem={gradeSystem}
         onSubmit={({ tagIds = [], ...vals }) => onSave(vals, tagIds)}
         isSubmitting={isSaving}
       />
+      )}
     </BottomSheet>
   )
 }
