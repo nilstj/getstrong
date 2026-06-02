@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useFollowing } from './useFollows'
+import type { Problem } from '../types'
 
 export interface FriendWeeklySummary {
   userId: string
@@ -59,5 +60,45 @@ export function useFriendsWeeklyActivity() {
         .sort((a, b) => (b.problems + b.challengeAttempts) - (a.problems + a.challengeAttempts))
     },
     enabled: followingIds.length > 0,
+  })
+}
+
+export interface FriendWeeklyDetail {
+  problems: Problem[]
+  attempts: { id: string; completed: boolean; notes: string | null; challenges: { title: string } | null }[]
+}
+
+export function useFriendWeeklyDetail(userId: string | null) {
+  return useQuery({
+    queryKey: ['friend_weekly_detail', userId],
+    queryFn: async () => {
+      const since = new Date()
+      since.setDate(since.getDate() - 7)
+      const sinceStr = since.toISOString()
+
+      const [problemsRes, attemptsRes] = await Promise.all([
+        supabase
+          .from('problems')
+          .select('*')
+          .eq('user_id', userId!)
+          .gte('created_at', sinceStr)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('challenge_attempts')
+          .select('id, completed, notes, challenges(title)')
+          .eq('user_id', userId!)
+          .gte('created_at', sinceStr)
+          .order('created_at', { ascending: false }),
+      ])
+
+      if (problemsRes.error) throw problemsRes.error
+      if (attemptsRes.error) throw attemptsRes.error
+
+      return {
+        problems: problemsRes.data as Problem[],
+        attempts: attemptsRes.data as unknown as FriendWeeklyDetail['attempts'],
+      }
+    },
+    enabled: !!userId,
   })
 }

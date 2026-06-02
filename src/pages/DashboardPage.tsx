@@ -17,7 +17,9 @@ import {
   hardestSentPerSession,
   sessionsByWeek,
 } from '../utils/stats'
+import { BottomSheet } from '../components/BottomSheet'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
+import { useFriendWeeklyDetail } from '../hooks/useFriendsActivity'
 
 const BADGES = [
   { threshold: 10, label: 'Sharma', emoji: '🏆', color: 'bg-yellow-50 border-yellow-300 text-yellow-800' },
@@ -39,6 +41,7 @@ export function DashboardPage() {
   const { data: receivedChallenges = [] } = useReceivedChallenges()
   const { data: friendsActivity = [] } = useFriendsWeeklyActivity()
   const [gradeScale, setGradeScale] = useState<'font' | 'v_scale'>('font')
+  const [selectedFriend, setSelectedFriend] = useState<string | null>(null)
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (error) return <div className="p-4 text-red-600">Failed to load dashboard.</div>
@@ -147,7 +150,12 @@ export function DashboardPage() {
               </thead>
               <tbody>
                 {friendsActivity.map((friend, i) => (
-                  <FriendRow key={friend.userId} friend={friend} last={i === friendsActivity.length - 1} />
+                  <FriendRow
+                    key={friend.userId}
+                    friend={friend}
+                    last={i === friendsActivity.length - 1}
+                    onClick={() => setSelectedFriend(friend.userId)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -205,15 +213,25 @@ export function DashboardPage() {
           )}
         </div>
       </div>
+
+      {selectedFriend && (
+        <FriendDetailSheet
+          userId={selectedFriend}
+          onClose={() => setSelectedFriend(null)}
+        />
+      )}
     </div>
   )
 }
 
-function FriendRow({ friend, last }: { friend: FriendWeeklySummary; last: boolean }) {
+function FriendRow({ friend, last, onClick }: { friend: FriendWeeklySummary; last: boolean; onClick: () => void }) {
   const { data: profile } = useProfile(friend.userId)
   if (!profile) return null
   return (
-    <tr className={last ? '' : 'border-b border-gray-100'}>
+    <tr
+      className={`cursor-pointer active:bg-gray-50 transition-colors ${last ? '' : 'border-b border-gray-100'}`}
+      onClick={onClick}
+    >
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-500 font-medium text-xs flex-shrink-0">
@@ -222,6 +240,7 @@ function FriendRow({ friend, last }: { friend: FriendWeeklySummary; last: boolea
               : profile.username?.[0]?.toUpperCase() ?? '?'}
           </div>
           <span className="font-medium text-gray-900 text-sm">{profile.username}</span>
+          <span className="text-gray-300 ml-auto text-base">›</span>
         </div>
       </td>
       <td className="text-center px-2 py-3 font-semibold text-gray-800">{friend.problems}</td>
@@ -240,5 +259,82 @@ function FriendRow({ friend, last }: { friend: FriendWeeklySummary; last: boolea
         ) : <span className="text-gray-300">—</span>}
       </td>
     </tr>
+  )
+}
+
+function FriendDetailSheet({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { data: profile } = useProfile(userId)
+  const { data: detail, isLoading } = useFriendWeeklyDetail(userId)
+
+  const title = profile?.username ? `${profile.username} — this week` : 'This week'
+
+  return (
+    <BottomSheet open onClose={onClose} title={title}>
+      {isLoading && <p className="text-gray-400 text-sm text-center py-8">Loading...</p>}
+
+      {detail && (
+        <div className="space-y-5">
+          {/* Problems */}
+          <div>
+            <p className="text-sm font-bold mb-2">
+              Problems
+              <span className="text-gray-400 font-normal ml-1">({detail.problems.length})</span>
+            </p>
+            {detail.problems.length === 0 ? (
+              <p className="text-sm text-gray-400">No problems logged this week.</p>
+            ) : (
+              <div className="space-y-2">
+                {detail.problems.map(p => (
+                  <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
+                    <div>
+                      {p.name && <p className="font-semibold text-sm text-gray-900">{p.name}</p>}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-medium">{p.grade_value ?? p.color ?? '—'}</span>
+                        {p.board && (
+                          <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2 py-0.5">
+                            {p.board}{p.board_angle != null ? ` ${p.board_angle}°` : ''}
+                          </span>
+                        )}
+                        {p.gym && <span className="text-xs text-gray-400">{p.gym}</span>}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">{p.attempts} attempt{p.attempts !== 1 ? 's' : ''}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                      p.sent ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {p.sent ? 'Sent' : 'Project'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Challenges */}
+          <div>
+            <p className="text-sm font-bold mb-2">
+              Challenges
+              <span className="text-gray-400 font-normal ml-1">({detail.attempts.length})</span>
+            </p>
+            {detail.attempts.length === 0 ? (
+              <p className="text-sm text-gray-400">No challenge attempts this week.</p>
+            ) : (
+              <div className="space-y-2">
+                {detail.attempts.map(a => (
+                  <div key={a.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
+                    <p className="text-sm font-medium text-gray-900">{a.challenges?.title ?? 'Challenge'}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                      a.completed ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {a.completed ? 'Completed' : 'Attempted'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </BottomSheet>
   )
 }
