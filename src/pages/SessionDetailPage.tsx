@@ -187,7 +187,7 @@ export function SessionDetailPage() {
                     {problem.attempts} attempt{problem.attempts !== 1 ? 's' : ''}
                   </p>
                   {problem.board && (
-                    <span className="text-xs bg-gray-50 text-black border border-gray-200 rounded-full px-2 py-0.5">
+                    <span className="text-xs bg-gray-50 text-sage-800 border border-gray-200 rounded-full px-2 py-0.5">
                       {problem.board}{problem.board_angle != null ? ` ${problem.board_angle}°` : ''}
                     </span>
                   )}
@@ -260,11 +260,11 @@ export function SessionDetailPage() {
           <h2 className="text-base font-semibold mb-2">Tests ({testResults.length})</h2>
           <div className="space-y-2">
             {testResults.map(result => (
-              <div key={result.id} className="bg-blue-50 rounded-xl p-3">
+              <div key={result.id} className="bg-sage-50 rounded-xl p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-900">{result.strength_tests.name}</p>
-                    <p className="text-sm text-blue-700 font-semibold mt-0.5">
+                    <p className="text-sm text-sage-700 font-semibold mt-0.5">
                       {result.value} {result.strength_tests.unit}
                     </p>
                   </div>
@@ -336,7 +336,7 @@ export function SessionDetailPage() {
               type="button"
               onClick={() => setSheetTab(tab)}
               className={`flex-1 py-2 font-medium transition-colors capitalize ${
-                sheetTab === tab ? 'bg-black text-white' : 'bg-white text-gray-600'
+                sheetTab === tab ? 'bg-sage-700 text-white' : 'bg-white text-gray-600'
               }`}
             >
               {tab}
@@ -465,7 +465,7 @@ function EditAttemptSheet({
             type="checkbox"
             checked={completed}
             onChange={e => setCompleted(e.target.checked)}
-            className="w-5 h-5 accent-black"
+            className="w-5 h-5 accent-sage-700"
           />
           <label htmlFor="edit-completed" className="text-sm font-medium text-gray-700">Completed</label>
         </div>
@@ -491,7 +491,7 @@ function EditAttemptSheet({
         <button
           onClick={() => onSave({ completed, notes: notes || null, video_url: videoUrl || null })}
           disabled={isSaving}
-          className="w-full bg-black text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+          className="w-full bg-sage-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
         >
           {isSaving ? 'Saving…' : 'Save Changes'}
         </button>
@@ -557,7 +557,7 @@ function TestLogForm({
         type="button"
         disabled={!testId || !value || isSubmitting}
         onClick={() => onSubmit({ test_id: testId, value: parseFloat(value), session_id: sessionId })}
-        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isSubmitting ? 'Saving...' : 'Log Test Result'}
       </button>
@@ -584,7 +584,7 @@ function ExerciseSelector({
         <button
           type="button"
           onClick={() => setPicked(null)}
-          className="text-sm text-black font-medium mb-4 flex items-center gap-1"
+          className="text-sm text-sage-800 font-medium mb-4 flex items-center gap-1"
         >
           ← Back
         </button>
@@ -618,7 +618,7 @@ function ExerciseSelector({
                   <span className="text-xs text-gray-400 capitalize">{t.type}</span>
                   {t.description && <span className="text-xs text-gray-400">· {t.description}</span>}
                   {t.test_id && (
-                    <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">% test</span>
+                    <span className="text-xs bg-sage-50 text-sage-600 px-1.5 py-0.5 rounded-full">% test</span>
                   )}
                 </div>
               </button>
@@ -629,7 +629,7 @@ function ExerciseSelector({
       <button
         type="button"
         onClick={() => setPicked('custom')}
-        className="w-full border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm text-gray-500 hover:border-gray-400 hover:text-black transition-colors"
+        className="w-full border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm text-gray-500 hover:border-gray-400 hover:text-sage-800 transition-colors"
       >
         + Custom exercise
       </button>
@@ -677,7 +677,7 @@ function ChallengeAttemptForm({
         </select>
       </div>
       <div className="flex items-center gap-3">
-        <input {...register('completed')} id="completed" type="checkbox" className="w-5 h-5 accent-black" />
+        <input {...register('completed')} id="completed" type="checkbox" className="w-5 h-5 accent-sage-700" />
         <label htmlFor="completed" className="text-sm font-medium text-gray-700">Completed</label>
       </div>
       <div>
@@ -696,7 +696,7 @@ function ChallengeAttemptForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isSubmitting ? 'Saving...' : 'Log Attempt'}
       </button>

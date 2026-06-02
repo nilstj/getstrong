@@ -8,7 +8,7 @@ export function BottomNav() {
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${
-      isActive ? 'text-black' : 'text-gray-400'
+      isActive ? 'text-sage-800' : 'text-gray-400'
     }`
 
   return (
@@ -35,7 +35,7 @@ export function BottomNav() {
         onClick={() => navigate('/sessions/new')}
         className="flex-1 flex flex-col items-center justify-center py-2"
       >
-        <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center shadow-md">
+        <div className="w-10 h-10 bg-sage-700 rounded-full flex items-center justify-center shadow-md">
           <Plus size={20} strokeWidth={2.5} className="text-white" />
         </div>
       </button>

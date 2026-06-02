@@ -91,7 +91,7 @@ export function DashboardPage() {
 
       {/* On the Wall */}
       {isOnWall ? (
-        <div className="bg-black text-white rounded-2xl px-4 py-3 flex items-center gap-3">
+        <div className="bg-sage-700 text-white rounded-2xl px-4 py-3 flex items-center gap-3">
           <span className="text-xl animate-bounce">🧗</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">You're on the wall!</p>
@@ -136,7 +136,7 @@ export function DashboardPage() {
                 onSuccess: () => { setShowWallInput(false); setWallLabelInput('') },
               })}
               disabled={setOnWall.isPending}
-              className="flex-1 py-1.5 text-sm font-semibold bg-black text-white rounded-xl disabled:opacity-50"
+              className="flex-1 py-1.5 text-sm font-semibold bg-sage-700 text-white rounded-xl disabled:opacity-50"
             >
               {setOnWall.isPending ? '…' : "I'm on the wall 🧗"}
             </button>
@@ -156,9 +156,9 @@ export function DashboardPage() {
       {receivedChallenges.length > 0 && (
         <Link
           to="/challenges"
-          className="flex items-center gap-3 bg-black text-white rounded-2xl px-4 py-3"
+          className="flex items-center gap-3 bg-sage-700 text-white rounded-2xl px-4 py-3"
         >
-          <span className="w-6 h-6 bg-white text-black rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">
+          <span className="w-6 h-6 bg-white text-sage-800 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0">
             {receivedChallenges.length}
           </span>
           <p className="text-sm font-medium flex-1">
@@ -205,7 +205,7 @@ export function DashboardPage() {
               <div className="mt-1.5">
                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-black rounded-full transition-all"
+                    className="h-full bg-sage-700 rounded-full transition-all"
                     style={{ width: `${Math.min((completedCount / next.threshold) * 100, 100)}%` }}
                   />
                 </div>
@@ -334,7 +334,7 @@ function FriendRow({ friend, last, onWall, onClick }: { friend: FriendWeeklySumm
                 sendHype.mutate(undefined, { onSuccess: () => toast.success('Hype sent! 🔥') })
               }}
               disabled={sendHype.isPending}
-              className="ml-auto text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold"
+              className="ml-auto text-xs bg-khaki-100 text-khaki-700 px-2 py-0.5 rounded-full font-semibold"
             >
               🔥 Hype
             </button>
@@ -450,7 +450,7 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                       <ReactionBar problemId={p.id} />
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ml-auto ${
                         p.sent && p.attempts === 1 ? 'bg-yellow-300 text-yellow-900' :
-                      p.sent ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
+                      p.sent ? 'bg-sage-700 text-white' : 'bg-gray-200 text-gray-500'
                       }`}>
                         {p.sent && p.attempts === 1 ? 'Flash ⚡' : p.sent ? 'Sent' : 'Project'}
                       </span>
@@ -476,7 +476,7 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-gray-900">{a.challenges?.title ?? 'Challenge'}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                        a.completed ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'
+                        a.completed ? 'bg-sage-700 text-white' : 'bg-gray-200 text-gray-500'
                       }`}>
                         {a.completed ? 'Completed' : 'Attempted'}
                       </span>

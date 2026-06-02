@@ -36,7 +36,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-black tracking-tight text-center mb-8 text-black">GetStrong</h1>
+        <h1 className="text-3xl font-black tracking-tight text-center mb-8 text-sage-800">GetStrong</h1>
 
         <div className="flex rounded-2xl overflow-hidden border mb-6">
           {(['login', 'register'] as const).map(t => (
@@ -45,7 +45,7 @@ export function LoginPage() {
               type="button"
               onClick={() => setTab(t)}
               className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                tab === t ? 'bg-black text-white' : 'bg-white text-gray-600'
+                tab === t ? 'bg-sage-700 text-white' : 'bg-white text-gray-600'
               }`}
             >
               {t === 'login' ? 'Log In' : 'Register'}
@@ -103,7 +103,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50 transition-opacity"
+            className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50 transition-opacity"
           >
             {loading ? 'Please wait...' : tab === 'login' ? 'Log In' : 'Create Account'}
           </button>

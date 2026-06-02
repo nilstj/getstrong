@@ -61,7 +61,7 @@ export function SessionFrequencyChart({ data }: Props) {
           yAxisId="sessions"
           dataKey="count"
           name="Sessions"
-          fill="#0f0f0f"
+          fill="#5a6649"
           radius={[4, 4, 0, 0]}
           maxBarSize={32}
         />

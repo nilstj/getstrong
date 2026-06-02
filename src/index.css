@@ -8,6 +8,6 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-[#fafafa] text-[#0f0f0f];
+    @apply bg-[#f7f5f0] text-sage-900;
   }
 }

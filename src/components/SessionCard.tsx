@@ -15,7 +15,7 @@ export function SessionCard({ session, problems }: SessionCardProps) {
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="font-semibold text-black">{session.location}</p>
+          <p className="font-semibold text-sage-800">{session.location}</p>
           <p className="text-sm text-gray-500 mt-0.5">{session.date}</p>
           {session.duration_minutes && (
             <p className="text-sm text-gray-400">{session.duration_minutes} min</p>
@@ -24,7 +24,7 @@ export function SessionCard({ session, problems }: SessionCardProps) {
         <div className="text-right">
           <p className="text-sm font-medium text-gray-700">{problems.length} problem{problems.length !== 1 ? 's' : ''}</p>
           {problems.length > 0 && (
-            <span className="text-xs bg-black text-white px-2 py-0.5 rounded-full font-medium mt-1 inline-block">
+            <span className="text-xs bg-sage-700 text-white px-2 py-0.5 rounded-full font-medium mt-1 inline-block">
               {sendRate(problems)}% sent
             </span>
           )}

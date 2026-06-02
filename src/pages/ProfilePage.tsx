@@ -82,7 +82,7 @@ export function ProfilePage() {
           </div>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="absolute bottom-0 right-0 w-7 h-7 bg-black rounded-full flex items-center justify-center text-white text-sm"
+            className="absolute bottom-0 right-0 w-7 h-7 bg-sage-700 rounded-full flex items-center justify-center text-white text-sm"
             aria-label="Change photo"
           >
             ✎
@@ -109,7 +109,7 @@ export function ProfilePage() {
             <button
               onClick={handleSaveUsername}
               disabled={updateProfile.isPending}
-              className="text-sm text-black font-medium"
+              className="text-sm text-sage-800 font-medium"
             >
               Save
             </button>
@@ -152,7 +152,7 @@ export function ProfilePage() {
                 disabled={updateProfile.isPending}
                 className={`flex-1 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
                   (profile?.grade_preference ?? 'font') === scale
-                    ? 'bg-black text-white'
+                    ? 'bg-sage-700 text-white'
                     : 'bg-white text-gray-500'
                 }`}
               >
@@ -198,7 +198,7 @@ export function ProfilePage() {
                     className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
                       isFollowing(u.id)
                         ? 'bg-gray-200 text-gray-600'
-                        : 'bg-black text-white'
+                        : 'bg-sage-700 text-white'
                     }`}
                   >
                     {isFollowing(u.id) ? 'Following' : 'Follow'}
@@ -323,7 +323,7 @@ function ProblemTagsAdmin() {
             onError: () => toast.error('Failed (name may already exist)'),
           })}
           disabled={!name.trim() || createTag.isPending}
-          className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+          className="w-full bg-sage-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
         >
           {createTag.isPending ? 'Adding…' : 'Add Tag'}
         </button>
@@ -339,7 +339,7 @@ function ProblemTagsAdmin() {
                     <button
                       key={s}
                       onClick={() => createTag.mutate({ name: s, category: cat }, { onError: () => toast.error('Already exists') })}
-                      className="text-xs border border-dashed border-gray-300 text-gray-500 rounded-full px-2.5 py-0.5 hover:border-black hover:text-black transition-colors"
+                      className="text-xs border border-dashed border-gray-300 text-gray-500 rounded-full px-2.5 py-0.5 hover:border-sage-700 hover:text-sage-800 transition-colors"
                     >
                       + {s}
                     </button>
@@ -377,7 +377,7 @@ function StrengthTestsAdmin() {
       <div className="space-y-2 mb-4">
         {tests.length === 0 && <p className="text-sm text-gray-400 text-center py-4">No tests yet.</p>}
         {tests.map(t => (
-          <div key={t.id} className="bg-blue-50 rounded-2xl px-4 py-3">
+          <div key={t.id} className="bg-sage-50 rounded-2xl px-4 py-3">
             {editingId === t.id ? (
               <div className="space-y-2">
                 <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Test name" />
@@ -391,7 +391,7 @@ function StrengthTestsAdmin() {
                       { onSuccess: () => { setEditingId(null); toast.success('Test updated') }, onError: () => toast.error('Failed') }
                     )}
                     disabled={!editName.trim() || updateTest.isPending}
-                    className="flex-1 py-1.5 text-sm bg-black text-white rounded-xl font-semibold disabled:opacity-50"
+                    className="flex-1 py-1.5 text-sm bg-sage-700 text-white rounded-xl font-semibold disabled:opacity-50"
                   >
                     {updateTest.isPending ? 'Saving…' : 'Save'}
                   </button>
@@ -423,7 +423,7 @@ function StrengthTestsAdmin() {
             onError: () => toast.error('Failed to add test'),
           })}
           disabled={!name.trim() || createTest.isPending}
-          className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+          className="w-full bg-sage-700 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
         >
           {createTest.isPending ? 'Adding...' : 'Add Test'}
         </button>
@@ -479,7 +479,7 @@ function ExerciseLibraryAdmin() {
                 <div className="flex rounded-xl overflow-hidden border">
                   {(['reps', 'time'] as const).map(v => (
                     <button key={v} type="button" onClick={() => setEditType(v)}
-                      className={`flex-1 py-1.5 text-sm font-medium transition-colors ${editType === v ? 'bg-black text-white' : 'bg-white text-gray-600'}`}>
+                      className={`flex-1 py-1.5 text-sm font-medium transition-colors ${editType === v ? 'bg-sage-700 text-white' : 'bg-white text-gray-600'}`}>
                       {v === 'reps' ? 'Reps' : 'Time'}
                     </button>
                   ))}
@@ -499,7 +499,7 @@ function ExerciseLibraryAdmin() {
                       { onSuccess: () => { setEditingId(null); toast.success('Exercise updated') }, onError: () => toast.error('Failed') }
                     )}
                     disabled={!editName.trim() || updateTemplate.isPending}
-                    className="flex-1 py-1.5 text-sm bg-black text-white rounded-xl font-semibold disabled:opacity-50"
+                    className="flex-1 py-1.5 text-sm bg-sage-700 text-white rounded-xl font-semibold disabled:opacity-50"
                   >
                     {updateTemplate.isPending ? 'Saving…' : 'Save'}
                   </button>
@@ -531,7 +531,7 @@ function ExerciseLibraryAdmin() {
         <div className="flex rounded-lg overflow-hidden border">
           {(['reps', 'time'] as const).map(t => (
             <button key={t} type="button" onClick={() => setType(t)}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${type === t ? 'bg-black text-white' : 'bg-white text-gray-600'}`}>
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${type === t ? 'bg-sage-700 text-white' : 'bg-white text-gray-600'}`}>
               {t === 'reps' ? 'Reps' : 'Time'}
             </button>
           ))}
@@ -544,7 +544,7 @@ function ExerciseLibraryAdmin() {
           </select>
         )}
         <button onClick={handleAdd} disabled={!name.trim() || createTemplate.isPending}
-          className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
+          className="w-full bg-sage-700 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
           {createTemplate.isPending ? 'Adding...' : 'Add to Library'}
         </button>
       </div>

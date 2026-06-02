@@ -36,7 +36,7 @@ function TagPills({ tags }: { tags: string[] }) {
   return (
     <div className="flex flex-wrap gap-1 mt-2">
       {tags.map(tag => (
-        <span key={tag} className="text-xs bg-gray-50 text-black border border-gray-200 rounded-full px-2 py-0.5">
+        <span key={tag} className="text-xs bg-gray-50 text-sage-800 border border-gray-200 rounded-full px-2 py-0.5">
           {tag}
         </span>
       ))}
@@ -69,7 +69,7 @@ export function ChallengesPage() {
             key={tab}
             onClick={() => setPageTab(tab)}
             className={`flex-1 py-2 text-sm font-semibold capitalize transition-colors ${
-              pageTab === tab ? 'bg-black text-white' : 'bg-white text-gray-500'
+              pageTab === tab ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
             }`}
           >
             {tab === 'challenges' ? '🏆 Challenges' : '🤝 Projects'}
@@ -254,7 +254,7 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
               onClick={() => toggleTag(tag)}
               className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
                 tags.includes(tag)
-                  ? 'bg-black border-black text-white'
+                  ? 'bg-sage-700 border-sage-700 text-white'
                   : 'bg-white border-gray-300 text-gray-600'
               }`}
             >
@@ -275,7 +275,7 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
       <button
         type="submit"
         disabled={isPending}
-        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isPending ? 'Saving...' : existing ? 'Save Changes' : 'Create Challenge'}
       </button>
@@ -315,7 +315,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
           href={challenge.video_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-black font-medium"
+          className="inline-flex items-center gap-1.5 text-sm text-sage-800 font-medium"
         >
           ▶ Watch demo video
         </a>
@@ -366,7 +366,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
                 href={a.video_url!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block text-sm text-black truncate"
+                className="block text-sm text-sage-800 truncate"
               >
                 ▶ {a.video_url}
               </a>
@@ -404,7 +404,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
           <button
             onClick={handleAddComment}
             disabled={!commentText.trim() || addComment.isPending}
-            className="bg-black text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+            className="bg-sage-700 text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
           >
             Post
           </button>
@@ -415,7 +415,7 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
 
       <button
         onClick={() => setSendOpen(true)}
-        className="w-full border border-black text-black py-2.5 rounded-xl font-medium text-sm"
+        className="w-full border border-sage-700 text-sage-800 py-2.5 rounded-xl font-medium text-sm"
       >
         Send to friends
       </button>
@@ -485,7 +485,7 @@ function SendChallengeForm({
       <button
         onClick={handleSend}
         disabled={selected.size === 0 || sendChallenge.isPending}
-        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {sendChallenge.isPending ? 'Sending...' : `Send to ${selected.size || ''} friend${selected.size !== 1 ? 's' : ''}`}
       </button>
@@ -508,7 +508,7 @@ function FollowingItem({
     <button
       onClick={onToggle}
       className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-colors ${
-        selected ? 'border-black bg-gray-50' : 'border-gray-200 bg-white'
+        selected ? 'border-sage-700 bg-gray-50' : 'border-gray-200 bg-white'
       }`}
     >
       <div className="flex items-center gap-3">
@@ -520,7 +520,7 @@ function FollowingItem({
         <p className="font-medium text-sm">{profile.username}</p>
       </div>
       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-        selected ? 'border-black bg-black' : 'border-gray-300'
+        selected ? 'border-sage-700 bg-sage-700' : 'border-gray-300'
       }`}>
         {selected && <span className="text-white text-xs">✓</span>}
       </div>
@@ -618,7 +618,7 @@ function BetaSection({ challengeId, currentUserId }: { challengeId: string; curr
         </p>
         <button
           onClick={() => setOpen(o => !o)}
-          className="text-xs font-semibold text-black border border-gray-200 rounded-full px-3 py-1"
+          className="text-xs font-semibold text-sage-800 border border-gray-200 rounded-full px-3 py-1"
         >
           {open ? 'Cancel' : '+ Share beta'}
         </button>
@@ -632,7 +632,7 @@ function BetaSection({ challengeId, currentUserId }: { challengeId: string; curr
           <button
             onClick={handleAdd}
             disabled={(!crux && !footwork && !sequence) || addBeta.isPending}
-            className="w-full bg-black text-white py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+            className="w-full bg-sage-700 text-white py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
           >
             {addBeta.isPending ? 'Sharing…' : 'Share Beta'}
           </button>
@@ -654,7 +654,7 @@ function BetaSection({ challengeId, currentUserId }: { challengeId: string; curr
                 <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={() => markHelpful.mutate({ betaId: beta.id, challengeId })}
-                    className="text-xs text-gray-500 hover:text-black transition-colors"
+                    className="text-xs text-gray-500 hover:text-sage-800 transition-colors"
                   >
                     👍 Worked for me {helpfulCount > 0 && `(${helpfulCount})`}
                   </button>
@@ -726,7 +726,7 @@ function SharedProjectsView({ currentUserId }: { currentUserId: string }) {
 
       <button
         onClick={() => setCreateOpen(true)}
-        className="w-full border-2 border-dashed border-gray-300 rounded-2xl py-4 text-sm text-gray-500 hover:border-black hover:text-black transition-colors font-medium"
+        className="w-full border-2 border-dashed border-gray-300 rounded-2xl py-4 text-sm text-gray-500 hover:border-sage-700 hover:text-sage-800 transition-colors font-medium"
       >
         + New Shared Project
       </button>
@@ -743,7 +743,7 @@ function SharedProjectsView({ currentUserId }: { currentUserId: string }) {
                 { onSuccess: () => { setCreateOpen(false); setTitle(''); setGradeFont(''); setGym(''); toast.success('Project created!') }, onError: () => toast.error('Failed') }
               )}
               disabled={!title || createProject.isPending}
-              className="w-full bg-black text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+              className="w-full bg-sage-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
             >
               {createProject.isPending ? 'Creating…' : 'Create Project'}
             </button>
@@ -811,7 +811,7 @@ function SharedProjectDetail({ project, currentUserId, onDelete }: { project: im
         <button
           onClick={() => addAttempt.mutate({ projectId: project.id, sent: true }, { onSuccess: () => toast.success('Send logged! 🎉') })}
           disabled={addAttempt.isPending}
-          className="flex-1 bg-black text-white rounded-xl py-2.5 text-sm font-semibold"
+          className="flex-1 bg-sage-700 text-white rounded-xl py-2.5 text-sm font-semibold"
         >
           Sent! 🎉
         </button>

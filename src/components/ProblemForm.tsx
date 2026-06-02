@@ -115,7 +115,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
               onClick={() => setValue('board', board === b ? '' : b)}
               className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
                 board === b
-                  ? 'bg-black border-black text-white'
+                  ? 'bg-sage-700 border-sage-700 text-white'
                   : 'bg-white border-gray-300 text-gray-600'
               }`}
             >
@@ -135,7 +135,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
               min="30"
               max="70"
               step="5"
-              className="flex-1 accent-black"
+              className="flex-1 accent-sage-700"
             />
             <span className="text-sm font-semibold text-gray-700 w-12 text-right">
               {watch('board_angle') !== '' ? `${watch('board_angle')}°` : '—'}
@@ -176,7 +176,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       </div>
 
       <div className="flex items-center gap-3">
-        <input {...register('sent')} id="sent" type="checkbox" className="w-5 h-5 accent-black" />
+        <input {...register('sent')} id="sent" type="checkbox" className="w-5 h-5 accent-sage-700" />
         <label htmlFor="sent" className="text-sm font-medium text-gray-700">Sent (completed)</label>
       </div>
 
@@ -225,7 +225,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
                       onClick={() => toggleTag(tag.id)}
                       className={`text-sm px-3 py-1 rounded-full border font-medium transition-colors ${
                         selectedTagIds.has(tag.id)
-                          ? 'bg-black border-black text-white'
+                          ? 'bg-sage-700 border-sage-700 text-white'
                           : 'bg-white border-gray-300 text-gray-600'
                       }`}
                     >
@@ -242,7 +242,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
+        className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
         {isSubmitting ? 'Saving...' : existing ? 'Save Changes' : 'Add Problem'}
       </button>

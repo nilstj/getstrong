@@ -88,7 +88,7 @@ export function EditSessionPage() {
         <button
           type="submit"
           disabled={updateSession.isPending}
-          className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
+          className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50"
         >
           {updateSession.isPending ? 'Saving...' : 'Save Changes'}
         </button>

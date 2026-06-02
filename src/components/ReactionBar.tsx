@@ -62,7 +62,7 @@ export function ReactionBar({ problemId, attemptId, compact = false }: ReactionB
             onClick={() => toggle(r.key)}
             className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
               myReacted.has(r.key)
-                ? 'bg-black border-black text-white'
+                ? 'bg-sage-700 border-sage-700 text-white'
                 : 'bg-gray-50 border-gray-200 text-gray-700'
             }`}
           >
@@ -83,7 +83,7 @@ export function ReactionBar({ problemId, attemptId, compact = false }: ReactionB
           title={r.label}
           className={`flex items-center gap-1 text-sm px-2 py-1 rounded-full border transition-colors ${
             myReacted.has(r.key)
-              ? 'bg-black border-black text-white'
+              ? 'bg-sage-700 border-sage-700 text-white'
               : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
           }`}
         >
