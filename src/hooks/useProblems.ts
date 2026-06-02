@@ -29,6 +29,27 @@ export function useSessionProblems(sessionId: string) {
   })
 }
 
+export function useUpdateProblem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, sessionId, tagIds, ...values }: Partial<Omit<Problem, 'user_id' | 'created_at'>> & { id: string; sessionId: string; tagIds?: string[] }) => {
+      const { error } = await supabase.from('problems').update(values).eq('id', id)
+      if (error) throw error
+      if (tagIds !== undefined) {
+        await supabase.from('problem_tag_assignments').delete().eq('problem_id', id)
+        if (tagIds.length > 0) {
+          await supabase.from('problem_tag_assignments').insert(tagIds.map(tag_id => ({ problem_id: id, tag_id })))
+        }
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['problems', variables.sessionId] })
+      queryClient.invalidateQueries({ queryKey: ['session_problem_tags'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
 export function useDeleteProblem() {
   const queryClient = useQueryClient()
   return useMutation({

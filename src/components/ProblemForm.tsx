@@ -23,13 +23,15 @@ interface ProblemFormProps {
   onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'> & { tagIds?: string[] }) => void
   isSubmitting: boolean
   initialGradeSystem?: 'font' | 'v_scale'
+  existing?: Problem
+  existingTagIds?: string[]
 }
 
-export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font' }: ProblemFormProps) {
+export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font', existing, existingTagIds }: ProblemFormProps) {
   const grades = initialGradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
   const scaleLabel = initialGradeSystem === 'v_scale' ? 'V-Scale' : 'Font'
   const { data: tagDefinitions = [] } = useProblemTagDefinitions()
-  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(existingTagIds ?? []))
 
   const toggleTag = (id: string) => {
     setSelectedTagIds(prev => {
@@ -48,16 +50,16 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
 
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
-      name: '',
-      grade_value: '',
-      color: '',
-      attempts: 1,
-      sent: false,
-      board: '',
-      board_angle: '',
-      gym: '',
-      beta_video_url: '',
-      notes: '',
+      name: existing?.name ?? '',
+      grade_value: existing?.grade_value ?? '',
+      color: existing?.color ?? '',
+      attempts: existing?.attempts ?? 1,
+      sent: existing?.sent ?? false,
+      board: existing?.board ?? '',
+      board_angle: existing?.board_angle ?? '',
+      gym: existing?.gym ?? '',
+      beta_video_url: existing?.beta_video_url ?? '',
+      notes: existing?.notes ?? '',
     },
   })
 
@@ -242,7 +244,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         disabled={isSubmitting}
         className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
-        {isSubmitting ? 'Saving...' : 'Add Problem'}
+        {isSubmitting ? 'Saving...' : existing ? 'Save Changes' : 'Add Problem'}
       </button>
     </form>
   )

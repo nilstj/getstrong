@@ -20,6 +20,7 @@ interface ExerciseFormProps {
   initialName?: string
   initialType?: 'reps' | 'time'
   initialTestId?: string | null
+  existing?: Exercise
 }
 
 export function ExerciseForm({
@@ -28,16 +29,17 @@ export function ExerciseForm({
   initialName = '',
   initialType = 'reps',
   initialTestId = null,
+  existing,
 }: ExerciseFormProps) {
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
-      name: initialName,
-      type: initialType,
-      sets: 3,
-      reps: 10,
-      duration_seconds: 30,
-      weight_kg: '',
-      notes: '',
+      name: existing?.name ?? initialName,
+      type: existing?.type ?? initialType,
+      sets: existing?.sets ?? 3,
+      reps: existing?.reps ?? 10,
+      duration_seconds: existing?.duration_seconds ?? 30,
+      weight_kg: existing?.weight_kg ?? '',
+      notes: existing?.notes ?? '',
     },
   })
 
@@ -191,7 +193,7 @@ export function ExerciseForm({
         disabled={isSubmitting}
         className="w-full bg-black text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
-        {isSubmitting ? 'Saving...' : 'Add Exercise'}
+        {isSubmitting ? 'Saving...' : existing ? 'Save Changes' : 'Add Exercise'}
       </button>
     </form>
   )

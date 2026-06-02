@@ -88,6 +88,20 @@ export function useAddChallengeAttempt() {
   })
 }
 
+export function useUpdateChallengeAttempt() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, sessionId, ...values }: { id: string; sessionId: string; completed?: boolean; notes?: string | null; video_url?: string | null }) => {
+      const { error } = await supabase.from('challenge_attempts').update(values).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['challenge_attempts', 'session', variables.sessionId] })
+      queryClient.invalidateQueries({ queryKey: ['challenge_attempts'] })
+    },
+  })
+}
+
 export function useDeleteChallenge() {
   const queryClient = useQueryClient()
   return useMutation({

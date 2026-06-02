@@ -17,6 +17,20 @@ export function useSessionExercises(sessionId: string) {
   })
 }
 
+export function useUpdateExercise() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, sessionId, ...values }: Partial<Omit<Exercise, 'user_id' | 'created_at'>> & { id: string; sessionId: string }) => {
+      const { error } = await supabase.from('exercises').update(values).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['exercises', variables.sessionId] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
 export function useDeleteExercise() {
   const queryClient = useQueryClient()
   return useMutation({

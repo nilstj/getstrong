@@ -3,15 +3,16 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession } from '../hooks/useSessions'
-import { useSessionProblems, useAddProblem, useDeleteProblem } from '../hooks/useProblems'
-import { useSessionExercises, useAddExercise, useDeleteExercise } from '../hooks/useExercises'
+import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
+import { useSessionExercises, useAddExercise, useUpdateExercise, useDeleteExercise } from '../hooks/useExercises'
 import { useSessionStore } from '../store/sessionStore'
 import { BottomSheet } from '../components/BottomSheet'
 import { FAB } from '../components/FAB'
 import { ProblemForm } from '../components/ProblemForm'
 import { ExerciseForm } from '../components/ExerciseForm'
 import { useForm } from 'react-hook-form'
-import { useSessionChallengeAttempts, useAddChallengeAttempt, useChallenges, useDeleteChallengeAttempt } from '../hooks/useChallenges'
+import { useSessionChallengeAttempts, useAddChallengeAttempt, useUpdateChallengeAttempt, useChallenges, useDeleteChallengeAttempt } from '../hooks/useChallenges'
+import { useProblemTags } from '../hooks/useProblemTags'
 import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
 import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStrengthTests } from '../hooks/useStrengthTests'
 import { useProfile } from '../hooks/useProfile'
@@ -33,16 +34,22 @@ export function SessionDetailPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetTab, setSheetTab] = useState<SheetTab>('problem')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editingProblem, setEditingProblem] = useState<Problem | null>(null)
+  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null)
+  const [editingAttempt, setEditingAttempt] = useState<ChallengeAttempt | null>(null)
 
   const { data: session, isLoading } = useSession(id!)
   const { data: problems = [] } = useSessionProblems(id!)
   const { data: exercises = [] } = useSessionExercises(id!)
   const addProblem = useAddProblem()
+  const updateProblem = useUpdateProblem()
   const addExercise = useAddExercise()
+  const updateExercise = useUpdateExercise()
   const deleteProblem = useDeleteProblem()
   const deleteExercise = useDeleteExercise()
   const deleteSession = useDeleteSession()
   const addChallengeAttempt = useAddChallengeAttempt()
+  const updateChallengeAttempt = useUpdateChallengeAttempt()
   const deleteChallengeAttempt = useDeleteChallengeAttempt()
   const { data: challengeAttempts = [] } = useSessionChallengeAttempts(id!)
   const { data: challenges = [] } = useChallenges()
@@ -153,17 +160,23 @@ export function SessionDetailPage() {
                       )}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       problem.sent ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
                     }`}>
                       {problem.sent ? 'Sent' : 'Project'}
                     </span>
                     <button
-                      onClick={() => deleteProblem.mutate({ id: problem.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
-                      className="text-gray-300 hover:text-red-500 text-lg leading-none"
+                      onClick={() => setEditingProblem(problem)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                     >
-                      ×
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => deleteProblem.mutate({ id: problem.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
@@ -219,12 +232,20 @@ export function SessionDetailPage() {
                     </p>
                     {exercise.notes && <p className="text-gray-500 text-sm mt-0.5">{exercise.notes}</p>}
                   </div>
-                  <button
-                    onClick={() => deleteExercise.mutate({ id: exercise.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingExercise(exercise)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => deleteExercise.mutate({ id: exercise.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -266,17 +287,23 @@ export function SessionDetailPage() {
               <div key={attempt.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{(attempt as any).challenges?.title ?? 'Challenge'}</p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       attempt.completed ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
                     }`}>
                       {attempt.completed ? 'Completed' : 'Attempted'}
                     </span>
                     <button
-                      onClick={() => deleteChallengeAttempt.mutate({ id: attempt.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
-                      className="text-gray-300 hover:text-red-500 text-lg leading-none"
+                      onClick={() => setEditingAttempt(attempt)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                     >
-                      ×
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => deleteChallengeAttempt.mutate({ id: attempt.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
@@ -339,7 +366,131 @@ export function SessionDetailPage() {
           />
         )}
       </BottomSheet>
+
+      {/* Edit problem */}
+      {editingProblem && (
+        <EditProblemSheet
+          problem={editingProblem}
+          sessionId={id!}
+          gradeSystem={myProfile?.grade_preference ?? 'font'}
+          onClose={() => setEditingProblem(null)}
+          onSave={(values, tagIds) => updateProblem.mutate(
+            { id: editingProblem.id, sessionId: id!, tagIds, ...values },
+            { onSuccess: () => { setEditingProblem(null); toast.success('Problem updated') }, onError: () => toast.error('Failed to update') },
+          )}
+          isSaving={updateProblem.isPending}
+        />
+      )}
+
+      {/* Edit exercise */}
+      {editingExercise && (
+        <BottomSheet open onClose={() => setEditingExercise(null)} title="Edit Exercise">
+          <ExerciseForm
+            existing={editingExercise}
+            onSubmit={vals => updateExercise.mutate(
+              { id: editingExercise.id, sessionId: id!, ...vals },
+              { onSuccess: () => { setEditingExercise(null); toast.success('Exercise updated') }, onError: () => toast.error('Failed to update') },
+            )}
+            isSubmitting={updateExercise.isPending}
+          />
+        </BottomSheet>
+      )}
+
+      {/* Edit challenge attempt */}
+      {editingAttempt && (
+        <EditAttemptSheet
+          attempt={editingAttempt}
+          sessionId={id!}
+          onClose={() => setEditingAttempt(null)}
+          onSave={vals => updateChallengeAttempt.mutate(
+            { id: editingAttempt.id, sessionId: id!, ...vals },
+            { onSuccess: () => { setEditingAttempt(null); toast.success('Attempt updated') }, onError: () => toast.error('Failed to update') },
+          )}
+          isSaving={updateChallengeAttempt.isPending}
+        />
+      )}
     </div>
+  )
+}
+
+function EditProblemSheet({
+  problem, gradeSystem, onClose, onSave, isSaving,
+}: {
+  problem: Problem
+  sessionId?: string
+  gradeSystem: 'font' | 'v_scale'
+  onClose: () => void
+  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'>, tagIds: string[]) => void
+  isSaving: boolean
+}) {
+  const { data: currentTags = [] } = useProblemTags(problem.id)
+  return (
+    <BottomSheet open onClose={onClose} title="Edit Problem">
+      <ProblemForm
+        key={problem.id}
+        existing={problem}
+        existingTagIds={currentTags.map(t => t.id)}
+        initialGradeSystem={gradeSystem}
+        onSubmit={({ tagIds = [], ...vals }) => onSave(vals, tagIds)}
+        isSubmitting={isSaving}
+      />
+    </BottomSheet>
+  )
+}
+
+function EditAttemptSheet({
+  attempt, onClose, onSave, isSaving,
+}: {
+  attempt: ChallengeAttempt
+  sessionId?: string
+  onClose: () => void
+  onSave: (vals: { completed: boolean; notes: string | null; video_url: string | null }) => void
+  isSaving: boolean
+}) {
+  const [completed, setCompleted] = useState(attempt.completed)
+  const [notes, setNotes] = useState(attempt.notes ?? '')
+  const [videoUrl, setVideoUrl] = useState(attempt.video_url ?? '')
+  return (
+    <BottomSheet open onClose={onClose} title="Edit Challenge Attempt">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <input
+            id="edit-completed"
+            type="checkbox"
+            checked={completed}
+            onChange={e => setCompleted(e.target.checked)}
+            className="w-5 h-5 accent-black"
+          />
+          <label htmlFor="edit-completed" className="text-sm font-medium text-gray-700">Completed</label>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Proof video (optional)</label>
+          <input
+            type="url"
+            value={videoUrl}
+            onChange={e => setVideoUrl(e.target.value)}
+            placeholder="https://..."
+            className="w-full border rounded-xl px-3 py-2.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={2}
+            className="w-full border rounded-xl px-3 py-2 text-sm"
+          />
+        </div>
+        <button
+          onClick={() => onSave({ completed, notes: notes || null, video_url: videoUrl || null })}
+          disabled={isSaving}
+          className="w-full bg-black text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+        >
+          {isSaving ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+    </BottomSheet>
   )
 }
 
