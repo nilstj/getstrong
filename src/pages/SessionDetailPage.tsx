@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
@@ -669,6 +669,8 @@ function ExerciseSelector({
     const initialName = picked === 'custom' ? '' : picked.name
     const initialType = picked === 'custom' ? 'reps' : picked.type
     const initialTestId = picked === 'custom' ? null : picked.test_id
+    const initialSets = picked === 'custom' ? undefined : picked.preset_sets ?? undefined
+    const initialReps = picked === 'custom' ? undefined : picked.preset_reps ?? undefined
     return (
       <div>
         <button
@@ -683,6 +685,8 @@ function ExerciseSelector({
           initialName={initialName}
           initialType={initialType}
           initialTestId={initialTestId}
+          initialSets={initialSets}
+          initialReps={initialReps}
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
         />
@@ -696,23 +700,51 @@ function ExerciseSelector({
         <div>
           <p className="text-sm font-medium text-gray-700 mb-2">From Library</p>
           <div className="space-y-2">
-            {templates.map(t => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setPicked(t)}
-                className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
-              >
-                <p className="font-medium text-gray-900">{t.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-gray-400 capitalize">{t.type}</span>
-                  {t.description && <span className="text-xs text-gray-400">· {t.description}</span>}
-                  {t.test_id && (
-                    <span className="text-xs bg-sage-50 text-sage-600 px-1.5 py-0.5 rounded-full">% test</span>
+            {templates.map(t => {
+              const presetParts = [
+                t.preset_sets ? `${t.preset_sets} sets` : null,
+                t.preset_reps && t.type === 'reps' ? `${t.preset_reps} reps` : null,
+                t.preset_pause_seconds ? `${t.preset_pause_seconds}s pause` : null,
+                t.preset_rest_seconds ? `${t.preset_rest_seconds}s rest` : null,
+              ].filter(Boolean)
+
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setPicked(t)}
+                  className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-gray-900">{t.name}</p>
+                    {t.video_url && (
+                      <a
+                        href={t.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="flex-shrink-0 text-gray-400 hover:text-sage-700 transition-colors"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                    <span className="text-xs text-gray-400 capitalize">{t.type}</span>
+                    {t.description && <span className="text-xs text-gray-400">· {t.description}</span>}
+                    {t.device && (
+                      <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{t.device}</span>
+                    )}
+                    {t.test_id && (
+                      <span className="text-xs bg-sage-50 text-sage-600 px-1.5 py-0.5 rounded-full">% test</span>
+                    )}
+                  </div>
+                  {presetParts.length > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">{presetParts.join(' · ')}</p>
                   )}
-                </div>
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
