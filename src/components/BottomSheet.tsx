@@ -25,7 +25,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-lg leading-none"
-            aria-label="Close"
+            title="Close" aria-label="Close"
           >
             ×
           </button>

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
-import { Trash2, Pencil } from 'lucide-react'
+import { Trash2, Pencil, LogOut } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
 import {
@@ -82,7 +83,7 @@ export function ProfilePage() {
           <button
             onClick={() => fileInputRef.current?.click()}
             className="absolute bottom-0 right-0 w-7 h-7 bg-sage-700 rounded-full flex items-center justify-center text-white text-sm"
-            aria-label="Change photo"
+            title="Change photo" aria-label="Change photo"
           >
             ✎
           </button>
@@ -257,6 +258,18 @@ export function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Log out */}
+      <div className="flex justify-center pt-2 pb-4">
+        <button
+          onClick={() => supabase.auth.signOut()}
+          title="Log out"
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <LogOut size={15} />
+          Log out
+        </button>
+      </div>
 
       {/* Admin sections */}
       {profile?.is_admin && (

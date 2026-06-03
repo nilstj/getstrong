@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
@@ -116,15 +116,7 @@ export function SessionDetailPage() {
   return (
     <div className="p-4 pb-32 space-y-4">
       <div className="flex items-start justify-between">
-        <div className="flex items-start gap-2">
-          <Link
-            to="/sessions"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0 mt-0.5"
-            aria-label="Back to sessions"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <div>
+        <div>
           <h1 className="text-xl font-bold">{session.location}</h1>
           <p className="text-gray-500 text-sm">{session.date}</p>
           {session.duration_minutes && (
@@ -148,11 +140,11 @@ export function SessionDetailPage() {
               label={sessionPartners.length > 0 ? 'Edit partners' : 'Tag friends'}
             />
           </div>
-          </div>
         </div>
         <Link
           to={`/sessions/${id}/edit`}
           className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0"
+          title="Edit session"
           aria-label="Edit session"
         >
           <Pencil size={16} />

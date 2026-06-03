@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Bell, LogOut } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { Bell, ArrowLeft } from 'lucide-react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { BottomSheet } from './BottomSheet'
 import { useReceivedFollowRequests, useAcceptFollowRequest, useDeclineFollowRequest } from '../hooks/useFollows'
 import { useReceivedChallenges } from '../hooks/useChallenges'
@@ -10,8 +9,16 @@ import { useMyHypeCount } from '../hooks/useOnWall'
 import { useProfile } from '../hooks/useProfile'
 import toast from 'react-hot-toast'
 
+const TOP_LEVEL_PATHS = ['/dashboard', '/sessions', '/challenges', '/profile']
+
+function isTopLevel(pathname: string) {
+  return TOP_LEVEL_PATHS.some(p => pathname === p || pathname === p + '/')
+}
+
 export function AppBar() {
   const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const { data: followRequests = [] } = useReceivedFollowRequests()
   const { data: challengeInvitations = [] } = useReceivedChallenges()
@@ -19,32 +26,37 @@ export function AppBar() {
   const { data: hypeCount = 0 } = useMyHypeCount()
 
   const total = followRequests.length + challengeInvitations.length + taggedSessions.length + (hypeCount > 0 ? 1 : 0)
+  const onSubPage = !isTopLevel(location.pathname)
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#f7f5f0] border-b border-gray-200 h-12 flex items-center px-4 justify-between">
-        <Link to="/dashboard" className="text-base font-black tracking-tight text-sage-800">GetStrong</Link>
-        <div className="flex items-center gap-1">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[#f7f5f0] border-b border-gray-200 h-12 flex items-center px-2 justify-between">
+        {onSubPage ? (
           <button
-            onClick={() => setOpen(true)}
-            className="relative w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors"
-            aria-label="Notifications"
+            onClick={() => navigate(-1)}
+            title="Go back"
+            aria-label="Go back"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors"
           >
-            <Bell size={20} strokeWidth={1.75} />
-            {total > 0 && (
-              <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
-                {total > 9 ? '9+' : total}
-              </span>
-            )}
+            <ArrowLeft size={20} />
           </button>
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            aria-label="Log out"
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
+        ) : (
+          <Link to="/dashboard" className="px-2 text-base font-black tracking-tight text-sage-800">GetStrong</Link>
+        )}
+
+        <button
+          onClick={() => setOpen(true)}
+          title="Notifications"
+          aria-label="Notifications"
+          className="relative w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors"
+        >
+          <Bell size={20} strokeWidth={1.75} />
+          {total > 0 && (
+            <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+              {total > 9 ? '9+' : total}
+            </span>
+          )}
+        </button>
       </header>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title="Notifications">
@@ -90,7 +102,6 @@ function NotificationList({
 
   return (
     <div className="space-y-4">
-      {/* Friend requests */}
       {followRequests.length > 0 && (
         <section>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Friend Requests</p>
@@ -98,7 +109,6 @@ function NotificationList({
             {followRequests.map(req => (
               <FriendRequestNotif
                 key={req.id}
-                requestId={req.id}
                 requesterId={req.requester_id}
                 onAccept={() => acceptRequest.mutate(
                   { requestId: req.id, requesterId: req.requester_id },
@@ -112,7 +122,6 @@ function NotificationList({
         </section>
       )}
 
-      {/* Challenge invitations */}
       {challengeInvitations.length > 0 && (
         <section>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Challenge Invitations</p>
@@ -124,16 +133,13 @@ function NotificationList({
                 className="w-full text-left bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3"
               >
                 <p className="font-semibold text-sm text-sage-900">{inv.challenges?.title ?? 'Challenge'}</p>
-                <p className="text-xs text-sage-600 mt-0.5">
-                  from {inv.profiles?.username ?? 'someone'} · tap to view
-                </p>
+                <p className="text-xs text-sage-600 mt-0.5">from {inv.profiles?.username ?? 'someone'} · tap to view</p>
               </button>
             ))}
           </div>
         </section>
       )}
 
-      {/* Tagged in sessions */}
       {taggedSessions.length > 0 && (
         <section>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Training Sessions</p>
@@ -145,7 +151,6 @@ function NotificationList({
         </section>
       )}
 
-      {/* Hype */}
       {hypeCount > 0 && (
         <section>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Hype</p>
@@ -163,7 +168,7 @@ function NotificationList({
 function FriendRequestNotif({
   requesterId, onAccept, onDecline, isPending,
 }: {
-  requestId?: string; requesterId: string
+  requesterId: string
   onAccept: () => void; onDecline: () => void; isPending: boolean
 }) {
   const { data: profile } = useProfile(requesterId)
@@ -194,7 +199,7 @@ function TaggedSessionNotif({ ownerUserId, location, date }: { ownerUserId: stri
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3">
       <p className="text-sm text-gray-700">
-        <span className="font-semibold">{profile?.username ?? '…'}</span> tagged you in a session at{' '}
+        <span className="font-semibold">{profile?.username ?? '…'}</span> tagged you at{' '}
         <span className="font-semibold">{location}</span>
       </p>
       <p className="text-xs text-gray-400 mt-0.5">{date}</p>

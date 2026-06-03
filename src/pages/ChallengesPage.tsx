@@ -127,7 +127,7 @@ export function ChallengesPage() {
                   <button
                     onClick={e => { e.stopPropagation(); setEditing(challenge) }}
                     className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    aria-label="Edit challenge"
+                    title="Edit challenge" aria-label="Edit challenge"
                   >
                     <Pencil size={14} />
                   </button>
@@ -139,7 +139,7 @@ export function ChallengesPage() {
                       }
                     }}
                     className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                    aria-label="Delete challenge"
+                    title="Delete challenge" aria-label="Delete challenge"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -554,7 +554,7 @@ function CommentItem({
             <button
               onClick={onDelete}
               className="ml-auto w-6 h-6 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
-              aria-label="Delete comment"
+              title="Delete comment" aria-label="Delete comment"
             >
               <Trash2 size={12} />
             </button>
