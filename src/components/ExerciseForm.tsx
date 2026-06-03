@@ -20,6 +20,8 @@ interface ExerciseFormProps {
   initialName?: string
   initialType?: 'reps' | 'time'
   initialTestId?: string | null
+  initialSets?: number | null
+  initialReps?: number | null
   existing?: Exercise
 }
 
@@ -29,14 +31,16 @@ export function ExerciseForm({
   initialName = '',
   initialType = 'reps',
   initialTestId = null,
+  initialSets,
+  initialReps,
   existing,
 }: ExerciseFormProps) {
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
       name: existing?.name ?? initialName,
       type: existing?.type ?? initialType,
-      sets: existing?.sets ?? 3,
-      reps: existing?.reps ?? 10,
+      sets: existing?.sets ?? initialSets ?? 3,
+      reps: existing?.reps ?? initialReps ?? 10,
       duration_seconds: existing?.duration_seconds ?? 30,
       weight_kg: existing?.weight_kg ?? '',
       notes: existing?.notes ?? '',
