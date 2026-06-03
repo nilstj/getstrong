@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ExternalLink } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import type { Exercise } from '../types'
 import { useMyLatestTestResult } from '../hooks/useStrengthTests'
@@ -80,10 +79,9 @@ export function ExerciseForm({
           href={videoUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 text-sm text-sage-700 font-medium"
+          className="inline-flex items-center gap-1.5 text-sm text-sage-800 font-medium"
         >
-          <ExternalLink size={14} />
-          Watch video
+          ▶ Watch video
         </a>
       )}
       <div>

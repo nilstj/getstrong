@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { Pencil, Trash2, ExternalLink } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
@@ -255,19 +255,17 @@ export function SessionDetailPage() {
               <div key={exercise.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{exercise.name}</p>
-                      {template?.video_url && (
-                        <a
-                          href={template.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gray-400 hover:text-sage-700 transition-colors"
-                        >
-                          <ExternalLink size={13} />
-                        </a>
-                      )}
-                    </div>
+                    <p className="font-medium">{exercise.name}</p>
+                    {template?.video_url && (
+                      <a
+                        href={template.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-sage-800 font-medium mt-0.5 inline-block"
+                      >
+                        ▶ Video
+                      </a>
+                    )}
                     <p className="text-gray-400 text-sm">
                       {exercise.sets != null && `${exercise.sets} sets × `}
                       {exercise.type === 'reps'
@@ -732,20 +730,7 @@ function ExerciseSelector({
                   onClick={() => setPicked(t)}
                   className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors cursor-pointer"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-gray-900">{t.name}</p>
-                    {t.video_url && (
-                      <a
-                        href={t.video_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="flex-shrink-0 text-gray-400 hover:text-sage-700 transition-colors"
-                      >
-                        <ExternalLink size={14} />
-                      </a>
-                    )}
-                  </div>
+                  <p className="font-medium text-gray-900">{t.name}</p>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
                     <span className="text-xs text-gray-400 capitalize">{t.type}</span>
                     {t.description && <span className="text-xs text-gray-400">· {t.description}</span>}
@@ -758,6 +743,17 @@ function ExerciseSelector({
                   </div>
                   {presetParts.length > 0 && (
                     <p className="text-xs text-gray-400 mt-1">{presetParts.join(' · ')}</p>
+                  )}
+                  {t.video_url && (
+                    <a
+                      href={t.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-xs text-sage-800 font-medium mt-1 inline-block"
+                    >
+                      ▶ Video
+                    </a>
                   )}
                 </div>
               )
