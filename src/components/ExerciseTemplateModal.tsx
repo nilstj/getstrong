@@ -34,7 +34,7 @@ export function ExerciseTemplateModal({ template, tests, onSave, onClose, isSavi
       video_url: videoUrl.trim() || null,
       device: device.trim() || null,
       preset_sets: presetSets ? parseInt(presetSets, 10) : null,
-      preset_reps: presetReps ? parseInt(presetReps, 10) : null,
+      preset_reps: type === 'reps' && presetReps ? parseInt(presetReps, 10) : null,
       preset_pause_seconds: presetPause ? parseInt(presetPause, 10) : null,
       preset_rest_seconds: presetRest ? parseInt(presetRest, 10) : null,
     })
