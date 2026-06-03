@@ -58,7 +58,7 @@ export function DashboardPage() {
   if (error) return <div className="p-4 text-red-600">Failed to load dashboard.</div>
   if (!data) return null
 
-  const { sessions, problems, gradeMappings } = data
+  const { sessions, problems } = data
   const recentSessions = sessions.slice(0, 5)
 
   const completedCount = completedChallenges.length
