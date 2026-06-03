@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
@@ -116,7 +116,15 @@ export function SessionDetailPage() {
   return (
     <div className="p-4 pb-32 space-y-4">
       <div className="flex items-start justify-between">
-        <div>
+        <div className="flex items-start gap-2">
+          <Link
+            to="/sessions"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0 mt-0.5"
+            aria-label="Back to sessions"
+          >
+            <ArrowLeft size={18} />
+          </Link>
+          <div>
           <h1 className="text-xl font-bold">{session.location}</h1>
           <p className="text-gray-500 text-sm">{session.date}</p>
           {session.duration_minutes && (
@@ -139,42 +147,16 @@ export function SessionDetailPage() {
               isSaving={setSessionPartners.isPending}
               label={sessionPartners.length > 0 ? 'Edit partners' : 'Tag friends'}
             />
-
+          </div>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Link
-            to={`/sessions/${id}/edit`}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-            aria-label="Edit session"
-          >
-            <Pencil size={16} />
-          </Link>
-          {confirmDelete ? (
-            <div className="flex items-center gap-2 ml-1">
-              <button
-                onClick={() => deleteSession.mutate(id!, {
-                  onSuccess: () => navigate('/sessions'),
-                  onError: () => { toast.error('Failed to delete session'); setConfirmDelete(false) },
-                })}
-                className="text-xs text-red-600 font-semibold"
-              >
-                Confirm
-              </button>
-              <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400">
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              aria-label="Delete session"
-            >
-              <Trash2 size={16} />
-            </button>
-          )}
-        </div>
+        <Link
+          to={`/sessions/${id}/edit`}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0"
+          aria-label="Edit session"
+        >
+          <Pencil size={16} />
+        </Link>
       </div>
 
       {problems.length > 0 && (
@@ -350,6 +332,35 @@ export function SessionDetailPage() {
           Nothing logged yet. Tap + to add a problem or exercise.
         </p>
       )}
+
+      {/* Delete session — low prominence, at the bottom */}
+      <div className="pt-4 pb-2 flex justify-center">
+        {confirmDelete ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => deleteSession.mutate(id!, {
+                onSuccess: () => navigate('/sessions'),
+                onError: () => { toast.error('Failed to delete'); setConfirmDelete(false) },
+              })}
+              disabled={deleteSession.isPending}
+              className="text-sm text-red-600 font-semibold disabled:opacity-50"
+            >
+              {deleteSession.isPending ? 'Deleting…' : 'Confirm delete'}
+            </button>
+            <button onClick={() => setConfirmDelete(false)} className="text-sm text-gray-400">
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            <Trash2 size={13} />
+            Delete session
+          </button>
+        )}
+      </div>
 
       <FAB onClick={() => setSheetOpen(true)} label="Add problem or exercise" />
 
