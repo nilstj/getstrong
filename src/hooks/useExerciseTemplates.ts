@@ -19,7 +19,7 @@ export function useExerciseTemplates() {
 export function useCreateExerciseTemplate() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (values: Pick<ExerciseTemplate, 'name' | 'type' | 'description' | 'test_id'>) => {
+    mutationFn: async (values: Pick<ExerciseTemplate, 'name' | 'type' | 'description' | 'test_id' | 'video_url' | 'device' | 'preset_sets' | 'preset_reps' | 'preset_pause_seconds' | 'preset_rest_seconds'>) => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
       const { data, error } = await supabase
@@ -39,7 +39,7 @@ export function useCreateExerciseTemplate() {
 export function useUpdateExerciseTemplate() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...values }: Pick<ExerciseTemplate, 'id' | 'name' | 'type' | 'description' | 'test_id'>) => {
+    mutationFn: async ({ id, ...values }: Pick<ExerciseTemplate, 'id' | 'name' | 'type' | 'description' | 'test_id' | 'video_url' | 'device' | 'preset_sets' | 'preset_reps' | 'preset_pause_seconds' | 'preset_rest_seconds'>) => {
       const { data, error } = await supabase
         .from('exercise_templates')
         .update(values)
