@@ -107,6 +107,12 @@ export interface ExerciseTemplate {
   type: ExerciseType
   description: string | null
   test_id: string | null
+  video_url: string | null
+  device: string | null
+  preset_sets: number | null
+  preset_reps: number | null
+  preset_pause_seconds: number | null
+  preset_rest_seconds: number | null
   created_by: string
   created_at: string
 }
