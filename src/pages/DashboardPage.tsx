@@ -7,20 +7,14 @@ import { useProfile } from '../hooks/useProfile'
 import { useFollowing } from '../hooks/useFollows'
 import { useSetOnWall, useFriendsOnWall, useSendHype, useMyHypeCount } from '../hooks/useOnWall'
 import { SessionCard } from '../components/SessionCard'
-import { GradeProgressionChart } from '../components/GradeProgressionChart'
-import { SessionFrequencyChart } from '../components/SessionFrequencyChart'
 import {
   totalSessions,
   totalProblems,
   totalSends,
   sendRate,
-  hardestSentPerSession,
-  sessionsByWeek,
 } from '../utils/stats'
 import { BottomSheet } from '../components/BottomSheet'
 import { ReactionBar } from '../components/ReactionBar'
-import { ClimbingDNA } from '../components/ClimbingDNA'
-import { useMyTagStats, useProblemTagDefinitions } from '../hooks/useProblemTags'
 import { useMyTaggedSessions } from '../hooks/usePartners'
 import { useAuth } from '../providers/AuthProvider'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
@@ -50,8 +44,6 @@ export function DashboardPage() {
   const { data: following = [] } = useFollowing()
   const followingIds = following.map(f => f.following_id)
   const { data: friendsActivity = [] } = useFriendsWeeklyActivity()
-  const { data: tagStats = [] } = useMyTagStats()
-  const { data: allTagDefs = [] } = useProblemTagDefinitions()
   const { data: taggedSessions = [] } = useMyTaggedSessions()
   const { data: friendsOnWall = [] } = useFriendsOnWall(followingIds)
   const { data: myHypeCount = 0 } = useMyHypeCount()
@@ -67,8 +59,6 @@ export function DashboardPage() {
   if (!data) return null
 
   const { sessions, problems, gradeMappings } = data
-  const gradeData = hardestSentPerSession(sessions, problems, gradeMappings)
-  const weekData = sessionsByWeek(sessions)
   const recentSessions = sessions.slice(0, 5)
 
   const completedCount = completedChallenges.length
@@ -252,23 +242,6 @@ export function DashboardPage() {
       {friendsActivity.length >= 2 && (
         <PowerRankings activity={friendsActivity} />
       )}
-
-      {/* Climbing DNA */}
-      {allTagDefs.length > 0 && (
-        <ClimbingDNA tagStats={tagStats} allTags={allTagDefs} />
-      )}
-
-      {/* Grade Progression */}
-      <div>
-        <h2 className="text-base font-bold mb-3">Grade Progression</h2>
-        <GradeProgressionChart data={gradeData} gradeScale={gradeScale} mappings={gradeMappings} />
-      </div>
-
-      {/* Sessions per Week */}
-      <div>
-        <h2 className="text-base font-bold mb-3">Sessions per Week</h2>
-        <SessionFrequencyChart data={weekData} />
-      </div>
 
       {/* Recent Sessions */}
       <div>
