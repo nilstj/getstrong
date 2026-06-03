@@ -709,11 +709,10 @@ function ExerciseSelector({
               ].filter(Boolean)
 
               return (
-                <button
+                <div
                   key={t.id}
-                  type="button"
                   onClick={() => setPicked(t)}
-                  className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors"
+                  className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-gray-900">{t.name}</p>
@@ -742,7 +741,7 @@ function ExerciseSelector({
                   {presetParts.length > 0 && (
                     <p className="text-xs text-gray-400 mt-1">{presetParts.join(' · ')}</p>
                   )}
-                </button>
+                </div>
               )
             })}
           </div>
