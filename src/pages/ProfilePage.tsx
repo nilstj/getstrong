@@ -13,7 +13,7 @@ import { useExerciseTemplates, useCreateExerciseTemplate, useUpdateExerciseTempl
 import { useStrengthTests, useCreateStrengthTest, useUpdateStrengthTest, useDeleteStrengthTest } from '../hooks/useStrengthTests'
 import { useProblemTagDefinitions, useCreateProblemTagDefinition, useDeleteProblemTagDefinition } from '../hooks/useProblemTags'
 import toast from 'react-hot-toast'
-import type { ExerciseType } from '../types'
+import { ExerciseTemplateModal } from '../components/ExerciseTemplateModal'
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -518,29 +518,25 @@ function ExerciseLibraryAdmin() {
   const createTemplate = useCreateExerciseTemplate()
   const updateTemplate = useUpdateExerciseTemplate()
   const deleteTemplate = useDeleteExerciseTemplate()
-  const [name, setName] = useState('')
-  const [type, setType] = useState<ExerciseType>('reps')
-  const [description, setDescription] = useState('')
-  const [testId, setTestId] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editType, setEditType] = useState<ExerciseType>('reps')
-  const [editDesc, setEditDesc] = useState('')
-  const [editTestId, setEditTestId] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<import('../types').ExerciseTemplate | null>(null)
 
-  const startEdit = (t: import('../types').ExerciseTemplate) => {
-    setEditingId(t.id); setEditName(t.name); setEditType(t.type); setEditDesc(t.description ?? ''); setEditTestId(t.test_id ?? '')
-  }
+  const openAdd = () => { setEditingTemplate(null); setModalOpen(true) }
+  const openEdit = (t: import('../types').ExerciseTemplate) => { setEditingTemplate(t); setModalOpen(true) }
+  const closeModal = () => { setModalOpen(false); setEditingTemplate(null) }
 
-  const handleAdd = () => {
-    if (!name.trim()) return
-    createTemplate.mutate(
-      { name: name.trim(), type, description: description.trim() || null, test_id: testId || null },
-      {
-        onSuccess: () => { setName(''); setDescription(''); setTestId(''); toast.success('Exercise added') },
-        onError: () => toast.error('Failed to add exercise'),
-      },
-    )
+  const handleSave = (values: Omit<import('../types').ExerciseTemplate, 'id' | 'created_by' | 'created_at'>) => {
+    if (editingTemplate) {
+      updateTemplate.mutate(
+        { id: editingTemplate.id, ...values },
+        { onSuccess: () => { closeModal(); toast.success('Exercise updated') }, onError: () => toast.error('Failed') }
+      )
+    } else {
+      createTemplate.mutate(
+        values,
+        { onSuccess: () => { closeModal(); toast.success('Exercise added') }, onError: () => toast.error('Failed to add exercise') }
+      )
+    }
   }
 
   return (
@@ -553,81 +549,40 @@ function ExerciseLibraryAdmin() {
         )}
         {templates.map(t => (
           <div key={t.id} className="bg-gray-50 rounded-2xl px-4 py-3">
-            {editingId === t.id ? (
-              <div className="space-y-2">
-                <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Exercise name" />
-                <div className="flex rounded-xl overflow-hidden border">
-                  {(['reps', 'time'] as const).map(v => (
-                    <button key={v} type="button" onClick={() => setEditType(v)}
-                      className={`flex-1 py-1.5 text-sm font-medium transition-colors ${editType === v ? 'bg-sage-700 text-white' : 'bg-white text-gray-600'}`}>
-                      {v === 'reps' ? 'Reps' : 'Time'}
-                    </button>
-                  ))}
-                </div>
-                <input value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Description (optional)" />
-                {tests.length > 0 && (
-                  <select value={editTestId} onChange={e => setEditTestId(e.target.value)} className="w-full border rounded-xl px-3 py-2 text-sm">
-                    <option value="">No linked test</option>
-                    {tests.map(ts => <option key={ts.id} value={ts.id}>{ts.name} ({ts.unit})</option>)}
-                  </select>
-                )}
-                <div className="flex gap-2">
-                  <button onClick={() => setEditingId(null)} className="flex-1 py-1.5 text-sm border border-gray-200 rounded-xl text-gray-600">Cancel</button>
-                  <button
-                    onClick={() => updateTemplate.mutate(
-                      { id: t.id, name: editName.trim(), type: editType, description: editDesc.trim() || null, test_id: editTestId || null },
-                      { onSuccess: () => { setEditingId(null); toast.success('Exercise updated') }, onError: () => toast.error('Failed') }
-                    )}
-                    disabled={!editName.trim() || updateTemplate.isPending}
-                    className="flex-1 py-1.5 text-sm bg-sage-700 text-white rounded-xl font-semibold disabled:opacity-50"
-                  >
-                    {updateTemplate.isPending ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">{t.name}</p>
+                <p className="text-xs text-gray-400 capitalize">
+                  {t.type}
+                  {t.description ? ` · ${t.description}` : ''}
+                  {t.test_id && ` · % ${tests.find(ts => ts.id === t.test_id)?.name ?? 'test'}`}
+                </p>
               </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-sm">{t.name}</p>
-                  <p className="text-xs text-gray-400 capitalize">
-                    {t.type}
-                    {t.description ? ` · ${t.description}` : ''}
-                    {t.test_id && ` · % ${tests.find(ts => ts.id === t.test_id)?.name ?? 'test'}`}
-                  </p>
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => startEdit(t)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"><Pencil size={14} /></button>
-                  <button onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
-                </div>
+              <div className="flex gap-1">
+                <button onClick={() => openEdit(t)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"><Pencil size={14} /></button>
+                <button onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
               </div>
-            )}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="border rounded-2xl p-4 space-y-3">
-        <p className="text-sm font-medium text-gray-700">Add Exercise</p>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Exercise name" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
-        <div className="flex rounded-lg overflow-hidden border">
-          {(['reps', 'time'] as const).map(t => (
-            <button key={t} type="button" onClick={() => setType(t)}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${type === t ? 'bg-sage-700 text-white' : 'bg-white text-gray-600'}`}>
-              {t === 'reps' ? 'Reps' : 'Time'}
-            </button>
-          ))}
-        </div>
-        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full border rounded-lg px-3 py-2.5 text-sm" />
-        {tests.length > 0 && (
-          <select value={testId} onChange={e => setTestId(e.target.value)} className="w-full border rounded-lg px-3 py-2.5 text-sm">
-            <option value="">No linked test</option>
-            {tests.map(t => <option key={t.id} value={t.id}>{t.name} ({t.unit})</option>)}
-          </select>
-        )}
-        <button onClick={handleAdd} disabled={!name.trim() || createTemplate.isPending}
-          className="w-full bg-sage-700 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">
-          {createTemplate.isPending ? 'Adding...' : 'Add to Library'}
-        </button>
-      </div>
+      <button
+        onClick={openAdd}
+        className="w-full border-2 border-dashed border-gray-300 rounded-2xl py-3 text-sm text-gray-500 hover:border-gray-400 hover:text-sage-800 transition-colors"
+      >
+        + Add Exercise
+      </button>
+
+      {modalOpen && (
+        <ExerciseTemplateModal
+          template={editingTemplate}
+          tests={tests}
+          onSave={handleSave}
+          onClose={closeModal}
+          isSaving={createTemplate.isPending || updateTemplate.isPending}
+        />
+      )}
     </div>
   )
 }
