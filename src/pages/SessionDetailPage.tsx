@@ -72,6 +72,7 @@ export function SessionDetailPage() {
   const logTestResult = useLogTestResult()
   const deleteTestResult = useDeleteTestResult()
   const { data: myProfile } = useProfile()
+  const { data: templates = [] } = useExerciseTemplates()
   const { data: problemTagsMap = {} } = useSessionProblemTags(problems.map(p => p.id))
   const { data: sessionPartners = [] } = useSessionPartners(id!)
   const setSessionPartners = useSetSessionPartners(id!)
@@ -248,11 +249,25 @@ export function SessionDetailPage() {
         <div>
           <h2 className="text-base font-semibold mb-2">Exercises ({exercises.length})</h2>
           <div className="space-y-2">
-            {exercises.map(exercise => (
+            {exercises.map(exercise => {
+              const template = templates.find(t => t.name === exercise.name)
+              return (
               <div key={exercise.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-medium">{exercise.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{exercise.name}</p>
+                      {template?.video_url && (
+                        <a
+                          href={template.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-400 hover:text-sage-700 transition-colors"
+                        >
+                          <ExternalLink size={13} />
+                        </a>
+                      )}
+                    </div>
                     <p className="text-gray-400 text-sm">
                       {exercise.sets != null && `${exercise.sets} sets × `}
                       {exercise.type === 'reps'
@@ -279,7 +294,8 @@ export function SessionDetailPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -671,6 +687,7 @@ function ExerciseSelector({
     const initialTestId = picked === 'custom' ? null : picked.test_id
     const initialSets = picked === 'custom' ? undefined : picked.preset_sets ?? undefined
     const initialReps = picked === 'custom' ? undefined : picked.preset_reps ?? undefined
+    const videoUrl = picked === 'custom' ? undefined : picked.video_url ?? undefined
     return (
       <div>
         <button
@@ -687,6 +704,7 @@ function ExerciseSelector({
           initialTestId={initialTestId}
           initialSets={initialSets}
           initialReps={initialReps}
+          videoUrl={videoUrl}
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
         />

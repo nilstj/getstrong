@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ExternalLink } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import type { Exercise } from '../types'
 import { useMyLatestTestResult } from '../hooks/useStrengthTests'
@@ -22,6 +23,7 @@ interface ExerciseFormProps {
   initialTestId?: string | null
   initialSets?: number | null
   initialReps?: number | null
+  videoUrl?: string | null
   existing?: Exercise
 }
 
@@ -33,6 +35,7 @@ export function ExerciseForm({
   initialTestId = null,
   initialSets,
   initialReps,
+  videoUrl,
   existing,
 }: ExerciseFormProps) {
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
@@ -72,6 +75,17 @@ export function ExerciseForm({
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-4">
+      {videoUrl && (
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-sm text-sage-700 font-medium"
+        >
+          <ExternalLink size={14} />
+          Watch video
+        </a>
+      )}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Exercise Name</label>
         <input
