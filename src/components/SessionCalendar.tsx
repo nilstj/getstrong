@@ -5,7 +5,7 @@ import {
   isSameMonth, isSameDay, isToday,
   addMonths, subMonths, addYears, subYears, getDay,
 } from 'date-fns'
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarClock } from 'lucide-react'
 import type { Session, Problem } from '../types'
 import { INTENSITY_OPTIONS } from '../types'
 
@@ -136,8 +136,11 @@ export function SessionCalendar({ sessions, problems }: Props) {
                   {/* Session dots */}
                   <div className="flex gap-0.5 mt-0.5 h-1">
                     {daySessions.slice(0, 3).map((s, i) => {
+                      const planned = s.date > new Date().toISOString().split('T')[0]
                       const intensity = INTENSITY_OPTIONS.find(o => o.value === s.intensity)
-                      return (
+                      return planned ? (
+                        <span key={i} className={`w-1 h-1 rounded-sm ${isSelected ? 'bg-white/70' : 'bg-sage-400'}`} />
+                      ) : (
                         <span
                           key={i}
                           className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/70' : intensity ? '' : 'bg-sage-500'}`}
@@ -164,9 +167,19 @@ export function SessionCalendar({ sessions, problems }: Props) {
                   <Link
                     key={s.id}
                     to={`/sessions/${s.id}`}
-                    className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 hover:bg-sage-50 transition-colors"
+                    className={`flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors ${
+                      s.date > new Date().toISOString().split('T')[0]
+                        ? 'bg-sage-50 border border-sage-200 border-dashed hover:bg-sage-100'
+                        : 'bg-gray-50 hover:bg-sage-50'
+                    }`}
                   >
                     <div>
+                      {s.date > new Date().toISOString().split('T')[0] && (
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <CalendarClock size={10} className="text-sage-600" />
+                          <span className="text-[10px] font-bold text-sage-700 uppercase tracking-wide">Planned</span>
+                        </div>
+                      )}
                       <p className="font-semibold text-sm text-gray-900">{s.location}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {s.duration_minutes && (

@@ -142,10 +142,10 @@ function NotificationList({
 
       {taggedSessions.length > 0 && (
         <section>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Training Sessions</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Sessions</p>
           <div className="space-y-2">
             {taggedSessions.map(s => (
-              <TaggedSessionNotif key={s.sessionId} ownerUserId={s.ownerUserId} location={s.location} date={s.date} />
+              <TaggedSessionNotif key={s.sessionId} ownerUserId={s.ownerUserId} location={s.location} date={s.date} isPlanned={(s as any).isPlanned} />
             ))}
           </div>
         </section>
@@ -194,15 +194,16 @@ function FriendRequestNotif({
   )
 }
 
-function TaggedSessionNotif({ ownerUserId, location, date }: { ownerUserId: string; location: string; date: string }) {
+function TaggedSessionNotif({ ownerUserId, location, date, isPlanned }: { ownerUserId: string; location: string; date: string; isPlanned?: boolean }) {
   const { data: profile } = useProfile(ownerUserId)
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3">
+    <div className={`border rounded-2xl px-4 py-3 ${isPlanned ? 'bg-sage-50 border-sage-200' : 'bg-gray-50 border-gray-200'}`}>
       <p className="text-sm text-gray-700">
-        <span className="font-semibold">{profile?.username ?? '…'}</span> tagged you at{' '}
+        <span className="font-semibold">{profile?.username ?? '…'}</span>{' '}
+        {isPlanned ? 'invited you to a session at' : 'tagged you at'}{' '}
         <span className="font-semibold">{location}</span>
       </p>
-      <p className="text-xs text-gray-400 mt-0.5">{date}</p>
+      <p className="text-xs text-gray-400 mt-0.5">{date}{isPlanned ? ' · Planned' : ''}</p>
     </div>
   )
 }

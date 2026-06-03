@@ -150,11 +150,13 @@ export function useMyTaggedSessions() {
       if (sErr) throw sErr
       if (!sessions || sessions.length === 0) return []
 
+      const today = new Date().toISOString().split('T')[0]
       return sessions.map(s => ({
         sessionId: s.id as string,
         location: s.location as string,
         date: s.date as string,
         ownerUserId: s.user_id as string,
+        isPlanned: (s.date as string) > today,
       }))
     },
     enabled: !!user?.id,

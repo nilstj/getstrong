@@ -18,6 +18,8 @@ import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStreng
 import { useProfile } from '../hooks/useProfile'
 import { useSessionProblemTags } from '../hooks/useProblemTags'
 import { INTENSITY_OPTIONS } from '../types'
+import { isPlannedSession } from '../components/SessionCard'
+import { CalendarClock } from 'lucide-react'
 import {
   useSessionPartners, useSetSessionPartners,
   useProblemPartners, useSetProblemPartners,
@@ -113,8 +115,27 @@ export function SessionDetailPage() {
     )
   }
 
+  const planned = isPlannedSession(session.date)
+
   return (
     <div className="p-4 pb-32 space-y-4">
+      {/* Planned session banner */}
+      {planned && (
+        <div className="bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <CalendarClock size={20} className="text-sage-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-sage-800">Planned Session</p>
+            <p className="text-xs text-sage-600">Invite friends to join you</p>
+          </div>
+          <PartnerPicker
+            currentPartnerIds={sessionPartners}
+            onSave={ids => setSessionPartners.mutate(ids)}
+            isSaving={setSessionPartners.isPending}
+            label={sessionPartners.length > 0 ? `${sessionPartners.length} invited` : 'Invite'}
+          />
+        </div>
+      )}
+
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold">{session.location}</h1>
@@ -131,15 +152,17 @@ export function SessionDetailPage() {
             ) : null
           })()}
           {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
-          <div className="flex items-center gap-2 mt-2">
-            <PartnerAvatars partnerIds={sessionPartners} />
-            <PartnerPicker
-              currentPartnerIds={sessionPartners}
-              onSave={ids => setSessionPartners.mutate(ids)}
-              isSaving={setSessionPartners.isPending}
-              label={sessionPartners.length > 0 ? 'Edit partners' : 'Tag friends'}
-            />
-          </div>
+          {!planned && (
+            <div className="flex items-center gap-2 mt-2">
+              <PartnerAvatars partnerIds={sessionPartners} />
+              <PartnerPicker
+                currentPartnerIds={sessionPartners}
+                onSave={ids => setSessionPartners.mutate(ids)}
+                isSaving={setSessionPartners.isPending}
+                label={sessionPartners.length > 0 ? 'Edit partners' : 'Tag friends'}
+              />
+            </div>
+          )}
         </div>
         <Link
           to={`/sessions/${id}/edit`}
