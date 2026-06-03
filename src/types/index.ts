@@ -18,6 +18,7 @@ export interface Session {
   location: string
   duration_minutes: number | null
   intensity: SessionIntensity | null
+  goal: string | null
   notes: string | null
   created_at: string
 }

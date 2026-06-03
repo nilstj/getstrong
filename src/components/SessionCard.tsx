@@ -35,8 +35,11 @@ export function SessionCard({ session, problems }: SessionCardProps) {
               </span>
             )}
           </div>
-          <p className={`font-semibold mt-0.5 ${planned ? 'text-sage-800' : 'text-sage-800'}`}>{session.location}</p>
-          <p className="text-sm text-gray-500 mt-0.5">{session.date}</p>
+          <p className="font-semibold mt-0.5 text-sage-800">{session.location}</p>
+          {session.goal && (
+            <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">🎯 {session.goal}</p>
+          )}
+          <p className="text-sm text-gray-400 mt-0.5">{session.date}</p>
           {session.duration_minutes && (
             <p className="text-sm text-gray-400">{session.duration_minutes} min</p>
           )}

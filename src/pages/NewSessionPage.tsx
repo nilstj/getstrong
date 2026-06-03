@@ -9,6 +9,7 @@ import type { SessionIntensity } from '../types'
 type FormValues = {
   date: string
   location: string
+  goal: string
   duration_minutes: string
   notes: string
 }
@@ -21,6 +22,7 @@ export function NewSessionPage() {
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       location: '',
+      goal: '',
       duration_minutes: '',
       notes: '',
     },
@@ -31,6 +33,7 @@ export function NewSessionPage() {
       {
         date: values.date,
         location: values.location,
+        goal: values.goal || null,
         duration_minutes: values.duration_minutes ? parseInt(values.duration_minutes) : null,
         intensity,
         notes: values.notes || null,
@@ -61,6 +64,17 @@ export function NewSessionPage() {
             type="text"
             placeholder="Gym name, Kilter Board, crag..."
             className="w-full border rounded-lg px-3 py-2.5"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Session Goal <span className="text-red-400">*</span>
+          </label>
+          <textarea
+            {...register('goal', { required: true })}
+            rows={2}
+            placeholder="What do you want to accomplish? e.g. Work on crimpy problems, focus on footwork"
+            className="w-full border rounded-lg px-3 py-2.5 text-sm"
           />
         </div>
         <div>
@@ -95,7 +109,7 @@ export function NewSessionPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
           <textarea
             {...register('notes')}
-            rows={3}
+            rows={2}
             className="w-full border rounded-lg px-3 py-2.5"
           />
         </div>

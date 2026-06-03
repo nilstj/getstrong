@@ -9,6 +9,7 @@ import type { SessionIntensity } from '../types'
 type FormValues = {
   date: string
   location: string
+  goal: string
   duration_minutes: string
   notes: string
 }
@@ -26,6 +27,7 @@ export function EditSessionPage() {
       reset({
         date: session.date,
         location: session.location,
+        goal: session.goal ?? '',
         duration_minutes: session.duration_minutes?.toString() ?? '',
         notes: session.notes ?? '',
       })
@@ -42,6 +44,7 @@ export function EditSessionPage() {
         id: id!,
         date: values.date,
         location: values.location,
+        goal: values.goal || null,
         duration_minutes: values.duration_minutes ? parseInt(values.duration_minutes) : null,
         intensity,
         notes: values.notes || null,
@@ -71,6 +74,17 @@ export function EditSessionPage() {
             {...register('location', { required: true })}
             type="text"
             className="w-full border rounded-lg px-3 py-2.5"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Session Goal <span className="text-red-400">*</span>
+          </label>
+          <textarea
+            {...register('goal', { required: true })}
+            rows={2}
+            placeholder="What do you want to accomplish?"
+            className="w-full border rounded-lg px-3 py-2.5 text-sm"
           />
         </div>
         <div>
@@ -104,7 +118,7 @@ export function EditSessionPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
           <textarea
             {...register('notes')}
-            rows={3}
+            rows={2}
             className="w-full border rounded-lg px-3 py-2.5"
           />
         </div>

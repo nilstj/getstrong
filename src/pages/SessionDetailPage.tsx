@@ -139,6 +139,9 @@ export function SessionDetailPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold">{session.location}</h1>
+          {session.goal && (
+            <p className="text-sm font-medium text-sage-700 mt-0.5">🎯 {session.goal}</p>
+          )}
           <p className="text-gray-500 text-sm">{session.date}</p>
           {session.duration_minutes && (
             <p className="text-gray-400 text-sm">{session.duration_minutes} min</p>
