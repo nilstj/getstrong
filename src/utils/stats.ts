@@ -80,7 +80,7 @@ export function hardestSentPerSession(
         .filter(p => boardFilter === undefined ? true : p.board === boardFilter)
 
       const fontGrades = sent
-        .map(p => normalizeToFont(p.grade_system, p.grade_value, mappings))
+        .map(p => p.grade_value_font ?? normalizeToFont(p.grade_system, p.grade_value, mappings))
         .filter((g): g is string => g !== null)
         .filter(g => fontGradeToIndex(g) !== -1)
 
