@@ -71,6 +71,7 @@ export function DashboardPage() {
           setPlannedAt('')
           setWallMode('now')
         },
+        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed to announce'),
       }
     )
   }
