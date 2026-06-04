@@ -1,12 +1,19 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trophy } from 'lucide-react'
+import { Trophy, CalendarDays } from 'lucide-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useMyCompletedChallenges, useReceivedChallenges } from '../hooks/useChallenges'
 import { useFriendsWeeklyActivity } from '../hooks/useFriendsActivity'
 import { useProfile } from '../hooks/useProfile'
 import { useFollowing } from '../hooks/useFollows'
-import { useSetOnWall, useFriendsOnWall, useSendHype, useMyHypeCount } from '../hooks/useOnWall'
+import { useSendHype, useMyHypeCount } from '../hooks/useOnWall'
+import {
+  useMyAnnouncement, useCreateAnnouncement, useClearAnnouncement,
+  useFriendsAnnouncements, useJoinAnnouncement, useUnjoinAnnouncement, useMyJoins,
+} from '../hooks/useWallAnnouncements'
+import type { WallAnnouncement } from '../hooks/useWallAnnouncements'
+import { useMySessionLocations } from '../hooks/useSessions'
+import { format } from 'date-fns'
 import {
   totalSessions,
   totalProblems,
@@ -31,14 +38,46 @@ export function DashboardPage() {
   const followingIds = following.map(f => f.following_id)
   const { data: friendsActivity = [] } = useFriendsWeeklyActivity()
   const { data: taggedSessions = [] } = useMyTaggedSessions()
-  const { data: friendsOnWall = [] } = useFriendsOnWall(followingIds)
   const { data: myHypeCount = 0 } = useMyHypeCount()
-  const setOnWall = useSetOnWall()
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null)
-  const [wallLabelInput, setWallLabelInput] = useState('')
-  const [showWallInput, setShowWallInput] = useState(false)
   const gradeScale = myProfile?.grade_preference ?? 'font'
-  const isOnWall = !!myProfile?.on_wall_at
+
+  const { data: myAnnouncement } = useMyAnnouncement()
+  const createAnnouncement = useCreateAnnouncement()
+  const clearAnnouncement = useClearAnnouncement()
+  const { data: friendsAnnouncements = [] } = useFriendsAnnouncements(followingIds)
+  const { data: myJoins = new Set<string>() } = useMyJoins()
+  const { data: sessionLocations = [] } = useMySessionLocations()
+
+  const [showWallInput, setShowWallInput] = useState(false)
+  const [locationInput, setLocationInput] = useState('')
+  const [labelInput, setLabelInput] = useState('')
+  const [wallMode, setWallMode] = useState<'now' | 'plan'>('now')
+  const [plannedAt, setPlannedAt] = useState('')
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
+
+  const isLive = !!myAnnouncement && new Date(myAnnouncement.starts_at) <= new Date()
+  const isPlanned = !!myAnnouncement && new Date(myAnnouncement.starts_at) > new Date()
+
+  const handleCreateAnnouncement = () => {
+    const starts_at = wallMode === 'now' ? new Date().toISOString() : new Date(plannedAt).toISOString()
+    createAnnouncement.mutate(
+      { location: locationInput.trim(), label: labelInput.trim() || null, starts_at },
+      {
+        onSuccess: () => {
+          setShowWallInput(false)
+          setLocationInput('')
+          setLabelInput('')
+          setPlannedAt('')
+          setWallMode('now')
+        },
+      }
+    )
+  }
+
+  const filteredLocations = locationInput.length > 0
+    ? sessionLocations.filter(l => l.toLowerCase().includes(locationInput.toLowerCase()))
+    : sessionLocations.slice(0, 5)
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (error) return <div className="p-4 text-red-600">Failed to load dashboard.</div>
@@ -50,55 +89,112 @@ export function DashboardPage() {
   return (
     <div className="p-4 space-y-5 pb-28">
       {/* On the Wall */}
-      {isOnWall ? (
+      {isLive && myAnnouncement ? (
         <div className="bg-sage-700 text-white rounded-2xl px-4 py-3 flex items-center gap-3">
           <span className="text-xl animate-bounce">🧗</span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">You're on the wall!</p>
-            {myProfile?.on_wall_label && (
-              <p className="text-xs text-white/60 truncate">{myProfile.on_wall_label}</p>
+            <p className="text-sm font-semibold">{myAnnouncement.location}</p>
+            {myAnnouncement.label && (
+              <p className="text-xs text-white/60 truncate">{myAnnouncement.label}</p>
             )}
             {myHypeCount > 0 && (
               <p className="text-xs text-yellow-300 font-medium mt-0.5">🔥 {myHypeCount} hype{myHypeCount !== 1 ? 's' : ''}!</p>
             )}
           </div>
           <button
-            onClick={() => setOnWall.mutate(null, { onSuccess: () => toast.success('Status cleared') })}
+            onClick={() => clearAnnouncement.mutate(myAnnouncement.id)}
             className="text-xs text-white/60 hover:text-white font-medium"
           >
             Done
           </button>
         </div>
+      ) : isPlanned && myAnnouncement ? (
+        <div className="bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <CalendarDays size={20} className="text-sage-700 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-sage-800">{myAnnouncement.location}</p>
+            <p className="text-xs text-sage-600">
+              {format(new Date(myAnnouncement.starts_at), 'EEE d MMM, HH:mm')}
+              {myAnnouncement.wall_joins.length > 0 && ` · ${myAnnouncement.wall_joins.length} joining`}
+            </p>
+            {myAnnouncement.label && (
+              <p className="text-xs text-sage-500 truncate">{myAnnouncement.label}</p>
+            )}
+          </div>
+          <button
+            onClick={() => clearAnnouncement.mutate(myAnnouncement.id)}
+            className="text-xs text-sage-600 hover:text-sage-800 font-medium"
+          >
+            Cancel
+          </button>
+        </div>
       ) : showWallInput ? (
         <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 space-y-2">
+          <div className="relative">
+            <input
+              autoFocus
+              value={locationInput}
+              onChange={e => { setLocationInput(e.target.value); setShowLocationSuggestions(true) }}
+              onFocus={() => setShowLocationSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 150)}
+              placeholder="Gym or crag (e.g. Boulder World)"
+              className="w-full text-sm bg-white border border-gray-200 rounded-xl px-3 py-2"
+            />
+            {showLocationSuggestions && filteredLocations.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                {filteredLocations.map(loc => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onMouseDown={() => { setLocationInput(loc); setShowLocationSuggestions(false) }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    {loc}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <input
-            autoFocus
-            value={wallLabelInput}
-            onChange={e => setWallLabelInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                setOnWall.mutate(wallLabelInput || 'On the wall', {
-                  onSuccess: () => { setShowWallInput(false); setWallLabelInput('') },
-                })
-              }
-              if (e.key === 'Escape') setShowWallInput(false)
-            }}
-            placeholder="What are you projecting? (e.g. Green V7 at Boulders)"
+            value={labelInput}
+            onChange={e => setLabelInput(e.target.value)}
+            placeholder="What are you working on? (optional)"
             className="w-full text-sm bg-white border border-gray-200 rounded-xl px-3 py-2"
           />
+          <div className="flex rounded-xl overflow-hidden border">
+            {(['now', 'plan'] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setWallMode(m)}
+                className={`flex-1 py-1.5 text-sm font-medium transition-colors ${wallMode === m ? 'bg-sage-700 text-white' : 'bg-white text-gray-600'}`}
+              >
+                {m === 'now' ? '🧗 Now' : '📅 Plan'}
+              </button>
+            ))}
+          </div>
+          {wallMode === 'plan' && (
+            <input
+              type="datetime-local"
+              value={plannedAt}
+              onChange={e => setPlannedAt(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full text-sm bg-white border border-gray-200 rounded-xl px-3 py-2"
+            />
+          )}
           <div className="flex gap-2">
             <button
-              onClick={() => setShowWallInput(false)}
+              onClick={() => { setShowWallInput(false); setLocationInput(''); setLabelInput('') }}
               className="flex-1 py-1.5 text-sm text-gray-500 border border-gray-200 rounded-xl"
-            >Cancel</button>
+            >
+              Cancel
+            </button>
             <button
-              onClick={() => setOnWall.mutate(wallLabelInput || 'On the wall', {
-                onSuccess: () => { setShowWallInput(false); setWallLabelInput('') },
-              })}
-              disabled={setOnWall.isPending}
+              onClick={handleCreateAnnouncement}
+              disabled={!locationInput.trim() || (wallMode === 'plan' && !plannedAt) || createAnnouncement.isPending}
               className="flex-1 py-1.5 text-sm font-semibold bg-sage-700 text-white rounded-xl disabled:opacity-50"
             >
-              {setOnWall.isPending ? '…' : "I'm on the wall 🧗"}
+              {createAnnouncement.isPending ? '…' : wallMode === 'now' ? "I'm on the wall 🧗" : 'Plan session 📅'}
             </button>
           </div>
         </div>
@@ -186,7 +282,8 @@ export function DashboardPage() {
                     key={friend.userId}
                     friend={friend}
                     last={i === friendsActivity.length - 1}
-                    onWall={friendsOnWall.find(f => f.id === friend.userId) ?? null}
+                    announcement={friendsAnnouncements.find(a => a.user_id === friend.userId) ?? null}
+                    hasJoined={!!friendsAnnouncements.find(a => a.user_id === friend.userId && myJoins.has(a.id))}
                     onClick={() => setSelectedFriend(friend.userId)}
                   />
                 ))}
@@ -212,12 +309,23 @@ export function DashboardPage() {
   )
 }
 
-interface OnWallProfile { id: string; username: string | null; avatar_url: string | null; on_wall_at: string; on_wall_label: string | null }
-
-function FriendRow({ friend, last, onWall, onClick }: { friend: FriendWeeklySummary; last: boolean; onWall: OnWallProfile | null; onClick: () => void }) {
+function FriendRow({ friend, last, announcement, hasJoined, onClick }: {
+  friend: FriendWeeklySummary
+  last: boolean
+  announcement: WallAnnouncement | null
+  hasJoined: boolean
+  onClick: () => void
+}) {
   const { data: profile } = useProfile(friend.userId)
   const sendHype = useSendHype(friend.userId)
+  const joinAnnouncement = useJoinAnnouncement()
+  const unjoinAnnouncement = useUnjoinAnnouncement()
   if (!profile) return null
+
+  const now = new Date()
+  const isLiveAnnouncement = !!announcement && new Date(announcement.starts_at) <= now
+  const isPlannedAnnouncement = !!announcement && new Date(announcement.starts_at) > now
+
   return (
     <tr
       className={`cursor-pointer active:bg-gray-50 transition-colors ${last ? '' : 'border-b border-gray-100'}`}
@@ -231,17 +339,27 @@ function FriendRow({ friend, last, onWall, onClick }: { friend: FriendWeeklySumm
                 ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                 : profile.username?.[0]?.toUpperCase() ?? '?'}
             </div>
-            {onWall && (
+            {isLiveAnnouncement && (
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+            )}
+            {isPlannedAnnouncement && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-sage-500 rounded-full border-2 border-white flex items-center justify-center">
+                <CalendarDays size={6} className="text-white" />
+              </span>
             )}
           </div>
           <div className="min-w-0">
             <span className="font-medium text-gray-900 text-sm">{profile.username}</span>
-            {onWall && onWall.on_wall_label && (
-              <p className="text-[10px] text-green-600 truncate max-w-[100px]">{onWall.on_wall_label}</p>
+            {isLiveAnnouncement && announcement && (
+              <p className="text-[10px] text-green-600 truncate max-w-[100px]">{announcement.location}</p>
+            )}
+            {isPlannedAnnouncement && announcement && (
+              <p className="text-[10px] text-sage-600 truncate max-w-[100px]">
+                {format(new Date(announcement.starts_at), 'EEE HH:mm')} · {announcement.location}
+              </p>
             )}
           </div>
-          {onWall ? (
+          {isLiveAnnouncement ? (
             <button
               onClick={e => {
                 e.stopPropagation()
@@ -251,6 +369,25 @@ function FriendRow({ friend, last, onWall, onClick }: { friend: FriendWeeklySumm
               className="ml-auto text-xs bg-khaki-100 text-khaki-700 px-2 py-0.5 rounded-full font-semibold"
             >
               🔥 Hype
+            </button>
+          ) : isPlannedAnnouncement && announcement ? (
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                if (hasJoined) {
+                  unjoinAnnouncement.mutate(announcement.id)
+                } else {
+                  joinAnnouncement.mutate(announcement.id, { onSuccess: () => toast.success('Joined! 📅') })
+                }
+              }}
+              disabled={joinAnnouncement.isPending || unjoinAnnouncement.isPending}
+              className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold ${
+                hasJoined
+                  ? 'bg-sage-100 text-sage-700'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {hasJoined ? '✓ Joined' : '📅 Join'}
             </button>
           ) : (
             <span className="text-gray-300 ml-auto text-base">›</span>
