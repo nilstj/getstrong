@@ -10,7 +10,6 @@ import {
   totalSessions,
   totalProblems,
   totalSends,
-  sendRate,
 } from '../utils/stats'
 import { BottomSheet } from '../components/BottomSheet'
 import { ReactionBar } from '../components/ReactionBar'
@@ -166,7 +165,6 @@ const completedCount = completedChallenges.length
             { label: 'Sessions', value: totalSessions(sessions), to: '/sessions' },
             { label: 'Problems', value: totalProblems(problems), to: '/sessions' },
             { label: 'Sends', value: totalSends(problems), to: '/sessions' },
-            { label: 'Rate', value: `${sendRate(problems)}%`, to: '/sessions' },
           ].map(s => (
             <Link key={s.label} to={s.to} className="text-center px-2 first:pl-0 last:pr-0 active:opacity-60 transition-opacity">
               <p className="text-xl font-bold tracking-tight">{s.value}</p>
