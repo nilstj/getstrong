@@ -51,7 +51,7 @@ export function EditSessionPage() {
       },
       {
         onSuccess: () => navigate(`/sessions/${id}`),
-        onError: () => toast.error('Failed to update session'),
+        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed to update session'),
       },
     )
   }

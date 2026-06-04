@@ -76,7 +76,7 @@ export function useUpdateSession() {
         .eq('id', id)
         .select()
         .single()
-      if (error) throw error
+      if (error) throw new Error(error.message)
       return data as Session
     },
     onSuccess: (_, { id }) => {
