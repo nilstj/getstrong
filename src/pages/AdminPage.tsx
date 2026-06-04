@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trash2, Pencil, ChevronLeft } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
+import { useAppSetting, useUpdateAppSetting } from '../hooks/useAppSettings'
 import { useExerciseTemplates, useCreateExerciseTemplate, useUpdateExerciseTemplate, useDeleteExerciseTemplate } from '../hooks/useExerciseTemplates'
 import { useStrengthTests, useCreateStrengthTest, useUpdateStrengthTest, useDeleteStrengthTest } from '../hooks/useStrengthTests'
 import { useProblemTagDefinitions, useCreateProblemTagDefinition, useDeleteProblemTagDefinition } from '../hooks/useProblemTags'
@@ -31,9 +32,43 @@ export function AdminPage() {
         <h1 className="text-xl font-bold">Admin</h1>
       </div>
 
+      <CoachPromptAdmin />
       <ProblemTagsAdmin />
       <StrengthTestsAdmin />
       <ExerciseLibraryAdmin />
+    </div>
+  )
+}
+
+function CoachPromptAdmin() {
+  const { data: saved } = useAppSetting('coach_prompt')
+  const updateSetting = useUpdateAppSetting()
+  const [value, setValue] = useState('')
+
+  useEffect(() => { if (saved) setValue(saved) }, [saved])
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold mb-3">AI Coach Prompt</h2>
+      <p className="text-xs text-gray-400 mb-2">
+        The instruction sent to the AI. Use <code className="bg-gray-100 px-1 rounded">&#123;&#123;DATA&#125;&#125;</code> where the athlete's data should appear.
+      </p>
+      <textarea
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        rows={14}
+        className="w-full border rounded-xl px-3 py-2.5 text-sm font-mono leading-relaxed"
+      />
+      <button
+        onClick={() => updateSetting.mutate(
+          { key: 'coach_prompt', value },
+          { onSuccess: () => toast.success('Prompt saved'), onError: () => toast.error('Failed to save') }
+        )}
+        disabled={!value.trim() || updateSetting.isPending}
+        className="w-full mt-3 bg-sage-700 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+      >
+        {updateSetting.isPending ? 'Saving…' : 'Save Prompt'}
+      </button>
     </div>
   )
 }

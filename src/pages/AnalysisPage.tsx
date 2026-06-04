@@ -8,6 +8,7 @@ import { hardestSentPerSession, sessionsByWeek, sendRate, totalSends, totalProbl
 import { useAuth } from '../providers/AuthProvider'
 import { useRecentExercises } from '../hooks/useRecentExercises'
 import { useCoach } from '../hooks/useCoach'
+import { useAppSetting } from '../hooks/useAppSettings'
 import { subDays } from 'date-fns'
 import { RefreshCw, Sparkles } from 'lucide-react'
 
@@ -33,6 +34,7 @@ export function AnalysisPage() {
   const recentSessions90 = sessions.filter(s => new Date(s.date) >= subDays(new Date(), 90))
   const recentSessionIds = recentSessions90.map(s => s.id)
   const { data: recentExercises = [] } = useRecentExercises(recentSessionIds)
+  const { data: coachPrompt } = useAppSetting('coach_prompt')
   const { text: coachText, loading: coachLoading, error: coachError, trigger: triggerCoach } = useCoach()
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
@@ -48,7 +50,7 @@ export function AnalysisPage() {
   const recentProblems90 = problems.filter(p => recentSessionIdSet.has(p.session_id))
 
   const handleCoach = () => {
-    triggerCoach({ sessions: recentSessions90, problems: recentProblems90, exercises: recentExercises, tagStats, gradeScale })
+    triggerCoach({ sessions: recentSessions90, problems: recentProblems90, exercises: recentExercises, tagStats, gradeScale, promptTemplate: coachPrompt ?? undefined })
   }
 
   const boardCharts = BOARDS

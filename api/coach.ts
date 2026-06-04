@@ -16,10 +16,23 @@ interface TagStat { name: string; category: string; count: number }
 interface Payload {
   sessions: Session[]; problems: Problem[]; exercises: Exercise[]
   tagStats: TagStat[]; gradeScale: 'font' | 'v_scale'
+  promptTemplate?: string
 }
+
+const DEFAULT_INSTRUCTION = `You are an expert climbing coach. Analyze this athlete's last 90 days and provide a focused coaching report. Be specific and concise. Respond in exactly three sections with these exact headings:
+
+## Insights
+3-5 bullet points flagging patterns (grade trends, session frequency, strengths, weaknesses, recovery).
+
+## Training Recommendations
+What the athlete should prioritize over the next 2-4 weeks. Reference their weak move types, grade targets, and exercise gaps.
+
+## Next Session Plan
+A concrete session: warm-up, main exercises (sets/reps/load), problems to attempt (grade range per board), cool-down. Be specific.`
 
 function buildPrompt(payload: Payload): string {
   const { sessions, problems, exercises, tagStats, gradeScale } = payload
+  const instruction = payload.promptTemplate ?? DEFAULT_INSTRUCTION
 
   const cutoffMs = Date.now() - 90 * 24 * 60 * 60 * 1000
   const recentSessions = sessions.filter(s => new Date(s.date).getTime() >= cutoffMs)
@@ -63,16 +76,7 @@ function buildPrompt(payload: Payload): string {
   const strongTags = tagStats.slice(0, 6).map(t => t.name).join(', ') || 'none recorded'
   const weakTags = [...tagStats].reverse().slice(0, 6).map(t => t.name).join(', ') || 'none recorded'
 
-  return `You are an expert climbing coach. Analyze this athlete's last 90 days and provide a focused coaching report. Be specific and concise. Respond in exactly three sections with these exact headings:
-
-## Insights
-3-5 bullet points flagging patterns (grade trends, session frequency, strengths, weaknesses, recovery).
-
-## Training Recommendations
-What the athlete should prioritize over the next 2-4 weeks. Reference their weak move types, grade targets, and exercise gaps.
-
-## Next Session Plan
-A concrete session: warm-up, main exercises (sets/reps/load), problems to attempt (grade range per board), cool-down. Be specific.
+  return `${instruction}
 
 ---
 ATHLETE DATA (last 90 days):

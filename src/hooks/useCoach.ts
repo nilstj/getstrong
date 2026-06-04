@@ -8,6 +8,7 @@ export interface CoachPayload {
   exercises: Exercise[]
   tagStats: TagStat[]
   gradeScale: 'font' | 'v_scale'
+  promptTemplate?: string
 }
 
 export function useCoach() {
