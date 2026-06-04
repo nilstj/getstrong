@@ -66,11 +66,9 @@ export function AnalysisPage() {
   const recentProblems90 = problems.filter(p => recentSessionIdSet.has(p.session_id))
 
   const handleCoach = () => {
+    localStorage.setItem(COACH_STORAGE_KEY, String(Date.now()))
+    setOnCooldown(true)
     triggerCoach({ sessions: recentSessions90, problems: recentProblems90, exercises: recentExercises, tagStats, gradeScale, promptTemplate: coachPrompt ?? undefined })
-      .then(() => {
-        localStorage.setItem(COACH_STORAGE_KEY, String(Date.now()))
-        setOnCooldown(true)
-      })
   }
 
   const boardCharts = BOARDS
