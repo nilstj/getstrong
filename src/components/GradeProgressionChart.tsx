@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Dot } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts'
 import type { GradeDataPoint } from '../utils/stats'
 import type { GradeMapping } from '../types'
 import { FONT_GRADES_ORDERED } from '../utils/grades'
