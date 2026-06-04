@@ -6,7 +6,6 @@ import { useFriendsWeeklyActivity } from '../hooks/useFriendsActivity'
 import { useProfile } from '../hooks/useProfile'
 import { useFollowing } from '../hooks/useFollows'
 import { useSetOnWall, useFriendsOnWall, useSendHype, useMyHypeCount } from '../hooks/useOnWall'
-import { SessionCard } from '../components/SessionCard'
 import {
   totalSessions,
   totalProblems,
@@ -59,9 +58,7 @@ export function DashboardPage() {
   if (!data) return null
 
   const { sessions, problems } = data
-  const recentSessions = sessions.slice(0, 5)
-
-  const completedCount = completedChallenges.length
+const completedCount = completedChallenges.length
   const badge = getCurrentBadge(completedCount)
   const next = getNextBadge(completedCount)
 
@@ -243,26 +240,7 @@ export function DashboardPage() {
         <PowerRankings activity={friendsActivity} />
       )}
 
-      {/* Recent Sessions */}
-      <div>
-        <h2 className="text-base font-bold mb-2">Recent Sessions</h2>
-        <div className="space-y-2">
-          {recentSessions.map(session => (
-            <SessionCard
-              key={session.id}
-              session={session}
-              problems={problems.filter(p => p.session_id === session.id)}
-            />
-          ))}
-          {recentSessions.length === 0 && (
-            <p className="text-gray-400 text-sm text-center pt-4">
-              No sessions yet. Tap Log to get started.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {selectedFriend && (
+{selectedFriend && (
         <FriendDetailSheet
           userId={selectedFriend}
           gradeScale={gradeScale}
