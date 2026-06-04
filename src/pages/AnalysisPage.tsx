@@ -6,6 +6,10 @@ import { SessionFrequencyChart } from '../components/SessionFrequencyChart'
 import { ClimbingDNA } from '../components/ClimbingDNA'
 import { hardestSentPerSession, sessionsByWeek, sendRate, totalSends, totalProblems } from '../utils/stats'
 import { useAuth } from '../providers/AuthProvider'
+import { useRecentExercises } from '../hooks/useRecentExercises'
+import { useCoach } from '../hooks/useCoach'
+import { subDays } from 'date-fns'
+import { RefreshCw, Sparkles } from 'lucide-react'
 
 const BOARDS: { label: string; filter: string | null }[] = [
   { label: 'Kilterboard', filter: 'Kilterboard' },
@@ -22,15 +26,27 @@ export function AnalysisPage() {
   const { data: allTagDefs = [] } = useProblemTagDefinitions()
   const gradeScale = myProfile?.grade_preference ?? 'font'
 
+  const sessions = data?.sessions ?? []
+  const problems = data?.problems ?? []
+  const gradeMappings = data?.gradeMappings ?? []
+
+  const recentSessions90 = sessions.filter(s => new Date(s.date) >= subDays(new Date(), 90))
+  const recentSessionIds = recentSessions90.map(s => s.id)
+  const { data: recentExercises = [] } = useRecentExercises(recentSessionIds)
+  const { text: coachText, loading: coachLoading, error: coachError, trigger: triggerCoach } = useCoach()
+
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (error) return <div className="p-4 text-red-600">Failed to load analysis.</div>
   if (!data) return null
 
-  const { sessions, problems, gradeMappings } = data
   const weekData = sessionsByWeek(sessions)
   const rate = sendRate(problems)
   const sends = totalSends(problems)
   const total = totalProblems(problems)
+
+  const handleCoach = () => {
+    triggerCoach({ sessions, problems, exercises: recentExercises, tagStats, gradeScale })
+  }
 
   const boardCharts = BOARDS
     .map(b => ({ ...b, chartData: hardestSentPerSession(sessions, problems, gradeMappings, 3650, b.filter) }))
@@ -53,6 +69,48 @@ export function AnalysisPage() {
           <p className="text-2xl font-bold">{total}</p>
           <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">Problems</p>
         </div>
+      </div>
+
+      {/* AI Coaching */}
+      <div>
+        <button
+          onClick={handleCoach}
+          disabled={coachLoading}
+          className="w-full bg-sage-700 text-white py-3 rounded-2xl font-medium flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
+        >
+          {coachLoading ? (
+            <>
+              <RefreshCw size={16} className="animate-spin" />
+              Thinking…
+            </>
+          ) : (
+            <>
+              <Sparkles size={16} />
+              Get AI Coaching
+            </>
+          )}
+        </button>
+        {coachError && (
+          <p className="text-sm text-red-500 mt-2 text-center">{coachError}</p>
+        )}
+        {coachText && (
+          <div className="mt-3 bg-white border border-gray-200 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">AI Coach</p>
+              <button
+                onClick={handleCoach}
+                disabled={coachLoading}
+                className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40"
+                title="Regenerate"
+              >
+                <RefreshCw size={14} />
+              </button>
+            </div>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+              {coachText}
+            </div>
+          </div>
+        )}
       </div>
 
       {allTagDefs.length > 0 && (
