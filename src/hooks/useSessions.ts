@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Session } from '../types'
+import { useAuth } from '../providers/AuthProvider'
 
 export function useSessions() {
   return useQuery({
@@ -84,5 +85,25 @@ export function useUpdateSession() {
       queryClient.invalidateQueries({ queryKey: ['sessions', id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
+  })
+}
+
+export function useMySessionLocations() {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['session_locations', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('location')
+        .eq('user_id', user!.id)
+        .order('date', { ascending: false })
+      if (error) throw error
+      const seen = new Set<string>()
+      return (data ?? [])
+        .map(s => s.location as string)
+        .filter(loc => loc && !seen.has(loc) && !!seen.add(loc))
+    },
+    enabled: !!user?.id,
   })
 }
