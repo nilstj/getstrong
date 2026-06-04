@@ -62,7 +62,7 @@ function CoachPromptAdmin() {
       <button
         onClick={() => updateSetting.mutate(
           { key: 'coach_prompt', value },
-          { onSuccess: () => toast.success('Prompt saved'), onError: () => toast.error('Failed to save') }
+          { onSuccess: () => toast.success('Prompt saved'), onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed to save') }
         )}
         disabled={!value.trim() || updateSetting.isPending}
         className="w-full mt-3 bg-sage-700 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
