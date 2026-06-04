@@ -44,8 +44,11 @@ export function AnalysisPage() {
   const sends = totalSends(problems)
   const total = totalProblems(problems)
 
+  const recentSessionIdSet = new Set(recentSessionIds)
+  const recentProblems90 = problems.filter(p => recentSessionIdSet.has(p.session_id))
+
   const handleCoach = () => {
-    triggerCoach({ sessions, problems, exercises: recentExercises, tagStats, gradeScale })
+    triggerCoach({ sessions: recentSessions90, problems: recentProblems90, exercises: recentExercises, tagStats, gradeScale })
   }
 
   const boardCharts = BOARDS
