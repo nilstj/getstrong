@@ -208,7 +208,7 @@ const completedCount = completedChallenges.length
       {/* Friends activity this week */}
       {friendsActivity.length > 0 && (
         <div>
-          <h2 className="text-base font-bold mb-2">Friends this week</h2>
+          <h2 className="text-base font-bold mb-2">Friends Feed</h2>
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
