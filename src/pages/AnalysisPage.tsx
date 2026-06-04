@@ -33,7 +33,7 @@ export function AnalysisPage() {
   const total = totalProblems(problems)
 
   const boardCharts = BOARDS
-    .map(b => ({ ...b, chartData: hardestSentPerSession(sessions, problems, gradeMappings, 90, b.filter) }))
+    .map(b => ({ ...b, chartData: hardestSentPerSession(sessions, problems, gradeMappings, 3650, b.filter) }))
     .filter(b => b.chartData.length > 0)
 
   return (
