@@ -29,13 +29,8 @@ export function useCoach() {
         const body = await res.text().catch(() => '')
         throw new Error(body || `HTTP ${res.status}`)
       }
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        setText(prev => prev + decoder.decode(value, { stream: true }))
-      }
+      const result = await res.text()
+      setText(result)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setError(`AI coach error: ${msg}`)

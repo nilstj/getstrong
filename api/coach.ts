@@ -122,7 +122,7 @@ export default async function handler(req: Request): Promise<Response> {
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
-      stream: true,
+      stream: false,
       max_tokens: 1000,
       temperature: 0.7,
     }),
@@ -133,27 +133,10 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(`Groq error: ${err}`, { status: 503 })
   }
 
-  const reader = groqRes.body!.getReader()
-  const decoder = new TextDecoder()
-  const encoder = new TextEncoder()
+  const json = await groqRes.json() as { choices: { message: { content: string } }[] }
+  const content = json.choices?.[0]?.message?.content ?? ''
 
-  const stream = new ReadableStream({
-    async pull(controller) {
-      const { done, value } = await reader.read()
-      if (done) { controller.close(); return }
-      const text = decoder.decode(value, { stream: true })
-      for (const line of text.split('\n')) {
-        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue
-        try {
-          const json = JSON.parse(line.slice(6))
-          const content = json.choices?.[0]?.delta?.content
-          if (content) controller.enqueue(encoder.encode(content))
-        } catch { /* skip malformed chunks */ }
-      }
-    },
-  })
-
-  return new Response(stream, {
+  return new Response(content, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   })
 }
