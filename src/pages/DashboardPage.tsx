@@ -163,15 +163,15 @@ const completedCount = completedChallenges.length
         {/* Stats row */}
         <div className="grid grid-cols-4 divide-x divide-gray-100">
           {[
-            { label: 'Sessions', value: totalSessions(sessions) },
-            { label: 'Problems', value: totalProblems(problems) },
-            { label: 'Sends', value: totalSends(problems) },
-            { label: 'Rate', value: `${sendRate(problems)}%` },
+            { label: 'Sessions', value: totalSessions(sessions), to: '/sessions' },
+            { label: 'Problems', value: totalProblems(problems), to: '/sessions' },
+            { label: 'Sends', value: totalSends(problems), to: '/sessions' },
+            { label: 'Rate', value: `${sendRate(problems)}%`, to: '/sessions' },
           ].map(s => (
-            <div key={s.label} className="text-center px-2 first:pl-0 last:pr-0">
+            <Link key={s.label} to={s.to} className="text-center px-2 first:pl-0 last:pr-0 active:opacity-60 transition-opacity">
               <p className="text-xl font-bold tracking-tight">{s.value}</p>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">{s.label}</p>
-            </div>
+            </Link>
           ))}
         </div>
 
@@ -179,7 +179,7 @@ const completedCount = completedChallenges.length
         <div className="border-t border-gray-100 my-3" />
 
         {/* Challenge badge row */}
-        <div className="flex items-center gap-3">
+        <Link to="/challenges" className="flex items-center gap-3 active:opacity-60 transition-opacity">
           <div className="flex-1">
             <div className="flex items-baseline gap-1.5">
               <span className="text-xl font-bold">{completedCount}</span>
@@ -202,7 +202,7 @@ const completedCount = completedChallenges.length
               </div>
             )}
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Friends activity this week */}
