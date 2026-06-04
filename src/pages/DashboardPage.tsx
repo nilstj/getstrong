@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Trophy } from 'lucide-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useMyCompletedChallenges, useReceivedChallenges } from '../hooks/useChallenges'
 import { useFriendsWeeklyActivity } from '../hooks/useFriendsActivity'
@@ -19,19 +20,6 @@ import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
 import { useFriendWeeklyDetail } from '../hooks/useFriendsActivity'
 import toast from 'react-hot-toast'
 
-const BADGES = [
-  { threshold: 10, label: 'Sharma', emoji: '🏆', color: 'bg-yellow-50 border-yellow-300 text-yellow-800' },
-  { threshold: 5, label: 'Warrior', emoji: '⚔️', color: 'bg-orange-50 border-orange-300 text-orange-800' },
-  { threshold: 1, label: 'Noob', emoji: '🌱', color: 'bg-green-50 border-green-300 text-green-800' },
-]
-
-function getCurrentBadge(count: number) {
-  return BADGES.find(b => count >= b.threshold) ?? null
-}
-
-function getNextBadge(count: number) {
-  return [...BADGES].reverse().find(b => count < b.threshold) ?? null
-}
 
 export function DashboardPage() {
   const { data, isLoading, error } = useDashboard()
@@ -57,9 +45,7 @@ export function DashboardPage() {
   if (!data) return null
 
   const { sessions, problems } = data
-const completedCount = completedChallenges.length
-  const badge = getCurrentBadge(completedCount)
-  const next = getNextBadge(completedCount)
+  const completedCount = completedChallenges.length
 
   return (
     <div className="p-4 space-y-5 pb-28">
@@ -157,50 +143,27 @@ const completedCount = completedChallenges.length
         </div>
       )}
 
-      {/* Compact stats + badge row */}
+      {/* Stats row */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4">
-        {/* Stats row */}
         <div className="grid grid-cols-4 divide-x divide-gray-100">
           {[
             { label: 'Sessions', value: totalSessions(sessions), to: '/sessions' },
             { label: 'Problems', value: totalProblems(problems), to: '/sessions' },
             { label: 'Sends', value: totalSends(problems), to: '/sessions' },
           ].map(s => (
-            <Link key={s.label} to={s.to} className="text-center px-2 first:pl-0 last:pr-0 active:opacity-60 transition-opacity">
+            <Link key={s.label} to={s.to} className="text-center px-2 first:pl-0 active:opacity-60 transition-opacity">
               <p className="text-xl font-bold tracking-tight">{s.value}</p>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">{s.label}</p>
             </Link>
           ))}
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-gray-100 my-3" />
-
-        {/* Challenge badge row */}
-        <Link to="/challenges" className="flex items-center gap-3 active:opacity-60 transition-opacity">
-          <div className="flex-1">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-bold">{completedCount}</span>
-              <span className="text-xs text-gray-400">challenges done</span>
-              {badge && (
-                <span className={`ml-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${badge.color}`}>
-                  {badge.emoji} {badge.label}
-                </span>
-              )}
+          <Link to="/challenges" className="text-center px-2 active:opacity-60 transition-opacity">
+            <div className="flex items-center justify-center gap-1">
+              <Trophy size={16} className="text-gray-700" />
+              <p className="text-xl font-bold tracking-tight">{completedCount}</p>
             </div>
-            {next && (
-              <div className="mt-1.5">
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-sage-700 rounded-full transition-all"
-                    style={{ width: `${Math.min((completedCount / next.threshold) * 100, 100)}%` }}
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-0.5">{completedCount}/{next.threshold} to {next.label}</p>
-              </div>
-            )}
-          </div>
-        </Link>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">Challenges</p>
+          </Link>
+        </div>
       </div>
 
       {/* Friends activity this week */}
