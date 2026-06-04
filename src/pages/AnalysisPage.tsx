@@ -9,8 +9,22 @@ import { useAuth } from '../providers/AuthProvider'
 import { useRecentExercises } from '../hooks/useRecentExercises'
 import { useCoach } from '../hooks/useCoach'
 import { useAppSetting } from '../hooks/useAppSettings'
-import { subDays } from 'date-fns'
+import { subDays, formatDistanceToNow } from 'date-fns'
 import { RefreshCw, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+
+const COACH_STORAGE_KEY = 'lastCoachUsed'
+const COACH_COOLDOWN_MS = 24 * 60 * 60 * 1000
+
+function getLastCoachUsed(): Date | null {
+  const raw = localStorage.getItem(COACH_STORAGE_KEY)
+  return raw ? new Date(Number(raw)) : null
+}
+
+function isCoachOnCooldown(): boolean {
+  const last = getLastCoachUsed()
+  return !!last && Date.now() - last.getTime() < COACH_COOLDOWN_MS
+}
 
 const BOARDS: { label: string; filter: string | null }[] = [
   { label: 'Kilterboard', filter: 'Kilterboard' },
@@ -36,6 +50,8 @@ export function AnalysisPage() {
   const { data: recentExercises = [] } = useRecentExercises(recentSessionIds)
   const { data: coachPrompt } = useAppSetting('coach_prompt')
   const { text: coachText, loading: coachLoading, error: coachError, trigger: triggerCoach } = useCoach()
+  const [onCooldown, setOnCooldown] = useState(() => isCoachOnCooldown())
+  const lastUsed = getLastCoachUsed()
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (error) return <div className="p-4 text-red-600">Failed to load analysis.</div>
@@ -51,6 +67,10 @@ export function AnalysisPage() {
 
   const handleCoach = () => {
     triggerCoach({ sessions: recentSessions90, problems: recentProblems90, exercises: recentExercises, tagStats, gradeScale, promptTemplate: coachPrompt ?? undefined })
+      .then(() => {
+        localStorage.setItem(COACH_STORAGE_KEY, String(Date.now()))
+        setOnCooldown(true)
+      })
   }
 
   const boardCharts = BOARDS
@@ -80,13 +100,18 @@ export function AnalysisPage() {
       <div>
         <button
           onClick={handleCoach}
-          disabled={coachLoading}
+          disabled={coachLoading || onCooldown}
           className="w-full bg-sage-700 text-white py-3 rounded-2xl font-medium flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
         >
           {coachLoading ? (
             <>
               <RefreshCw size={16} className="animate-spin" />
               Thinking…
+            </>
+          ) : onCooldown ? (
+            <>
+              <Sparkles size={16} />
+              Used today — next in {lastUsed ? formatDistanceToNow(new Date(lastUsed.getTime() + COACH_COOLDOWN_MS)) : '24h'}
             </>
           ) : (
             <>
