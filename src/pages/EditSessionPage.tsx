@@ -77,11 +77,9 @@ export function EditSessionPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Session Goal <span className="text-red-400">*</span>
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Session Goal (optional)</label>
           <textarea
-            {...register('goal', { required: true })}
+            {...register('goal')}
             rows={2}
             placeholder="What do you want to accomplish?"
             className="w-full border rounded-lg px-3 py-2.5 text-sm"
