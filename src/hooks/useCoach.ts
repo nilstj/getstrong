@@ -25,7 +25,10 @@ export function useCoach() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        throw new Error(body || `HTTP ${res.status}`)
+      }
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       while (true) {
@@ -33,8 +36,9 @@ export function useCoach() {
         if (done) break
         setText(prev => prev + decoder.decode(value, { stream: true }))
       }
-    } catch {
-      setError("Couldn't reach AI coach. Try again.")
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setError(`AI coach error: ${msg}`)
     } finally {
       setLoading(false)
     }
