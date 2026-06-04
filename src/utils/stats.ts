@@ -57,13 +57,16 @@ export interface GradeDataPoint {
   fontGrade: string
   fontIndex: number
   vGrade: string | null
+  countAtMax: number
 }
 
+// boardFilter: undefined = all boards, null = no board (outdoor/gym), string = specific board
 export function hardestSentPerSession(
   sessions: Session[],
   problems: Problem[],
   mappings: GradeMapping[],
   days = 90,
+  boardFilter?: string | null,
 ): GradeDataPoint[] {
   const now = new Date()
   const cutoff = subDays(now, days)
@@ -72,8 +75,11 @@ export function hardestSentPerSession(
     .filter(s => new Date(s.date) >= cutoff)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .flatMap(session => {
-      const fontGrades = problems
+      const sent = problems
         .filter(p => p.session_id === session.id && p.sent)
+        .filter(p => boardFilter === undefined ? true : p.board === boardFilter)
+
+      const fontGrades = sent
         .map(p => normalizeToFont(p.grade_system, p.grade_value, mappings))
         .filter((g): g is string => g !== null)
         .filter(g => fontGradeToIndex(g) !== -1)
@@ -81,11 +87,15 @@ export function hardestSentPerSession(
       if (fontGrades.length === 0) return []
 
       const hardest = fontGrades.sort((a, b) => fontGradeToIndex(b) - fontGradeToIndex(a))[0]
+      const hardestIndex = fontGradeToIndex(hardest)
+      const countAtMax = fontGrades.filter(g => fontGradeToIndex(g) === hardestIndex).length
+
       return [{
         date: session.date,
         fontGrade: hardest,
-        fontIndex: fontGradeToIndex(hardest),
+        fontIndex: hardestIndex,
         vGrade: mappings.find(m => m.font_equivalent === hardest)?.v_scale ?? null,
+        countAtMax,
       }]
     })
 }
