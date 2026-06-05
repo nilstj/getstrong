@@ -12,6 +12,13 @@ export interface WallAnnouncement {
   wall_joins: { id: string }[]
 }
 
+export interface WallJoin {
+  id: string
+  announcement_id: string
+  user_id: string
+  created_at: string
+}
+
 const THREE_HOURS_AGO = () =>
   new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
 
@@ -151,5 +158,20 @@ export function useMyJoins() {
       return new Set((data ?? []).map(j => j.announcement_id as string))
     },
     enabled: !!user,
+  })
+}
+
+export function useAnnouncementJoiners(announcementId: string) {
+  return useQuery({
+    queryKey: ['wall_joins', announcementId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('wall_joins')
+        .select('*')
+        .eq('announcement_id', announcementId)
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      return (data ?? []) as WallJoin[]
+    },
   })
 }
