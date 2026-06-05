@@ -59,6 +59,11 @@ export function DashboardPage() {
   const isLive = !!myAnnouncement && new Date(myAnnouncement.starts_at) <= new Date()
   const isPlanned = !!myAnnouncement && new Date(myAnnouncement.starts_at) > new Date()
 
+  const now = new Date()
+  const liveFriends = friendsAnnouncements.filter(a => new Date(a.starts_at) <= now)
+  const plannedFriends = friendsAnnouncements.filter(a => new Date(a.starts_at) > now)
+  const friendWallLocations = [...new Set(friendsAnnouncements.map(a => a.location))]
+
   const handleCreateAnnouncement = () => {
     const starts_at = wallMode === 'now' ? new Date().toISOString() : new Date(plannedAt).toISOString()
     createAnnouncement.mutate(
@@ -224,6 +229,21 @@ export function DashboardPage() {
           </p>
           <span className="text-white/60 text-base">›</span>
         </Link>
+      )}
+
+      {/* Friends on the wall notification */}
+      {friendsAnnouncements.length > 0 && (
+        <div className="bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <span className="text-xl">🧗</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-sage-800">
+              {liveFriends.length > 0 && `${liveFriends.length} friend${liveFriends.length !== 1 ? 's' : ''} on the wall now`}
+              {liveFriends.length > 0 && plannedFriends.length > 0 && ' · '}
+              {plannedFriends.length > 0 && `${plannedFriends.length} planning a session`}
+            </p>
+            <p className="text-xs text-sage-600 truncate">{friendWallLocations.join(', ')}</p>
+          </div>
+        </div>
       )}
 
       {/* Tagged in sessions this week */}
