@@ -57,6 +57,14 @@ export function DashboardPage() {
   const [plannedAt, setPlannedAt] = useState('')
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<WallAnnouncement | null>(null)
+  const [dismissedHypeCount, setDismissedHypeCount] = useState<number>(
+    () => Number(localStorage.getItem('dismissedHypeCount') ?? 0)
+  )
+  const unseenHypes = myHypeCount - dismissedHypeCount
+  const dismissHypes = () => {
+    localStorage.setItem('dismissedHypeCount', String(myHypeCount))
+    setDismissedHypeCount(myHypeCount)
+  }
 
   const isLive = !!myAnnouncement && new Date(myAnnouncement.starts_at) <= new Date()
   const isPlanned = !!myAnnouncement && new Date(myAnnouncement.starts_at) > new Date()
@@ -100,8 +108,11 @@ export function DashboardPage() {
             {myAnnouncement.label && (
               <p className="text-xs text-white/60 truncate">{myAnnouncement.label}</p>
             )}
-            {myHypeCount > 0 && (
-              <p className="text-xs text-yellow-300 font-medium mt-0.5">🔥 {myHypeCount} hype{myHypeCount !== 1 ? 's' : ''}!</p>
+            {unseenHypes > 0 && (
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs text-yellow-300 font-medium">🔥 {unseenHypes} hype{unseenHypes !== 1 ? 's' : ''}!</p>
+                <button onClick={dismissHypes} className="text-xs text-white/40 hover:text-white/70 leading-none">×</button>
+              </div>
             )}
           </div>
           <button
