@@ -20,6 +20,7 @@ import {
   totalSends,
 } from '../utils/stats'
 import { BottomSheet } from '../components/BottomSheet'
+import { WallAnnouncementSheet } from '../components/WallAnnouncementSheet'
 import { ReactionBar } from '../components/ReactionBar'
 import { useMyTaggedSessions } from '../hooks/usePartners'
 import { useAuth } from '../providers/AuthProvider'
@@ -55,14 +56,10 @@ export function DashboardPage() {
   const [wallMode, setWallMode] = useState<'now' | 'plan'>('now')
   const [plannedAt, setPlannedAt] = useState('')
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<WallAnnouncement | null>(null)
 
   const isLive = !!myAnnouncement && new Date(myAnnouncement.starts_at) <= new Date()
   const isPlanned = !!myAnnouncement && new Date(myAnnouncement.starts_at) > new Date()
-
-  const now = new Date()
-  const liveFriends = friendsAnnouncements.filter(a => new Date(a.starts_at) <= now)
-  const plannedFriends = friendsAnnouncements.filter(a => new Date(a.starts_at) > now)
-  const friendWallLocations = [...new Set(friendsAnnouncements.map(a => a.location))]
 
   const handleCreateAnnouncement = () => {
     const starts_at = wallMode === 'now' ? new Date().toISOString() : new Date(plannedAt).toISOString()
@@ -233,17 +230,24 @@ export function DashboardPage() {
 
       {/* Friends on the wall notification */}
       {friendsAnnouncements.length > 0 && (
-        <div className="bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-          <span className="text-xl">🧗</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-sage-800">
-              {liveFriends.length > 0 && `${liveFriends.length} friend${liveFriends.length !== 1 ? 's' : ''} on the wall now`}
-              {liveFriends.length > 0 && plannedFriends.length > 0 && ' · '}
-              {plannedFriends.length > 0 && `${plannedFriends.length} planning a session`}
-            </p>
-            <p className="text-xs text-sage-600 truncate">{friendWallLocations.join(', ')}</p>
+        <>
+          <div className="bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3 space-y-1">
+            <p className="text-xs font-semibold text-sage-600 uppercase tracking-wide mb-1">Friends on the wall</p>
+            {friendsAnnouncements.map(a => (
+              <FriendAnnouncementRow
+                key={a.id}
+                announcement={a}
+                onClick={() => setSelectedAnnouncement(a)}
+              />
+            ))}
           </div>
-        </div>
+          {selectedAnnouncement && (
+            <WallAnnouncementSheet
+              announcement={selectedAnnouncement}
+              onClose={() => setSelectedAnnouncement(null)}
+            />
+          )}
+        </>
       )}
 
       {/* Tagged in sessions this week */}
@@ -327,6 +331,30 @@ export function DashboardPage() {
         />
       )}
     </div>
+  )
+}
+
+function FriendAnnouncementRow({ announcement, onClick }: { announcement: WallAnnouncement; onClick: () => void }) {
+  const { data: profile } = useProfile(announcement.user_id)
+  const isLive = new Date(announcement.starts_at) <= new Date()
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 text-left active:bg-sage-100 transition-colors px-1 py-1.5 rounded-xl"
+    >
+      <span className="text-base">{isLive ? '🧗' : '📅'}</span>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-sage-800">{profile?.username ?? '…'}</span>
+        <span className="text-sm text-sage-600"> · {announcement.location}</span>
+        {!isLive && (
+          <span className="text-xs text-sage-500 ml-1">
+            · {format(new Date(announcement.starts_at), 'EEE HH:mm')}
+          </span>
+        )}
+      </div>
+      <span className="text-sage-400 text-base">›</span>
+    </button>
   )
 }
 
