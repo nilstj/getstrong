@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Bell, ArrowLeft } from 'lucide-react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { BottomSheet } from './BottomSheet'
@@ -24,8 +24,16 @@ export function AppBar() {
   const { data: challengeInvitations = [] } = useReceivedChallenges()
   const { data: taggedSessions = [] } = useMyTaggedSessions()
   const { data: hypeCount = 0 } = useMyHypeCount()
+  const [dismissedHypeCount, setDismissedHypeCount] = useState(
+    () => Number(localStorage.getItem('dismissedHypeCount') ?? 0)
+  )
+  const unseenHypes = Math.max(0, hypeCount - dismissedHypeCount)
+  const dismissHypes = useCallback(() => {
+    localStorage.setItem('dismissedHypeCount', String(hypeCount))
+    setDismissedHypeCount(hypeCount)
+  }, [hypeCount])
 
-  const total = followRequests.length + challengeInvitations.length + taggedSessions.length + (hypeCount > 0 ? 1 : 0)
+  const total = followRequests.length + challengeInvitations.length + taggedSessions.length + (unseenHypes > 0 ? 1 : 0)
   const onSubPage = !isTopLevel(location.pathname)
 
   return (
@@ -64,7 +72,8 @@ export function AppBar() {
           followRequests={followRequests}
           challengeInvitations={challengeInvitations}
           taggedSessions={taggedSessions}
-          hypeCount={hypeCount}
+          unseenHypes={unseenHypes}
+          onDismissHypes={dismissHypes}
           onClose={() => setOpen(false)}
         />
       </BottomSheet>
@@ -76,20 +85,22 @@ function NotificationList({
   followRequests,
   challengeInvitations,
   taggedSessions,
-  hypeCount,
+  unseenHypes,
+  onDismissHypes,
   onClose,
 }: {
   followRequests: { id: string; requester_id: string }[]
   challengeInvitations: any[]
   taggedSessions: { sessionId: string; location: string; date: string; ownerUserId: string }[]
-  hypeCount: number
+  unseenHypes: number
+  onDismissHypes: () => void
   onClose: () => void
 }) {
   const acceptRequest = useAcceptFollowRequest()
   const declineRequest = useDeclineFollowRequest()
   const navigate = useNavigate()
 
-  const isEmpty = followRequests.length === 0 && challengeInvitations.length === 0 && taggedSessions.length === 0 && hypeCount === 0
+  const isEmpty = followRequests.length === 0 && challengeInvitations.length === 0 && taggedSessions.length === 0 && unseenHypes === 0
 
   if (isEmpty) {
     return (
@@ -151,13 +162,19 @@ function NotificationList({
         </section>
       )}
 
-      {hypeCount > 0 && (
+      {unseenHypes > 0 && (
         <section>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Hype</p>
-          <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3">
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
             <p className="font-semibold text-sm text-orange-800">
-              🔥 You got {hypeCount} hype{hypeCount !== 1 ? 's' : ''} while on the wall!
+              🔥 You got {unseenHypes} hype{unseenHypes !== 1 ? 's' : ''} while on the wall!
             </p>
+            <button
+              onClick={onDismissHypes}
+              className="text-orange-400 hover:text-orange-600 font-bold text-lg leading-none flex-shrink-0"
+            >
+              ×
+            </button>
           </div>
         </section>
       )}
