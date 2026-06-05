@@ -12,9 +12,13 @@ export function useDashboard() {
   return useQuery({
     queryKey: ['dashboard'],
     queryFn: async (): Promise<DashboardData> => {
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      const userId = authSession?.user.id
       const [sessionsRes, problemsRes, mappingsRes] = await Promise.all([
         supabase.from('sessions').select('*').order('date', { ascending: false }),
-        supabase.from('problems').select('*'),
+        userId
+          ? supabase.from('problems').select('*').eq('user_id', userId)
+          : Promise.resolve({ data: [], error: null }),
         supabase.from('grade_mappings').select('*'),
       ])
       if (sessionsRes.error) throw sessionsRes.error
