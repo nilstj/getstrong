@@ -231,7 +231,7 @@ export function ProfilePage() {
                 key={req.id}
                 requestId={req.id}
                 requesterId={req.requester_id}
-                onAccept={() => acceptRequest.mutate({ requestId: req.id, requesterId: req.requester_id }, { onSuccess: () => toast.success('Friend added!'), onError: () => toast.error('Failed') })}
+                onAccept={() => acceptRequest.mutate({ requestId: req.id, requesterId: req.requester_id }, { onSuccess: () => toast.success('Friend added!'), onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed') })}
                 onDecline={() => declineRequest.mutate(req.id, { onSuccess: () => toast.success('Request declined'), onError: () => toast.error('Failed') })}
                 isPending={acceptRequest.isPending || declineRequest.isPending}
               />

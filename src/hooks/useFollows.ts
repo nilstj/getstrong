@@ -115,7 +115,7 @@ export function useAcceptFollowRequest() {
       const { error: followErr } = await supabase
         .from('follows')
         .insert({ follower_id: requesterId, following_id: user!.id })
-      if (followErr) throw followErr
+      if (followErr) throw new Error(followErr.message)
       // Delete the request
       const { error: delErr } = await supabase
         .from('follow_requests')
