@@ -9,6 +9,8 @@ import { useReceivedChallenges } from '../hooks/useChallenges'
 import { useMyTaggedSessions } from '../hooks/usePartners'
 import { useMyHypeCount } from '../hooks/useOnWall'
 import { useProfile } from '../hooks/useProfile'
+import { useMyProblemCommentNotifs } from '../hooks/useProblemComments'
+import type { ProblemCommentNotif } from '../hooks/useProblemComments'
 import toast from 'react-hot-toast'
 
 const TOP_LEVEL_PATHS = ['/dashboard', '/sessions', '/challenges', '/profile']
@@ -46,7 +48,16 @@ export function AppBar() {
   const unseenProofVideos = proofVideos.filter(v => !lastSeenVideosAt || v.created_at > lastSeenVideosAt)
   const unseenVideoCount = unseenBetaVideos.length + unseenProofVideos.length
 
-  const total = followRequests.length + challengeInvitations.length + taggedSessions.length + (unseenHypes > 0 ? 1 : 0) + (unseenVideoCount > 0 ? 1 : 0)
+  const { data: trashTalkNotifs = [] } = useMyProblemCommentNotifs()
+  const [lastSeenTrashTalkAt, setLastSeenTrashTalkAt] = useState(
+    () => localStorage.getItem('lastSeenTrashTalkAt') ?? ''
+  )
+  const unseenTrashTalk = trashTalkNotifs.filter(
+    n => !lastSeenTrashTalkAt || n.created_at > lastSeenTrashTalkAt
+  )
+  const unseenTrashTalkCount = unseenTrashTalk.length
+
+  const total = followRequests.length + challengeInvitations.length + taggedSessions.length + (unseenHypes > 0 ? 1 : 0) + (unseenVideoCount > 0 ? 1 : 0) + (unseenTrashTalkCount > 0 ? 1 : 0)
   const onSubPage = !isTopLevel(location.pathname)
 
   return (
@@ -68,7 +79,9 @@ export function AppBar() {
         <button
           onClick={() => {
             setOpen(true)
-            localStorage.setItem('lastSeenVideosAt', new Date().toISOString())
+            const now = new Date().toISOString()
+            localStorage.setItem('lastSeenVideosAt', now)
+            localStorage.setItem('lastSeenTrashTalkAt', now)
           }}
           title="Notifications"
           aria-label="Notifications"
@@ -83,7 +96,11 @@ export function AppBar() {
         </button>
       </header>
 
-      <BottomSheet open={open} onClose={() => { setOpen(false); setLastSeenVideosAt(localStorage.getItem('lastSeenVideosAt') ?? '') }} title="Notifications">
+      <BottomSheet open={open} onClose={() => {
+        setOpen(false)
+        setLastSeenVideosAt(localStorage.getItem('lastSeenVideosAt') ?? '')
+        setLastSeenTrashTalkAt(localStorage.getItem('lastSeenTrashTalkAt') ?? '')
+      }} title="Notifications">
         <NotificationList
           followRequests={followRequests}
           challengeInvitations={challengeInvitations}
@@ -92,6 +109,7 @@ export function AppBar() {
           onDismissHypes={dismissHypes}
           betaVideos={unseenBetaVideos}
           proofVideos={unseenProofVideos}
+          trashTalkNotifs={unseenTrashTalk}
           onClose={() => setOpen(false)}
         />
       </BottomSheet>
@@ -107,6 +125,7 @@ function NotificationList({
   onDismissHypes,
   betaVideos,
   proofVideos,
+  trashTalkNotifs,
   onClose,
 }: {
   followRequests: { id: string; requester_id: string }[]
@@ -116,13 +135,14 @@ function NotificationList({
   onDismissHypes: () => void
   betaVideos: FriendBetaVideo[]
   proofVideos: FriendProofVideo[]
+  trashTalkNotifs: ProblemCommentNotif[]
   onClose: () => void
 }) {
   const acceptRequest = useAcceptFollowRequest()
   const declineRequest = useDeclineFollowRequest()
   const navigate = useNavigate()
 
-  const isEmpty = followRequests.length === 0 && challengeInvitations.length === 0 && taggedSessions.length === 0 && unseenHypes === 0 && betaVideos.length === 0 && proofVideos.length === 0
+  const isEmpty = followRequests.length === 0 && challengeInvitations.length === 0 && taggedSessions.length === 0 && unseenHypes === 0 && betaVideos.length === 0 && proofVideos.length === 0 && trashTalkNotifs.length === 0
 
   if (isEmpty) {
     return (
@@ -224,6 +244,17 @@ function NotificationList({
           </div>
         </section>
       )}
+
+      {trashTalkNotifs.length > 0 && (
+        <section>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Trash talk 🔥</p>
+          <div className="space-y-2">
+            {trashTalkNotifs.map(n => (
+              <TrashTalkNotifRow key={n.id} notif={n} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
@@ -289,5 +320,23 @@ function VideoNotifRow({ userId, videoUrl, label }: { userId: string; videoUrl: 
       </div>
       <span className="text-xs text-sage-700 font-medium flex-shrink-0">▶ Watch</span>
     </a>
+  )
+}
+
+function TrashTalkNotifRow({ notif }: { notif: ProblemCommentNotif }) {
+  const { data: profile } = useProfile(notif.user_id)
+  const grade = notif.problems?.grade_value_font ?? notif.problems?.color ?? '—'
+  const location = notif.problems?.sessions?.location ?? 'somewhere'
+  return (
+    <div className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3">
+      <p className="text-sm text-gray-700">
+        <span className="font-semibold">{profile?.username ?? '…'}</span>
+        {' said something about your '}
+        <span className="font-semibold">{grade}</span>
+        {' at '}
+        <span className="font-semibold">{location}</span>
+      </p>
+      <p className="text-xs text-gray-400 mt-0.5 truncate">"{notif.body}"</p>
+    </div>
   )
 }
