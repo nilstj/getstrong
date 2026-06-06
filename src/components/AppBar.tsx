@@ -42,7 +42,7 @@ export function AppBar() {
   const [lastSeenVideosAt, setLastSeenVideosAt] = useState(
     () => localStorage.getItem('lastSeenVideosAt') ?? ''
   )
-  const unseenBetaVideos = betaVideos.filter(v => !lastSeenVideosAt || v.updated_at > lastSeenVideosAt)
+  const unseenBetaVideos = betaVideos.filter(v => !lastSeenVideosAt || v.created_at > lastSeenVideosAt)
   const unseenProofVideos = proofVideos.filter(v => !lastSeenVideosAt || v.created_at > lastSeenVideosAt)
   const unseenVideoCount = unseenBetaVideos.length + unseenProofVideos.length
 
