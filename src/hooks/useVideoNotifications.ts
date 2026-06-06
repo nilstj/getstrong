@@ -7,6 +7,7 @@ export interface FriendBetaVideo {
   session_id: string
   beta_video_url: string
   created_at: string
+  updated_at: string
 }
 
 export interface FriendProofVideo {
@@ -28,11 +29,11 @@ export function useFriendBetaVideos(followingIds: string[]) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('problems')
-        .select('id, user_id, session_id, beta_video_url, created_at')
+        .select('id, user_id, session_id, beta_video_url, created_at, updated_at')
         .in('user_id', followingIds)
         .not('beta_video_url', 'is', null)
-        .gte('created_at', FORTY_EIGHT_HOURS_AGO())
-        .order('created_at', { ascending: false })
+        .gte('updated_at', FORTY_EIGHT_HOURS_AGO())
+        .order('updated_at', { ascending: false })
       if (error) throw error
       return (data ?? []) as FriendBetaVideo[]
     },

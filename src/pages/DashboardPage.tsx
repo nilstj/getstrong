@@ -567,6 +567,12 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                         {p.gym && <span className="text-xs text-gray-400">{p.gym}</span>}
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{p.attempts} attempt{p.attempts !== 1 ? 's' : ''}</p>
+                      {p.beta_video_url && (
+                        <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-sage-800 font-medium mt-0.5 inline-block">
+                          ▶ Beta video
+                        </a>
+                      )}
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <ReactionBar problemId={p.id} />
