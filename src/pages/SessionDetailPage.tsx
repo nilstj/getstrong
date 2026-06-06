@@ -28,6 +28,8 @@ import {
 import { PartnerPicker, PartnerAvatars } from '../components/PartnerPicker'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 import { ReactionBar } from '../components/ReactionBar'
+import { ProblemCommentThread } from '../components/ProblemCommentThread'
+import { useProblemCommentCounts } from '../hooks/useProblemComments'
 
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
@@ -55,6 +57,9 @@ export function SessionDetailPage() {
 
   const { data: session, isLoading } = useSession(id!)
   const { data: problems = [] } = useSessionProblems(id!)
+  const problemIds = problems.map(p => p.id)
+  const { data: commentCounts = {} } = useProblemCommentCounts(problemIds)
+  const [openCommentProblemId, setOpenCommentProblemId] = useState<string | null>(null)
   const { data: exercises = [] } = useSessionExercises(id!)
   const addProblem = useAddProblem()
   const updateProblem = useUpdateProblem()
@@ -239,6 +244,19 @@ export function SessionDetailPage() {
                 )}
                 <ProblemPartnerRow problemId={problem.id} />
                 <ReactionBar problemId={problem.id} compact />
+                <div className="flex items-center mt-1.5">
+                  <button
+                    onClick={() => setOpenCommentProblemId(
+                      openCommentProblemId === problem.id ? null : problem.id
+                    )}
+                    className="text-xs text-gray-400 hover:text-sage-700 transition-colors font-medium"
+                  >
+                    💬{(commentCounts[problem.id] ?? 0) > 0 ? ` ${commentCounts[problem.id]}` : ''}
+                  </button>
+                </div>
+                {openCommentProblemId === problem.id && (
+                  <ProblemCommentThread problemId={problem.id} />
+                )}
               </div>
             ))}
           </div>
