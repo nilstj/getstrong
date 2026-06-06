@@ -68,9 +68,7 @@ export function AppBar() {
         <button
           onClick={() => {
             setOpen(true)
-            const now = new Date().toISOString()
-            localStorage.setItem('lastSeenVideosAt', now)
-            setLastSeenVideosAt(now)
+            localStorage.setItem('lastSeenVideosAt', new Date().toISOString())
           }}
           title="Notifications"
           aria-label="Notifications"
@@ -85,7 +83,7 @@ export function AppBar() {
         </button>
       </header>
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Notifications">
+      <BottomSheet open={open} onClose={() => { setOpen(false); setLastSeenVideosAt(localStorage.getItem('lastSeenVideosAt') ?? '') }} title="Notifications">
         <NotificationList
           followRequests={followRequests}
           challengeInvitations={challengeInvitations}
