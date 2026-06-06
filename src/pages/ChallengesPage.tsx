@@ -366,9 +366,9 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
                 href={a.video_url!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block text-sm text-sage-800 truncate"
+                className="text-xs text-sage-800 font-medium inline-block"
               >
-                ▶ {a.video_url}
+                ▶ Proof video
               </a>
             ))}
           </div>
