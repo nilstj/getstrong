@@ -53,7 +53,7 @@ export function useFriendProofVideos(followingIds: string[]) {
         .gte('created_at', FORTY_EIGHT_HOURS_AGO())
         .order('created_at', { ascending: false })
       if (error) throw error
-      return (data ?? []) as FriendProofVideo[]
+      return (data ?? []) as unknown as FriendProofVideo[]
     },
     enabled: followingIds.length > 0,
   })

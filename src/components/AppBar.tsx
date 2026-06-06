@@ -2,7 +2,9 @@ import { useState, useCallback } from 'react'
 import { Bell, ArrowLeft } from 'lucide-react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { BottomSheet } from './BottomSheet'
-import { useReceivedFollowRequests, useAcceptFollowRequest, useDeclineFollowRequest } from '../hooks/useFollows'
+import { useReceivedFollowRequests, useAcceptFollowRequest, useDeclineFollowRequest, useFollowing } from '../hooks/useFollows'
+import { useFriendBetaVideos, useFriendProofVideos } from '../hooks/useVideoNotifications'
+import type { FriendBetaVideo, FriendProofVideo } from '../hooks/useVideoNotifications'
 import { useReceivedChallenges } from '../hooks/useChallenges'
 import { useMyTaggedSessions } from '../hooks/usePartners'
 import { useMyHypeCount } from '../hooks/useOnWall'
@@ -33,7 +35,18 @@ export function AppBar() {
     setDismissedHypeCount(hypeCount)
   }, [hypeCount])
 
-  const total = followRequests.length + challengeInvitations.length + taggedSessions.length + (unseenHypes > 0 ? 1 : 0)
+  const { data: following = [] } = useFollowing()
+  const followingIds = following.map(f => f.following_id)
+  const { data: betaVideos = [] } = useFriendBetaVideos(followingIds)
+  const { data: proofVideos = [] } = useFriendProofVideos(followingIds)
+  const [lastSeenVideosAt, setLastSeenVideosAt] = useState(
+    () => localStorage.getItem('lastSeenVideosAt') ?? ''
+  )
+  const unseenBetaVideos = betaVideos.filter(v => !lastSeenVideosAt || v.created_at > lastSeenVideosAt)
+  const unseenProofVideos = proofVideos.filter(v => !lastSeenVideosAt || v.created_at > lastSeenVideosAt)
+  const unseenVideoCount = unseenBetaVideos.length + unseenProofVideos.length
+
+  const total = followRequests.length + challengeInvitations.length + taggedSessions.length + (unseenHypes > 0 ? 1 : 0) + (unseenVideoCount > 0 ? 1 : 0)
   const onSubPage = !isTopLevel(location.pathname)
 
   return (
@@ -53,7 +66,12 @@ export function AppBar() {
         )}
 
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setOpen(true)
+            const now = new Date().toISOString()
+            localStorage.setItem('lastSeenVideosAt', now)
+            setLastSeenVideosAt(now)
+          }}
           title="Notifications"
           aria-label="Notifications"
           className="relative w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors"
@@ -74,6 +92,8 @@ export function AppBar() {
           taggedSessions={taggedSessions}
           unseenHypes={unseenHypes}
           onDismissHypes={dismissHypes}
+          betaVideos={unseenBetaVideos}
+          proofVideos={unseenProofVideos}
           onClose={() => setOpen(false)}
         />
       </BottomSheet>
@@ -87,6 +107,8 @@ function NotificationList({
   taggedSessions,
   unseenHypes,
   onDismissHypes,
+  betaVideos,
+  proofVideos,
   onClose,
 }: {
   followRequests: { id: string; requester_id: string }[]
@@ -94,13 +116,15 @@ function NotificationList({
   taggedSessions: { sessionId: string; location: string; date: string; ownerUserId: string }[]
   unseenHypes: number
   onDismissHypes: () => void
+  betaVideos: FriendBetaVideo[]
+  proofVideos: FriendProofVideo[]
   onClose: () => void
 }) {
   const acceptRequest = useAcceptFollowRequest()
   const declineRequest = useDeclineFollowRequest()
   const navigate = useNavigate()
 
-  const isEmpty = followRequests.length === 0 && challengeInvitations.length === 0 && taggedSessions.length === 0 && unseenHypes === 0
+  const isEmpty = followRequests.length === 0 && challengeInvitations.length === 0 && taggedSessions.length === 0 && unseenHypes === 0 && betaVideos.length === 0 && proofVideos.length === 0
 
   if (isEmpty) {
     return (
@@ -178,6 +202,30 @@ function NotificationList({
           </div>
         </section>
       )}
+
+      {(betaVideos.length > 0 || proofVideos.length > 0) && (
+        <section>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Videos</p>
+          <div className="space-y-2">
+            {betaVideos.map(v => (
+              <VideoNotifRow
+                key={v.id}
+                userId={v.user_id}
+                videoUrl={v.beta_video_url}
+                label="added a beta video"
+              />
+            ))}
+            {proofVideos.map(v => (
+              <VideoNotifRow
+                key={v.id}
+                userId={v.user_id}
+                videoUrl={v.video_url}
+                label={`added a proof video for "${v.challenges?.title ?? 'a challenge'}"`}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
@@ -222,5 +270,26 @@ function TaggedSessionNotif({ ownerUserId, location, date, isPlanned }: { ownerU
       </p>
       <p className="text-xs text-gray-400 mt-0.5">{date}{isPlanned ? ' · Planned' : ''}</p>
     </div>
+  )
+}
+
+function VideoNotifRow({ userId, videoUrl, label }: { userId: string; videoUrl: string; label: string }) {
+  const { data: profile } = useProfile(userId)
+  return (
+    <a
+      href={videoUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3"
+    >
+      <span className="text-base">🎥</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-gray-700">
+          <span className="font-semibold">{profile?.username ?? '…'}</span>{' '}
+          {label}
+        </p>
+      </div>
+      <span className="text-xs text-sage-700 font-medium flex-shrink-0">▶ Watch</span>
+    </a>
   )
 }
