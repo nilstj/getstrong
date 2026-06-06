@@ -22,6 +22,8 @@ import {
 import { BottomSheet } from '../components/BottomSheet'
 import { WallAnnouncementSheet } from '../components/WallAnnouncementSheet'
 import { ReactionBar } from '../components/ReactionBar'
+import { ProblemCommentThread } from '../components/ProblemCommentThread'
+import { useProblemCommentCounts } from '../hooks/useProblemComments'
 import { useMyTaggedSessions } from '../hooks/usePartners'
 import { useAuth } from '../providers/AuthProvider'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
@@ -530,6 +532,9 @@ function TaggedSessionRow({ ownerUserId, location, date }: { ownerUserId: string
 function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gradeScale: 'font' | 'v_scale'; onClose: () => void }) {
   const { data: profile } = useProfile(userId)
   const { data: detail, isLoading } = useFriendWeeklyDetail(userId)
+  const friendProblemIds = (detail?.problems ?? []).map(p => p.id)
+  const { data: commentCounts = {} } = useProblemCommentCounts(friendProblemIds)
+  const [openCommentProblemId, setOpenCommentProblemId] = useState<string | null>(null)
 
   const title = profile?.username ? `${profile.username} — this week` : 'This week'
 
@@ -576,6 +581,16 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <ReactionBar problemId={p.id} />
+                      <div className="flex items-center mt-1">
+                        <button
+                          onClick={() => setOpenCommentProblemId(
+                            openCommentProblemId === p.id ? null : p.id
+                          )}
+                          className="text-xs text-gray-400 hover:text-sage-700 transition-colors font-medium"
+                        >
+                          💬{(commentCounts[p.id] ?? 0) > 0 ? ` ${commentCounts[p.id]}` : ''}
+                        </button>
+                      </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ml-auto ${
                         p.sent && p.attempts === 1 ? 'bg-yellow-300 text-yellow-900' :
                       p.sent ? 'bg-sage-700 text-white' : 'bg-gray-200 text-gray-500'
@@ -583,6 +598,9 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                         {p.sent && p.attempts === 1 ? 'Flash ⚡' : p.sent ? 'Sent' : 'Project'}
                       </span>
                     </div>
+                    {openCommentProblemId === p.id && (
+                      <ProblemCommentThread problemId={p.id} />
+                    )}
                   </div>
                 ))}
               </div>
