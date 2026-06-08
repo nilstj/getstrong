@@ -249,9 +249,9 @@ export function SessionDetailPage() {
                     onClick={() => setOpenCommentProblemId(
                       openCommentProblemId === problem.id ? null : problem.id
                     )}
-                    className="text-xs text-gray-400 hover:text-sage-700 transition-colors font-medium"
+                    className="text-sm text-gray-500 hover:text-sage-700 transition-colors font-medium flex items-center gap-1"
                   >
-                    💬{(commentCounts[problem.id] ?? 0) > 0 ? ` ${commentCounts[problem.id]}` : ''}
+                    <span className="text-base">💬</span>{(commentCounts[problem.id] ?? 0) > 0 ? <span>{commentCounts[problem.id]}</span> : null}
                   </button>
                 </div>
                 {openCommentProblemId === problem.id && (

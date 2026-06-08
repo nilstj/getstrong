@@ -586,9 +586,9 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                           onClick={() => setOpenCommentProblemId(
                             openCommentProblemId === p.id ? null : p.id
                           )}
-                          className="text-xs text-gray-400 hover:text-sage-700 transition-colors font-medium"
+                          className="text-sm text-gray-500 hover:text-sage-700 transition-colors font-medium flex items-center gap-1"
                         >
-                          💬{(commentCounts[p.id] ?? 0) > 0 ? ` ${commentCounts[p.id]}` : ''}
+                          <span className="text-base">💬</span>{(commentCounts[p.id] ?? 0) > 0 ? <span>{commentCounts[p.id]}</span> : null}
                         </button>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ml-auto ${
