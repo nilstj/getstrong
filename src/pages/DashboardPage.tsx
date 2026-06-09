@@ -336,7 +336,7 @@ export function DashboardPage() {
       {/* Friends Wisdom */}
       {friendsWisdoms.length > 0 && (
         <div>
-          <h2 className="text-base font-bold mb-2">🧠 Wisdom</h2>
+          <h2 className="text-base font-bold mb-2">🧠 Spraying Wisdom</h2>
           <div className="space-y-2">
             {friendsWisdoms.map(w => (
               <FriendWisdomCard key={w.id} wisdom={w} />
