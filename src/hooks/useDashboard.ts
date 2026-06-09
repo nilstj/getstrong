@@ -15,7 +15,9 @@ export function useDashboard() {
       const { data: { session: authSession } } = await supabase.auth.getSession()
       const userId = authSession?.user.id
       const [sessionsRes, problemsRes, mappingsRes] = await Promise.all([
-        supabase.from('sessions').select('*').order('date', { ascending: false }),
+        userId
+          ? supabase.from('sessions').select('*').eq('user_id', userId).order('date', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
         userId
           ? supabase.from('problems').select('*').eq('user_id', userId)
           : Promise.resolve({ data: [], error: null }),

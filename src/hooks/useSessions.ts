@@ -4,16 +4,19 @@ import type { Session } from '../types'
 import { useAuth } from '../providers/AuthProvider'
 
 export function useSessions() {
+  const { user } = useAuth()
   return useQuery({
-    queryKey: ['sessions'],
+    queryKey: ['sessions', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sessions')
         .select('*')
+        .eq('user_id', user!.id)
         .order('date', { ascending: false })
       if (error) throw error
       return data as Session[]
     },
+    enabled: !!user?.id,
   })
 }
 
