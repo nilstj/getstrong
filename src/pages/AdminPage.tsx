@@ -27,7 +27,7 @@ export function AdminPage() {
     <div className="p-4 space-y-8 pb-28">
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/profile')} className="text-gray-400 hover:text-gray-700 transition-colors">
-          <ChevronLeft size={22} />
+          <ChevronLeft size={20} strokeWidth={1.75} />
         </button>
         <h1 className="text-xl font-bold">Admin</h1>
       </div>
@@ -101,7 +101,7 @@ function ProblemTagsAdmin() {
                     onClick={() => deleteTag.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
                     className="w-4 h-4 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500"
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={12} strokeWidth={1.75} />
                   </button>
                 </div>
               ))}
@@ -205,8 +205,8 @@ function StrengthTestsAdmin() {
                   <p className="text-xs text-gray-400">{t.unit}{t.description ? ` · ${t.description}` : ''}</p>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => startEdit(t)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-blue-100 transition-colors"><Pencil size={14} /></button>
-                  <button onClick={() => deleteTest.mutate(t.id, { onError: () => toast.error('Failed to delete') })} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
+                  <button onClick={() => startEdit(t)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-blue-100 transition-colors"><Pencil size={16} strokeWidth={1.75} /></button>
+                  <button onClick={() => deleteTest.mutate(t.id, { onError: () => toast.error('Failed to delete') })} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={16} strokeWidth={1.75} /></button>
                 </div>
               </div>
             )}
@@ -279,8 +279,8 @@ function ExerciseLibraryAdmin() {
                 </p>
               </div>
               <div className="flex gap-1">
-                <button onClick={() => openEdit(t)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"><Pencil size={14} /></button>
-                <button onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
+                <button onClick={() => openEdit(t)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"><Pencil size={16} strokeWidth={1.75} /></button>
+                <button onClick={() => deleteTemplate.mutate(t.id, { onError: () => toast.error('Failed to delete') })} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={16} strokeWidth={1.75} /></button>
               </div>
             </div>
           </div>

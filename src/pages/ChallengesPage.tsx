@@ -129,7 +129,7 @@ export function ChallengesPage() {
                     className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                     title="Edit challenge" aria-label="Edit challenge"
                   >
-                    <Pencil size={14} />
+                    <Pencil size={16} strokeWidth={1.75} />
                   </button>
                   <button
                     onClick={e => {
@@ -141,7 +141,7 @@ export function ChallengesPage() {
                     className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                     title="Delete challenge" aria-label="Delete challenge"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} strokeWidth={1.75} />
                   </button>
                 </div>
               )}
@@ -556,7 +556,7 @@ function CommentItem({
               className="ml-auto w-6 h-6 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
               title="Delete comment" aria-label="Delete comment"
             >
-              <Trash2 size={12} />
+              <Trash2 size={14} strokeWidth={1.75} />
             </button>
           )}
         </div>
@@ -663,7 +663,7 @@ function BetaSection({ challengeId, currentUserId }: { challengeId: string; curr
                       onClick={() => deleteBeta.mutate({ id: beta.id, challengeId })}
                       className="ml-auto w-6 h-6 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 transition-colors"
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={14} strokeWidth={1.75} />
                     </button>
                   )}
                 </div>

@@ -103,17 +103,17 @@ export function AnalysisPage() {
         >
           {coachLoading ? (
             <>
-              <RefreshCw size={16} className="animate-spin" />
+              <RefreshCw size={16} strokeWidth={1.75} className="animate-spin" />
               Thinking…
             </>
           ) : onCooldown ? (
             <>
-              <Sparkles size={16} />
+              <Sparkles size={16} strokeWidth={1.75} />
               Used today — next in {lastUsed ? formatDistanceToNow(new Date(lastUsed.getTime() + COACH_COOLDOWN_MS)) : '24h'}
             </>
           ) : (
             <>
-              <Sparkles size={16} />
+              <Sparkles size={16} strokeWidth={1.75} />
               Get AI Coaching
             </>
           )}
@@ -131,7 +131,7 @@ export function AnalysisPage() {
                 className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40"
                 title="Regenerate"
               >
-                <RefreshCw size={14} />
+                <RefreshCw size={16} strokeWidth={1.75} />
               </button>
             </div>
             <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">

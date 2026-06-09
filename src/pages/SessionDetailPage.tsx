@@ -128,7 +128,7 @@ export function SessionDetailPage() {
       {/* Planned session banner */}
       {planned && (
         <div className="bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-          <CalendarClock size={20} className="text-sage-600 flex-shrink-0" />
+          <CalendarClock size={20} strokeWidth={1.75} className="text-sage-600 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-bold text-sage-800">Planned Session</p>
             <p className="text-xs text-sage-600">Invite friends to join you</p>
@@ -179,7 +179,7 @@ export function SessionDetailPage() {
           title="Edit session"
           aria-label="Edit session"
         >
-          <Pencil size={16} />
+          <Pencil size={16} strokeWidth={1.75} />
         </Link>
       </div>
 
@@ -205,13 +205,13 @@ export function SessionDetailPage() {
                       onClick={() => setEditingProblem(problem)}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                     >
-                      <Pencil size={13} />
+                      <Pencil size={14} strokeWidth={1.75} />
                     </button>
                     <button
                       onClick={() => deleteProblem.mutate({ id: problem.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} strokeWidth={1.75} />
                     </button>
                   </div>
                 </div>
@@ -299,13 +299,13 @@ export function SessionDetailPage() {
                       onClick={() => setEditingExercise(exercise)}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                     >
-                      <Pencil size={13} />
+                      <Pencil size={14} strokeWidth={1.75} />
                     </button>
                     <button
                       onClick={() => deleteExercise.mutate({ id: exercise.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} strokeWidth={1.75} />
                     </button>
                   </div>
                 </div>
@@ -333,7 +333,7 @@ export function SessionDetailPage() {
                     onClick={() => deleteTestResult.mutate({ id: result.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
                     className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={16} strokeWidth={1.75} />
                   </button>
                 </div>
               </div>
@@ -360,13 +360,13 @@ export function SessionDetailPage() {
                       onClick={() => setEditingAttempt(attempt)}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                     >
-                      <Pencil size={13} />
+                      <Pencil size={14} strokeWidth={1.75} />
                     </button>
                     <button
                       onClick={() => deleteChallengeAttempt.mutate({ id: attempt.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} strokeWidth={1.75} />
                     </button>
                   </div>
                 </div>
@@ -409,7 +409,7 @@ export function SessionDetailPage() {
             onClick={() => setConfirmDelete(true)}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
           >
-            <Trash2 size={13} />
+            <Trash2 size={14} strokeWidth={1.75} />
             Delete session
           </button>
         )}

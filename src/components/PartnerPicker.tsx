@@ -40,7 +40,7 @@ export function PartnerPicker({ currentPartnerIds, onSave, isSaving, label = 'Ad
         onClick={handleOpen}
         className="flex items-center gap-1 text-xs text-gray-400 hover:text-sage-700 transition-colors"
       >
-        <Users size={14} />
+        <Users size={14} strokeWidth={1.75} />
         <span>{label}</span>
       </button>
 

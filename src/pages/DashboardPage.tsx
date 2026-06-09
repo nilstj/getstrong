@@ -128,7 +128,7 @@ export function DashboardPage() {
         </div>
       ) : isPlanned && myAnnouncement ? (
         <div className="bg-sage-50 border border-sage-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-          <CalendarDays size={20} className="text-sage-700 flex-shrink-0" />
+          <CalendarDays size={20} strokeWidth={1.75} className="text-sage-700 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-sage-800">{myAnnouncement.location}</p>
             <p className="text-xs text-sage-600">
@@ -294,7 +294,7 @@ export function DashboardPage() {
           ))}
           <Link to="/challenges" className="text-center px-2 active:opacity-60 transition-opacity">
             <div className="flex items-center justify-center gap-1">
-              <Trophy size={16} className="text-gray-700" />
+              <Trophy size={16} strokeWidth={1.75} className="text-gray-700" />
               <p className="text-xl font-bold tracking-tight">{completedCount}</p>
             </div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">Challenges</p>

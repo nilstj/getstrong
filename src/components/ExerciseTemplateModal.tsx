@@ -46,7 +46,7 @@ export function ExerciseTemplateModal({ template, tests, onSave, onClose, isSavi
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h2 className="text-base font-semibold">{template ? 'Edit Exercise' : 'Add Exercise'}</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
-            <X size={16} />
+            <X size={18} strokeWidth={1.75} />
           </button>
         </div>
 

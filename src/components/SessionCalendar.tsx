@@ -53,10 +53,10 @@ export function SessionCalendar({ sessions, problems }: Props) {
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-2 text-sage-800">
-          <Calendar size={16} />
+          <Calendar size={16} strokeWidth={1.75} />
           <span className="text-sm font-semibold">{currentMonthLabel}</span>
         </div>
-        {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+        {expanded ? <ChevronUp size={16} strokeWidth={1.75} className="text-gray-400" /> : <ChevronDown size={16} strokeWidth={1.75} className="text-gray-400" />}
       </button>
 
       {expanded && (
@@ -66,22 +66,22 @@ export function SessionCalendar({ sessions, problems }: Props) {
             {/* Year nav */}
             <div className="flex items-center gap-0.5">
               <button onClick={() => setViewDate(d => subYears(d, 1))} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100">
-                <ChevronLeft size={14} />
+                <ChevronLeft size={14} strokeWidth={1.75} />
               </button>
               <span className="text-xs font-bold text-gray-600 w-10 text-center">{format(viewDate, 'yyyy')}</span>
               <button onClick={() => setViewDate(d => addYears(d, 1))} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100">
-                <ChevronRight size={14} />
+                <ChevronRight size={14} strokeWidth={1.75} />
               </button>
             </div>
 
             {/* Month nav */}
             <div className="flex items-center gap-0.5">
               <button onClick={() => setViewDate(d => subMonths(d, 1))} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100">
-                <ChevronLeft size={14} />
+                <ChevronLeft size={14} strokeWidth={1.75} />
               </button>
               <span className="text-xs font-bold text-gray-600 w-20 text-center">{format(viewDate, 'MMMM')}</span>
               <button onClick={() => setViewDate(d => addMonths(d, 1))} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100">
-                <ChevronRight size={14} />
+                <ChevronRight size={14} strokeWidth={1.75} />
               </button>
             </div>
           </div>
@@ -176,7 +176,7 @@ export function SessionCalendar({ sessions, problems }: Props) {
                     <div>
                       {s.date > new Date().toISOString().split('T')[0] && (
                         <div className="flex items-center gap-1 mb-0.5">
-                          <CalendarClock size={10} className="text-sage-600" />
+                          <CalendarClock size={12} strokeWidth={1.75} className="text-sage-600" />
                           <span className="text-[10px] font-bold text-sage-700 uppercase tracking-wide">Planned</span>
                         </div>
                       )}
@@ -195,7 +195,7 @@ export function SessionCalendar({ sessions, problems }: Props) {
                         )}
                       </div>
                     </div>
-                    <ChevronRight size={16} className="text-gray-300" />
+                    <ChevronRight size={16} strokeWidth={1.75} className="text-gray-300" />
                   </Link>
                 )
               })}

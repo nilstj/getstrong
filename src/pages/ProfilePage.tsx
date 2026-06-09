@@ -263,7 +263,7 @@ export function ProfilePage() {
           title="Log out"
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
         >
-          <LogOut size={15} />
+          <LogOut size={16} strokeWidth={1.75} />
           Log out
         </button>
       </div>
@@ -274,7 +274,7 @@ export function ProfilePage() {
           to="/admin"
           className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 hover:border-gray-300 transition-colors"
         >
-          <Shield size={18} className="text-sage-700" />
+          <Shield size={18} strokeWidth={1.75} className="text-sage-700" />
           <span className="text-sm font-medium text-gray-700">Admin Panel</span>
           <span className="ml-auto text-gray-400 text-base">›</span>
         </Link>

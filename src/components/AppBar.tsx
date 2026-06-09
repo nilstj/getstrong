@@ -70,7 +70,7 @@ export function AppBar() {
             aria-label="Go back"
             className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={20} strokeWidth={1.75} />
           </button>
         ) : (
           <Link to="/dashboard" className="px-2 text-base font-black tracking-tight text-sage-800">GetStrong</Link>

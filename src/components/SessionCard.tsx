@@ -30,7 +30,7 @@ export function SessionCard({ session, problems }: SessionCardProps) {
           <div className="flex items-center gap-2">
             {planned && (
               <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 bg-sage-200 text-sage-800 rounded-full">
-                <CalendarClock size={11} />
+                <CalendarClock size={12} strokeWidth={1.75} />
                 Planned
               </span>
             )}
