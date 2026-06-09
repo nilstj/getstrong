@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useSession, useDeleteSession } from '../hooks/useSessions'
+import { useSession, useDeleteSession, useUpdateSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
 import { useSessionExercises, useAddExercise, useUpdateExercise, useDeleteExercise } from '../hooks/useExercises'
 import { useSessionStore } from '../store/sessionStore'
@@ -382,6 +382,9 @@ export function SessionDetailPage() {
           Nothing logged yet. Tap + to add a problem or exercise.
         </p>
       )}
+
+      {/* Wisdom */}
+      {!planned && <WisdomSection session={session} />}
 
       {/* Delete session — low prominence, at the bottom */}
       <div className="pt-4 pb-2 flex justify-center">
@@ -854,5 +857,85 @@ function ChallengeAttemptForm({
         {isSubmitting ? 'Saving...' : 'Log Attempt'}
       </button>
     </form>
+  )
+}
+
+function WisdomSection({ session }: { session: import('../types').Session }) {
+  const updateSession = useUpdateSession()
+  const [editing, setEditing] = useState(!session.wisdom)
+  const [text, setText] = useState(session.wisdom ?? '')
+  const [shared, setShared] = useState(session.wisdom_shared ?? false)
+
+  const hasExisting = !!session.wisdom
+
+  const handleSave = () => {
+    updateSession.mutate(
+      { id: session.id, wisdom: text.trim() || null, wisdom_shared: text.trim() ? shared : false },
+      {
+        onSuccess: () => { setEditing(false); toast.success('Wisdom saved') },
+        onError: () => toast.error('Failed to save'),
+      },
+    )
+  }
+
+  return (
+    <div className="border border-amber-200 bg-amber-50 rounded-2xl px-4 py-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-amber-800">🧠 Today's wisdom</p>
+        {hasExisting && !editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="text-xs text-amber-600 hover:text-amber-800 font-medium"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+
+      {hasExisting && !editing ? (
+        <div>
+          <p className="text-sm text-amber-900 italic">"{session.wisdom}"</p>
+          {session.wisdom_shared && (
+            <p className="text-xs text-amber-600 mt-1">Shared with friends 🌟</p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            rows={3}
+            placeholder="What did you learn today? Drop wisdom or friendly banter..."
+            className="w-full border border-amber-200 bg-white rounded-xl px-3 py-2 text-sm placeholder-amber-300 focus:outline-none focus:border-amber-400"
+          />
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <div
+              onClick={() => setShared(s => !s)}
+              className={`w-10 h-6 rounded-full transition-colors flex-shrink-0 ${shared ? 'bg-sage-700' : 'bg-gray-200'}`}
+            >
+              <div className={`w-5 h-5 m-0.5 bg-white rounded-full shadow transition-transform ${shared ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+            <span className="text-sm text-amber-800">Share with friends 🌟</span>
+          </label>
+          <div className="flex gap-2">
+            {hasExisting && (
+              <button
+                onClick={() => { setEditing(false); setText(session.wisdom ?? ''); setShared(session.wisdom_shared) }}
+                className="flex-1 py-2.5 rounded-xl border border-amber-200 text-sm text-amber-700 font-medium"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={updateSession.isPending}
+              className="flex-1 bg-sage-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+            >
+              {updateSession.isPending ? 'Saving…' : 'Save wisdom'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

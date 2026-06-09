@@ -12,7 +12,8 @@ import {
   useFriendsAnnouncements, useJoinAnnouncement, useUnjoinAnnouncement, useMyJoins,
 } from '../hooks/useWallAnnouncements'
 import type { WallAnnouncement } from '../hooks/useWallAnnouncements'
-import { useMySessionLocations } from '../hooks/useSessions'
+import { useMySessionLocations, useFriendsWisdoms } from '../hooks/useSessions'
+import type { FriendWisdom } from '../hooks/useSessions'
 import { format } from 'date-fns'
 import {
   totalSessions,
@@ -51,6 +52,7 @@ export function DashboardPage() {
   const { data: friendsAnnouncements = [] } = useFriendsAnnouncements(followingIds)
   const { data: myJoins = new Set<string>() } = useMyJoins()
   const { data: sessionLocations = [] } = useMySessionLocations()
+  const { data: friendsWisdoms = [] } = useFriendsWisdoms(followingIds)
 
   const [showWallInput, setShowWallInput] = useState(false)
   const [locationInput, setLocationInput] = useState('')
@@ -331,6 +333,18 @@ export function DashboardPage() {
         </div>
       )}
 
+      {/* Friends Wisdom */}
+      {friendsWisdoms.length > 0 && (
+        <div>
+          <h2 className="text-base font-bold mb-2">🧠 Wisdom</h2>
+          <div className="space-y-2">
+            {friendsWisdoms.map(w => (
+              <FriendWisdomCard key={w.id} wisdom={w} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Power Rankings */}
       {friendsActivity.length >= 2 && (
         <PowerRankings activity={friendsActivity} />
@@ -472,6 +486,24 @@ function FriendRow({ friend, last, announcement, hasJoined, onClick }: {
         ) : <span className="text-gray-300">—</span>}
       </td>
     </tr>
+  )
+}
+
+function FriendWisdomCard({ wisdom }: { wisdom: FriendWisdom }) {
+  const { data: profile } = useProfile(wisdom.user_id)
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+      <div className="flex items-center gap-2 mb-1.5">
+        <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-gray-500 font-medium text-xs flex-shrink-0">
+          {profile?.avatar_url
+            ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            : profile?.username?.[0]?.toUpperCase() ?? '?'}
+        </div>
+        <span className="text-xs font-semibold text-amber-800">{profile?.username ?? '…'}</span>
+        <span className="text-xs text-amber-500 ml-auto">{wisdom.location} · {wisdom.date}</span>
+      </div>
+      <p className="text-sm text-amber-900 italic">"{wisdom.wisdom}"</p>
+    </div>
   )
 }
 

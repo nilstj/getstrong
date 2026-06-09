@@ -35,7 +35,7 @@ export function useSession(id: string) {
 export function useCreateSession() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (values: Omit<Session, 'id' | 'user_id' | 'created_at'>) => {
+    mutationFn: async (values: Omit<Session, 'id' | 'user_id' | 'created_at' | 'wisdom' | 'wisdom_shared'>) => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
       const { data, error } = await supabase
@@ -85,6 +85,35 @@ export function useUpdateSession() {
       queryClient.invalidateQueries({ queryKey: ['sessions', id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
+  })
+}
+
+export interface FriendWisdom {
+  id: string
+  user_id: string
+  date: string
+  location: string
+  wisdom: string
+}
+
+export function useFriendsWisdoms(followingIds: string[]) {
+  return useQuery({
+    queryKey: ['friends_wisdoms', [...followingIds].sort().join(',')],
+    queryFn: async () => {
+      const since = new Date()
+      since.setDate(since.getDate() - 14)
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('id, user_id, date, location, wisdom')
+        .in('user_id', followingIds)
+        .eq('wisdom_shared', true)
+        .not('wisdom', 'is', null)
+        .gte('date', since.toISOString().split('T')[0])
+        .order('date', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as FriendWisdom[]
+    },
+    enabled: followingIds.length > 0,
   })
 }
 

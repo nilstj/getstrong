@@ -3,8 +3,8 @@ import { totalSessions, totalProblems, totalSends, sendRate, sessionsByWeek, har
 import type { Session, Problem, GradeMapping } from '../../types'
 
 const SESSIONS: Session[] = [
-  { id: 's1', user_id: 'u1', date: '2026-05-20', location: 'Gym', duration_minutes: 90, intensity: null, goal: null, notes: null, created_at: '' },
-  { id: 's2', user_id: 'u1', date: '2026-05-22', location: 'Kilter', duration_minutes: 60, intensity: null, goal: null, notes: null, created_at: '' },
+  { id: 's1', user_id: 'u1', date: '2026-05-20', location: 'Gym', duration_minutes: 90, intensity: null, goal: null, notes: null, wisdom: null, wisdom_shared: false, created_at: '' },
+  { id: 's2', user_id: 'u1', date: '2026-05-22', location: 'Kilter', duration_minutes: 60, intensity: null, goal: null, notes: null, wisdom: null, wisdom_shared: false, created_at: '' },
 ]
 
 const PROBLEMS: Problem[] = [
@@ -76,7 +76,7 @@ describe('sessionsByWeek', () => {
     recentDate.setDate(today.getDate() - 3)
     const dateStr = recentDate.toISOString().split('T')[0]
     const sessions: Session[] = [
-      { id: 's1', user_id: 'u1', date: dateStr, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, created_at: '' },
+      { id: 's1', user_id: 'u1', date: dateStr, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, wisdom: null, wisdom_shared: false, created_at: '' },
     ]
     const result = sessionsByWeek(sessions, 14)
     const totalCount = result.reduce((sum, b) => sum + b.count, 0)
@@ -86,7 +86,7 @@ describe('sessionsByWeek', () => {
   it('excludes sessions outside the window', () => {
     const oldDate = '2020-01-01'
     const sessions: Session[] = [
-      { id: 's1', user_id: 'u1', date: oldDate, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, created_at: '' },
+      { id: 's1', user_id: 'u1', date: oldDate, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, wisdom: null, wisdom_shared: false, created_at: '' },
     ]
     const result = sessionsByWeek(sessions, 14)
     const totalCount = result.reduce((sum, b) => sum + b.count, 0)
@@ -101,7 +101,7 @@ describe('hardestSentPerSession', () => {
 
   it('omits sessions with no sent problems', () => {
     const sessions: Session[] = [
-      { id: 's1', user_id: 'u1', date: SESSIONS[0].date, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, created_at: '' },
+      { id: 's1', user_id: 'u1', date: SESSIONS[0].date, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, wisdom: null, wisdom_shared: false, created_at: '' },
     ]
     const unseated: Problem[] = [
       { id: 'p1', session_id: 's1', user_id: 'u1', name: null, grade_system: 'font', grade_value: '7A', color: null, attempts: 2, sent: false, grade_value_font: null, grade_value_vscale: null, board: null, board_angle: null, gym: null, beta_video_url: null, notes: null, created_at: '' },
@@ -115,7 +115,7 @@ describe('hardestSentPerSession', () => {
     recentDate.setDate(today.getDate() - 5)
     const dateStr = recentDate.toISOString().split('T')[0]
     const sessions: Session[] = [
-      { id: 's1', user_id: 'u1', date: dateStr, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, created_at: '' },
+      { id: 's1', user_id: 'u1', date: dateStr, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, wisdom: null, wisdom_shared: false, created_at: '' },
     ]
     const problems: Problem[] = [
       { id: 'p1', session_id: 's1', user_id: 'u1', name: null, grade_system: 'font', grade_value: '4', color: null, attempts: 1, sent: true, grade_value_font: null, grade_value_vscale: null, board: null, board_angle: null, gym: null, beta_video_url: null, notes: null, created_at: '' },
@@ -128,7 +128,7 @@ describe('hardestSentPerSession', () => {
 
   it('excludes sessions outside the window', () => {
     const oldSession: Session[] = [
-      { id: 's1', user_id: 'u1', date: '2020-01-01', location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, created_at: '' },
+      { id: 's1', user_id: 'u1', date: '2020-01-01', location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, wisdom: null, wisdom_shared: false, created_at: '' },
     ]
     const problems: Problem[] = [
       { id: 'p1', session_id: 's1', user_id: 'u1', name: null, grade_system: 'font', grade_value: '7A', color: null, attempts: 1, sent: true, grade_value_font: null, grade_value_vscale: null, board: null, board_angle: null, gym: null, beta_video_url: null, notes: null, created_at: '' },

@@ -20,6 +20,8 @@ export interface Session {
   intensity: SessionIntensity | null
   goal: string | null
   notes: string | null
+  wisdom: string | null
+  wisdom_shared: boolean
   created_at: string
 }
 
