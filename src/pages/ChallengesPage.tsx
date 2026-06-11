@@ -105,7 +105,7 @@ export function ChallengesPage() {
   )
 
   return (
-    <div className="p-4 pb-28 max-w-2xl mx-auto space-y-3">
+    <div className="p-4 pb-28 space-y-3">
       <h1 className="text-2xl font-black tracking-tight">Challenges</h1>
 
       {received.length > 0 && (
@@ -145,7 +145,7 @@ export function ChallengesPage() {
                 : <ChevronDown size={15} strokeWidth={1.75} className="text-gray-400" />}
             </button>
             {publicOpen && (
-              <div className="border-t border-gray-100 px-2 py-2 space-y-1.5">
+              <div className="border-t border-gray-100 px-2 py-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {publicChallenges.length === 0
                   ? <p className="text-gray-400 text-xs text-center py-3">No public challenges yet. Tap + to create one.</p>
                   : publicChallenges.map(renderChallengeCard)}
@@ -169,7 +169,7 @@ export function ChallengesPage() {
                 : <ChevronDown size={15} strokeWidth={1.75} className="text-gray-400" />}
             </button>
             {privateOpen && (
-              <div className="border-t border-gray-100 px-2 py-2 space-y-1.5">
+              <div className="border-t border-gray-100 px-2 py-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {privateChallenges.length === 0
                   ? <p className="text-gray-400 text-xs text-center py-3">No private challenges yet.</p>
                   : privateChallenges.map(renderChallengeCard)}
