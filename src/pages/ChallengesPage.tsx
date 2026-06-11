@@ -13,13 +13,6 @@ import {
   useDeleteChallengeComment,
 } from '../hooks/useChallenges'
 import { useChallengeBetas, useAddBeta, useDeleteBeta, useMarkBetaHelpful } from '../hooks/useBetas'
-import {
-  useSharedProjects,
-  useCreateSharedProject,
-  useDeleteSharedProject,
-  useProjectAttempts,
-  useAddProjectAttempt,
-} from '../hooks/useSharedProjects'
 import { useFollowing } from '../hooks/useFollows'
 import { useProfile } from '../hooks/useProfile'
 import { BottomSheet } from '../components/BottomSheet'
@@ -52,7 +45,6 @@ export function ChallengesPage() {
   const { data: challenges = [], isLoading } = useChallenges(followingIds)
   const { data: received = [] } = useReceivedChallenges()
   const deleteChallenge = useDeleteChallenge()
-  const [pageTab, setPageTab] = useState<'challenges' | 'projects'>('challenges')
   const [createOpen, setCreateOpen] = useState(false)
   const [selected, setSelected] = useState<Challenge | null>(null)
   const [editing, setEditing] = useState<Challenge | null>(null)
@@ -116,24 +108,7 @@ export function ChallengesPage() {
     <div className="p-4 pb-28 max-w-2xl mx-auto space-y-3">
       <h1 className="text-2xl font-black tracking-tight">Challenges</h1>
 
-      {/* Page tabs */}
-      <div className="flex rounded-2xl overflow-hidden border border-gray-200">
-        {(['challenges', 'projects'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setPageTab(tab)}
-            className={`flex-1 py-2 text-sm font-semibold capitalize transition-colors ${
-              pageTab === tab ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
-            }`}
-          >
-            {tab === 'challenges' ? '🏆 Challenges' : '🤝 Projects'}
-          </button>
-        ))}
-      </div>
-
-      {pageTab === 'projects' && <SharedProjectsView currentUserId={user?.id ?? ''} />}
-
-      {pageTab === 'challenges' && received.length > 0 && (
+      {received.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-3 py-2 border-b border-gray-100">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sent to me</h2>
@@ -153,8 +128,7 @@ export function ChallengesPage() {
         </div>
       )}
 
-      {pageTab === 'challenges' && (
-        <>
+      <>
           {/* Public challenges section */}
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <button
@@ -202,10 +176,9 @@ export function ChallengesPage() {
               </div>
             )}
           </div>
-        </>
-      )}
+      </>
 
-      {pageTab === 'challenges' && <FAB onClick={() => setCreateOpen(true)} label="Create challenge" />}
+      <FAB onClick={() => setCreateOpen(true)} label="Create challenge" />
 
       <BottomSheet open={createOpen} onClose={() => setCreateOpen(false)} title="New Challenge">
         <ChallengeForm onClose={() => setCreateOpen(false)} />
@@ -774,150 +747,3 @@ function BetaAuthor({ userId, createdAt }: { userId: string; createdAt: string }
   )
 }
 
-function SharedProjectsView({ currentUserId }: { currentUserId: string }) {
-  const { data: projects = [] } = useSharedProjects()
-  const createProject = useCreateSharedProject()
-  const deleteProject = useDeleteSharedProject()
-  const [selected, setSelected] = useState<string | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [title, setTitle] = useState('')
-  const [gym, setGym] = useState('')
-  const [gradeFont, setGradeFont] = useState('')
-
-  const selectedProject = projects.find(p => p.id === selected) ?? null
-
-  return (
-    <div className="space-y-3">
-      {projects.length === 0 && (
-        <p className="text-gray-400 text-sm text-center pt-8">No shared projects yet. Start one!</p>
-      )}
-      {projects.map(project => (
-        <button
-          key={project.id}
-          onClick={() => setSelected(project.id)}
-          className="w-full text-left bg-white border border-gray-200 rounded-2xl p-4 transition-colors hover:border-gray-300"
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="font-semibold text-gray-900">{project.title}</p>
-              {project.grade_value_font && <p className="text-sm text-gray-500">{project.grade_value_font}</p>}
-              {project.gym && <p className="text-xs text-gray-400">{project.gym}</p>}
-            </div>
-            <ProjectAttemptBadge projectId={project.id} />
-          </div>
-          {project.description && <p className="text-sm text-gray-500 mt-1">{project.description}</p>}
-        </button>
-      ))}
-
-      <button
-        onClick={() => setCreateOpen(true)}
-        className="w-full border-2 border-dashed border-gray-300 rounded-2xl py-4 text-sm text-gray-500 hover:border-sage-700 hover:text-sage-800 transition-colors font-medium"
-      >
-        + New Shared Project
-      </button>
-
-      {createOpen && (
-        <BottomSheet open onClose={() => setCreateOpen(false)} title="New Shared Project">
-          <div className="space-y-3">
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Problem name" className="w-full border rounded-xl px-3 py-2.5 text-sm" />
-            <input value={gradeFont} onChange={e => setGradeFont(e.target.value)} placeholder="Grade (e.g. 7A or V8)" className="w-full border rounded-xl px-3 py-2.5 text-sm" />
-            <input value={gym} onChange={e => setGym(e.target.value)} placeholder="Gym (optional)" className="w-full border rounded-xl px-3 py-2.5 text-sm" />
-            <button
-              onClick={() => createProject.mutate(
-                { title, grade_value_font: gradeFont || null, grade_value_vscale: null, board: null, board_angle: null, gym: gym || null, description: null },
-                { onSuccess: () => { setCreateOpen(false); setTitle(''); setGradeFont(''); setGym(''); toast.success('Project created!') }, onError: () => toast.error('Failed') }
-              )}
-              disabled={!title || createProject.isPending}
-              className="w-full bg-sage-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
-            >
-              {createProject.isPending ? 'Creating…' : 'Create Project'}
-            </button>
-          </div>
-        </BottomSheet>
-      )}
-
-      {selectedProject && (
-        <BottomSheet open onClose={() => setSelected(null)} title={selectedProject.title}>
-          <SharedProjectDetail project={selectedProject} currentUserId={currentUserId} onDelete={() => { deleteProject.mutate(selectedProject.id); setSelected(null) }} />
-        </BottomSheet>
-      )}
-    </div>
-  )
-}
-
-function ProjectAttemptBadge({ projectId }: { projectId: string }) {
-  const { data: attempts = [] } = useProjectAttempts(projectId)
-  const total = attempts.length
-  const sent = attempts.filter(a => a.sent).length
-  if (total === 0) return <span className="text-xs text-gray-300">No attempts</span>
-  return (
-    <span className="text-xs font-semibold text-gray-600">
-      {sent > 0 ? `${sent}/${total} sent` : `${total} attempt${total !== 1 ? 's' : ''}`}
-    </span>
-  )
-}
-
-function SharedProjectDetail({ project, currentUserId, onDelete }: { project: import('../types').SharedProject; currentUserId: string; onDelete: () => void }) {
-  const { data: attempts = [] } = useProjectAttempts(project.id)
-  const addAttempt = useAddProjectAttempt()
-  const { user } = useAuth()
-
-  const myAttempts = attempts.filter(a => a.user_id === user?.id)
-  const sends = attempts.filter(a => a.sent)
-  const firstSend = sends[0]
-
-  return (
-    <div className="space-y-4">
-      {project.grade_value_font && <p className="font-semibold text-lg">{project.grade_value_font}</p>}
-      {project.gym && <p className="text-sm text-gray-500">{project.gym}</p>}
-      {project.description && <p className="text-sm text-gray-600">{project.description}</p>}
-
-      <div className="flex gap-4">
-        <div className="text-center"><p className="text-2xl font-bold">{attempts.length}</p><p className="text-xs text-gray-400">Attempts</p></div>
-        <div className="text-center"><p className="text-2xl font-bold">{sends.length}</p><p className="text-xs text-gray-400">Sends</p></div>
-        <div className="text-center"><p className="text-2xl font-bold">{myAttempts.length}</p><p className="text-xs text-gray-400">Mine</p></div>
-      </div>
-
-      {firstSend && (
-        <div className="bg-gray-50 rounded-xl p-3">
-          <p className="text-xs text-gray-400 mb-1">First blood 🩸</p>
-          <ProjectCompleter userId={firstSend.user_id} createdAt={firstSend.created_at} />
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <button
-          onClick={() => addAttempt.mutate({ projectId: project.id, sent: false }, { onSuccess: () => toast.success('Attempt logged') })}
-          disabled={addAttempt.isPending}
-          className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm font-medium"
-        >
-          + Attempt
-        </button>
-        <button
-          onClick={() => addAttempt.mutate({ projectId: project.id, sent: true }, { onSuccess: () => toast.success('Send logged! 🎉') })}
-          disabled={addAttempt.isPending}
-          className="flex-1 bg-sage-700 text-white rounded-xl py-2.5 text-sm font-semibold"
-        >
-          Sent! 🎉
-        </button>
-      </div>
-
-      {project.creator_id === currentUserId && (
-        <button onClick={onDelete} className="w-full text-xs text-red-500 py-2">Delete project</button>
-      )}
-    </div>
-  )
-}
-
-function ProjectCompleter({ userId, createdAt }: { userId: string; createdAt: string }) {
-  const { data: profile } = useProfile(userId)
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-6 h-6 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-xs text-gray-400">
-        {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : profile?.username?.[0]?.toUpperCase() ?? '?'}
-      </div>
-      <span className="text-sm font-medium">{profile?.username}</span>
-      <span className="text-xs text-gray-400 ml-auto">{new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-    </div>
-  )
-}
