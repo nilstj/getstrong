@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Globe, Lock } from 'lucide-react'
 import {
   useChallenges,
   useCreateChallenge,
@@ -46,7 +46,10 @@ function TagPills({ tags }: { tags: string[] }) {
 
 export function ChallengesPage() {
   const { user } = useAuth()
-  const { data: challenges = [], isLoading } = useChallenges()
+  const { data: profile } = useProfile()
+  const { data: following = [] } = useFollowing()
+  const followingIds = following.map(f => f.following_id)
+  const { data: challenges = [], isLoading } = useChallenges(followingIds)
   const { data: received = [] } = useReceivedChallenges()
   const deleteChallenge = useDeleteChallenge()
   const [pageTab, setPageTab] = useState<'challenges' | 'projects'>('challenges')
@@ -54,7 +57,52 @@ export function ChallengesPage() {
   const [selected, setSelected] = useState<Challenge | null>(null)
   const [editing, setEditing] = useState<Challenge | null>(null)
 
+  const publicChallenges = challenges.filter(c => c.is_public)
+  const privateChallenges = challenges.filter(c => !c.is_public)
+  const isAdmin = profile?.is_admin ?? false
+
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
+
+  const renderChallengeCard = (challenge: Challenge) => (
+    <div key={challenge.id} className="relative">
+      <button
+        onClick={() => setSelected(challenge)}
+        className="w-full text-left bg-white border rounded-2xl p-4 hover:border-gray-300 transition-colors"
+      >
+        <p className="font-semibold text-gray-900 pr-12">{challenge.title}</p>
+        {challenge.description && (
+          <p className="text-sm text-gray-500 mt-1">{challenge.description}</p>
+        )}
+        <TagPills tags={challenge.tags} />
+        <AttemptCount challengeId={challenge.id} />
+      </button>
+      <div className="absolute top-2.5 right-2.5 flex gap-0.5">
+        {challenge.creator_id === user?.id && (
+          <button
+            onClick={e => { e.stopPropagation(); setEditing(challenge) }}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            title="Edit challenge" aria-label="Edit challenge"
+          >
+            <Pencil size={16} strokeWidth={1.75} />
+          </button>
+        )}
+        {(challenge.creator_id === user?.id || (isAdmin && challenge.is_public)) && (
+          <button
+            onClick={e => {
+              e.stopPropagation()
+              if (window.confirm('Delete this challenge?')) {
+                deleteChallenge.mutate(challenge.id, { onError: () => toast.error('Failed to delete') })
+              }
+            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            title="Delete challenge" aria-label="Delete challenge"
+          >
+            <Trash2 size={16} strokeWidth={1.75} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
 
   return (
     <div className="p-4 space-y-4 pb-28">
@@ -101,54 +149,35 @@ export function ChallengesPage() {
         </div>
       )}
 
-      {pageTab === 'challenges' && <div>
-        {received.length > 0 && <h2 className="text-base font-semibold mb-2">All Challenges</h2>}
-        {challenges.length === 0 && (
-          <p className="text-gray-400 text-sm text-center pt-12">
-            No challenges yet. Tap + to create the first one.
-          </p>
-        )}
-        <div className="space-y-2">
-          {challenges.map(challenge => (
-            <div key={challenge.id} className="relative">
-              <button
-                onClick={() => setSelected(challenge)}
-                className="w-full text-left bg-white border rounded-2xl p-4 hover:border-gray-300 transition-colors"
-              >
-                <p className="font-semibold text-gray-900 pr-12">{challenge.title}</p>
-                {challenge.description && (
-                  <p className="text-sm text-gray-500 mt-1">{challenge.description}</p>
-                )}
-                <TagPills tags={challenge.tags} />
-                <AttemptCount challengeId={challenge.id} />
-              </button>
-              {challenge.creator_id === user?.id && (
-                <div className="absolute top-2.5 right-2.5 flex gap-0.5">
-                  <button
-                    onClick={e => { e.stopPropagation(); setEditing(challenge) }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    title="Edit challenge" aria-label="Edit challenge"
-                  >
-                    <Pencil size={16} strokeWidth={1.75} />
-                  </button>
-                  <button
-                    onClick={e => {
-                      e.stopPropagation()
-                      if (window.confirm('Delete this challenge?')) {
-                        deleteChallenge.mutate(challenge.id, { onError: () => toast.error('Failed to delete') })
-                      }
-                    }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                    title="Delete challenge" aria-label="Delete challenge"
-                  >
-                    <Trash2 size={16} strokeWidth={1.75} />
-                  </button>
-                </div>
-              )}
+      {pageTab === 'challenges' && (
+        <>
+          {/* Public challenges section */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Globe size={14} strokeWidth={1.75} className="text-sage-700" />
+              <h2 className="text-base font-semibold">Public</h2>
             </div>
-          ))}
-        </div>
-      </div>}
+            {publicChallenges.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-6">No public challenges yet. Tap + to create one.</p>
+            ) : (
+              <div className="space-y-2">{publicChallenges.map(renderChallengeCard)}</div>
+            )}
+          </div>
+
+          {/* Friends & mine section */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Lock size={14} strokeWidth={1.75} className="text-gray-500" />
+              <h2 className="text-base font-semibold text-gray-700">Friends &amp; Mine</h2>
+            </div>
+            {privateChallenges.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-4">No private challenges yet.</p>
+            ) : (
+              <div className="space-y-2">{privateChallenges.map(renderChallengeCard)}</div>
+            )}
+          </div>
+        </>
+      )}
 
       {pageTab === 'challenges' && <FAB onClick={() => setCreateOpen(true)} label="Create challenge" />}
 
@@ -186,6 +215,7 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
   const createChallenge = useCreateChallenge()
   const updateChallenge = useUpdateChallenge()
   const [tags, setTags] = useState<string[]>(existing?.tags ?? [])
+  const [isPublic, setIsPublic] = useState<boolean>(existing?.is_public ?? true)
 
   const { register, handleSubmit } = useForm<{ title: string; description: string; video_url: string }>({
     defaultValues: {
@@ -205,6 +235,7 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
       description: values.description || null,
       video_url: values.video_url || null,
       tags,
+      is_public: isPublic,
     }
     if (existing) {
       updateChallenge.mutate(
@@ -234,6 +265,34 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
           placeholder="e.g. 10 sec front lever"
           className="w-full border rounded-lg px-3 py-2.5"
         />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>
+        <div className="flex rounded-xl overflow-hidden border border-gray-200">
+          <button
+            type="button"
+            onClick={() => setIsPublic(true)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
+              isPublic ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
+            }`}
+          >
+            <Globe size={14} strokeWidth={1.75} />
+            Public
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsPublic(false)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
+              !isPublic ? 'bg-gray-700 text-white' : 'bg-white text-gray-500'
+            }`}
+          >
+            <Lock size={14} strokeWidth={1.75} />
+            Friends only
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1.5">
+          {isPublic ? 'Visible to all users' : 'Only visible to you and your friends'}
+        </p>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>

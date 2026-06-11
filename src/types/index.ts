@@ -71,6 +71,7 @@ export interface Challenge {
   description: string | null
   video_url: string | null
   tags: string[]
+  is_public: boolean
   created_at: string
 }
 

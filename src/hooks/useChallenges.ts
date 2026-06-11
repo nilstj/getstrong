@@ -1,25 +1,31 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Challenge, ChallengeAttempt, ChallengeInvitation, ChallengeComment } from '../types'
+import { useAuth } from '../providers/AuthProvider'
 
-export function useChallenges() {
+export function useChallenges(followingIds: string[] = []) {
+  const { user } = useAuth()
   return useQuery({
-    queryKey: ['challenges'],
+    queryKey: ['challenges', user?.id, [...followingIds].sort().join(',')],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('challenges')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      return data as Challenge[]
+      const userId = user!.id
+      const [{ data: publicData, error: e1 }, { data: privateData, error: e2 }] = await Promise.all([
+        supabase.from('challenges').select('*').eq('is_public', true).order('created_at', { ascending: false }),
+        supabase.from('challenges').select('*').eq('is_public', false)
+          .in('creator_id', [userId, ...followingIds]).order('created_at', { ascending: false }),
+      ])
+      if (e1) throw e1
+      if (e2) throw e2
+      return [...(publicData ?? []), ...(privateData ?? [])] as Challenge[]
     },
+    enabled: !!user,
   })
 }
 
 export function useCreateChallenge() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (values: Pick<Challenge, 'title' | 'description' | 'video_url' | 'tags'>) => {
+    mutationFn: async (values: Pick<Challenge, 'title' | 'description' | 'video_url' | 'tags' | 'is_public'>) => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
       const { data, error } = await supabase
@@ -135,7 +141,7 @@ export function useDeleteChallengeAttempt() {
 export function useUpdateChallenge() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...values }: Pick<Challenge, 'id' | 'title' | 'description' | 'video_url' | 'tags'>) => {
+    mutationFn: async ({ id, ...values }: Pick<Challenge, 'id' | 'title' | 'description' | 'video_url' | 'tags' | 'is_public'>) => {
       const { data, error } = await supabase
         .from('challenges')
         .update(values)
