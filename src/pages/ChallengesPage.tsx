@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Trash2, Globe, Lock } from 'lucide-react'
+import { Pencil, Trash2, Globe, Lock, ChevronDown, ChevronUp } from 'lucide-react'
 import {
   useChallenges,
   useCreateChallenge,
@@ -56,6 +56,8 @@ export function ChallengesPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [selected, setSelected] = useState<Challenge | null>(null)
   const [editing, setEditing] = useState<Challenge | null>(null)
+  const [publicOpen, setPublicOpen] = useState(true)
+  const [privateOpen, setPrivateOpen] = useState(true)
 
   const publicChallenges = challenges.filter(c => c.is_public)
   const privateChallenges = challenges.filter(c => !c.is_public)
@@ -64,26 +66,32 @@ export function ChallengesPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
 
   const renderChallengeCard = (challenge: Challenge) => (
-    <div key={challenge.id} className="relative">
+    <div key={challenge.id} className="relative flex items-stretch">
       <button
         onClick={() => setSelected(challenge)}
-        className="w-full text-left bg-white border rounded-2xl p-4 hover:border-gray-300 transition-colors"
+        className="flex-1 text-left bg-white border rounded-2xl px-3 py-2.5 hover:border-gray-300 transition-colors min-w-0"
       >
-        <p className="font-semibold text-gray-900 pr-12">{challenge.title}</p>
+        <div className="flex items-start gap-2 pr-16">
+          <p className="font-semibold text-sm text-gray-900 leading-snug">{challenge.title}</p>
+        </div>
         {challenge.description && (
-          <p className="text-sm text-gray-500 mt-1">{challenge.description}</p>
+          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{challenge.description}</p>
         )}
-        <TagPills tags={challenge.tags} />
-        <AttemptCount challengeId={challenge.id} />
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          {challenge.tags?.map(tag => (
+            <span key={tag} className="text-[11px] bg-gray-50 text-sage-800 border border-gray-200 rounded-full px-1.5 py-px">{tag}</span>
+          ))}
+          <AttemptCountInline challengeId={challenge.id} />
+        </div>
       </button>
-      <div className="absolute top-2.5 right-2.5 flex gap-0.5">
+      <div className="absolute top-1.5 right-1.5 flex gap-0.5">
         {challenge.creator_id === user?.id && (
           <button
             onClick={e => { e.stopPropagation(); setEditing(challenge) }}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             title="Edit challenge" aria-label="Edit challenge"
           >
-            <Pencil size={16} strokeWidth={1.75} />
+            <Pencil size={14} strokeWidth={1.75} />
           </button>
         )}
         {(challenge.creator_id === user?.id || (isAdmin && challenge.is_public)) && (
@@ -94,10 +102,10 @@ export function ChallengesPage() {
                 deleteChallenge.mutate(challenge.id, { onError: () => toast.error('Failed to delete') })
               }
             }}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
             title="Delete challenge" aria-label="Delete challenge"
           >
-            <Trash2 size={16} strokeWidth={1.75} />
+            <Trash2 size={14} strokeWidth={1.75} />
           </button>
         )}
       </div>
@@ -105,10 +113,8 @@ export function ChallengesPage() {
   )
 
   return (
-    <div className="p-4 space-y-4 pb-28">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black tracking-tight">Challenges</h1>
-      </div>
+    <div className="p-4 pb-28 max-w-2xl mx-auto space-y-3">
+      <h1 className="text-2xl font-black tracking-tight">Challenges</h1>
 
       {/* Page tabs */}
       <div className="flex rounded-2xl overflow-hidden border border-gray-200">
@@ -128,21 +134,19 @@ export function ChallengesPage() {
       {pageTab === 'projects' && <SharedProjectsView currentUserId={user?.id ?? ''} />}
 
       {pageTab === 'challenges' && received.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold mb-2">Sent to me</h2>
-          <div className="space-y-2">
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <div className="px-3 py-2 border-b border-gray-100">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sent to me</h2>
+          </div>
+          <div className="divide-y divide-gray-50">
             {received.map(inv => (
               <button
                 key={inv.id}
                 onClick={() => setSelected(inv.challenges)}
-                className="w-full text-left bg-gray-50 border border-gray-200 rounded-2xl p-4"
+                className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors"
               >
-                <p className="font-semibold text-gray-900">{inv.challenges.title}</p>
-                <p className="text-xs text-gray-500 mt-0.5">from {inv.profiles?.username ?? 'someone'}</p>
-                {inv.challenges.description && (
-                  <p className="text-sm text-gray-500 mt-1">{inv.challenges.description}</p>
-                )}
-                <TagPills tags={inv.challenges.tags} />
+                <p className="font-semibold text-sm text-gray-900">{inv.challenges.title}</p>
+                <p className="text-xs text-gray-400">from {inv.profiles?.username ?? 'someone'}</p>
               </button>
             ))}
           </div>
@@ -152,28 +156,50 @@ export function ChallengesPage() {
       {pageTab === 'challenges' && (
         <>
           {/* Public challenges section */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-2">
-              <Globe size={14} strokeWidth={1.75} className="text-sage-700" />
-              <h2 className="text-base font-semibold">Public</h2>
-            </div>
-            {publicChallenges.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-6">No public challenges yet. Tap + to create one.</p>
-            ) : (
-              <div className="space-y-2">{publicChallenges.map(renderChallengeCard)}</div>
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setPublicOpen(o => !o)}
+              className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <Globe size={13} strokeWidth={1.75} className="text-sage-700" />
+                <span className="text-sm font-semibold text-sage-900">Public</span>
+                <span className="text-xs text-gray-400 font-normal">({publicChallenges.length})</span>
+              </div>
+              {publicOpen
+                ? <ChevronUp size={15} strokeWidth={1.75} className="text-gray-400" />
+                : <ChevronDown size={15} strokeWidth={1.75} className="text-gray-400" />}
+            </button>
+            {publicOpen && (
+              <div className="border-t border-gray-100 px-2 py-2 space-y-1.5">
+                {publicChallenges.length === 0
+                  ? <p className="text-gray-400 text-xs text-center py-3">No public challenges yet. Tap + to create one.</p>
+                  : publicChallenges.map(renderChallengeCard)}
+              </div>
             )}
           </div>
 
           {/* Friends & mine section */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-2">
-              <Lock size={14} strokeWidth={1.75} className="text-gray-500" />
-              <h2 className="text-base font-semibold text-gray-700">Friends &amp; Mine</h2>
-            </div>
-            {privateChallenges.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">No private challenges yet.</p>
-            ) : (
-              <div className="space-y-2">{privateChallenges.map(renderChallengeCard)}</div>
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setPrivateOpen(o => !o)}
+              className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <Lock size={13} strokeWidth={1.75} className="text-gray-500" />
+                <span className="text-sm font-semibold text-gray-700">Friends &amp; Mine</span>
+                <span className="text-xs text-gray-400 font-normal">({privateChallenges.length})</span>
+              </div>
+              {privateOpen
+                ? <ChevronUp size={15} strokeWidth={1.75} className="text-gray-400" />
+                : <ChevronDown size={15} strokeWidth={1.75} className="text-gray-400" />}
+            </button>
+            {privateOpen && (
+              <div className="border-t border-gray-100 px-2 py-2 space-y-1.5">
+                {privateChallenges.length === 0
+                  ? <p className="text-gray-400 text-xs text-center py-3">No private challenges yet.</p>
+                  : privateChallenges.map(renderChallengeCard)}
+              </div>
             )}
           </div>
         </>
@@ -200,14 +226,14 @@ export function ChallengesPage() {
   )
 }
 
-function AttemptCount({ challengeId }: { challengeId: string }) {
+function AttemptCountInline({ challengeId }: { challengeId: string }) {
   const { data: attempts = [] } = useChallengeAttempts(challengeId)
   if (attempts.length === 0) return null
   const completed = attempts.filter(a => a.completed).length
   return (
-    <p className="text-xs text-gray-400 mt-2">
-      {attempts.length} attempt{attempts.length !== 1 ? 's' : ''} · {completed} completed
-    </p>
+    <span className="text-[11px] text-gray-400">
+      {attempts.length} attempt{attempts.length !== 1 ? 's' : ''}{completed > 0 ? ` · ${completed} ✓` : ''}
+    </span>
   )
 }
 
