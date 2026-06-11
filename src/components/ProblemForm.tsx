@@ -15,6 +15,7 @@ type FormValues = {
   board: string
   board_angle: number | ''
   gym: string
+  crag: string
   beta_video_url: string
   notes: string
 }
@@ -32,6 +33,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const scaleLabel = initialGradeSystem === 'v_scale' ? 'V-Scale' : 'Font'
   const { data: tagDefinitions = [] } = useProblemTagDefinitions()
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(existingTagIds ?? []))
+  const [isOutdoor, setIsOutdoor] = useState<boolean>(!!(existing?.crag))
 
   const toggleTag = (id: string) => {
     setSelectedTagIds(prev => {
@@ -58,6 +60,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       board: existing?.board ?? '',
       board_angle: existing?.board_angle ?? '',
       gym: existing?.gym ?? '',
+      crag: existing?.crag ?? '',
       beta_video_url: existing?.beta_video_url ?? '',
       notes: existing?.notes ?? '',
     },
@@ -72,12 +75,13 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       name: values.name || null,
       grade_system: initialGradeSystem,
       grade_value: values.grade_value || null,
-      color: values.color || null,
+      color: isOutdoor ? null : (values.color || null),
       attempts: values.attempts,
       sent: values.sent,
-      board: values.board || null,
-      board_angle: values.board && values.board_angle !== '' ? Number(values.board_angle) : null,
-      gym: values.gym || null,
+      board: isOutdoor ? null : (values.board || null),
+      board_angle: (!isOutdoor && values.board && values.board_angle !== '') ? Number(values.board_angle) : null,
+      gym: isOutdoor ? null : (values.gym || null),
+      crag: isOutdoor ? (values.crag || null) : null,
       beta_video_url: values.beta_video_url || null,
       notes: values.notes || null,
     })
@@ -95,6 +99,28 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         />
       </div>
 
+      {/* Indoor / Outdoor toggle */}
+      <div className="flex rounded-xl overflow-hidden border border-gray-200">
+        <button
+          type="button"
+          onClick={() => setIsOutdoor(false)}
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+            !isOutdoor ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
+          }`}
+        >
+          🏠 Indoor
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsOutdoor(true)}
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+            isOutdoor ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
+          }`}
+        >
+          🌲 Outdoor
+        </button>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Grade ({scaleLabel})</label>
         <select {...register('grade_value')} className="w-full border rounded-lg px-3 py-2.5">
@@ -105,54 +131,72 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         </select>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Training Board (optional)</label>
-        <div className="flex flex-wrap gap-2">
-          {BOARDS.map(b => (
-            <button
-              key={b}
-              type="button"
-              onClick={() => setValue('board', board === b ? '' : b)}
-              className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
-                board === b
-                  ? 'bg-sage-700 border-sage-700 text-white'
-                  : 'bg-white border-gray-300 text-gray-600'
-              }`}
-            >
-              {b}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {board && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Board Angle (°)</label>
-          <div className="flex items-center gap-3">
-            <input
-              {...register('board_angle', { valueAsNumber: true, min: 30, max: 70 })}
-              type="range"
-              min="30"
-              max="70"
-              step="5"
-              className="flex-1 accent-sage-700"
-            />
-            <span className="text-sm font-semibold text-gray-700 w-12 text-right">
-              {watch('board_angle') !== '' ? `${watch('board_angle')}°` : '—'}
-            </span>
+      {/* Indoor-only fields */}
+      {!isOutdoor && (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Training Board (optional)</label>
+            <div className="flex flex-wrap gap-2">
+              {BOARDS.map(b => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => setValue('board', board === b ? '' : b)}
+                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                    board === b
+                      ? 'bg-sage-700 border-sage-700 text-white'
+                      : 'bg-white border-gray-300 text-gray-600'
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+
+          {board && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Board Angle (°)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  {...register('board_angle', { valueAsNumber: true, min: 30, max: 70 })}
+                  type="range"
+                  min="30"
+                  max="70"
+                  step="5"
+                  className="flex-1 accent-sage-700"
+                />
+                <span className="text-sm font-semibold text-gray-700 w-12 text-right">
+                  {watch('board_angle') !== '' ? `${watch('board_angle')}°` : '—'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Color (optional)</label>
+            <input
+              {...register('color')}
+              type="text"
+              placeholder="e.g. Red, Blue, Yellow"
+              className="w-full border rounded-lg px-3 py-2.5"
+            />
+          </div>
+        </>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Color (optional)</label>
-        <input
-          {...register('color')}
-          type="text"
-          placeholder="e.g. Red, Blue, Yellow"
-          className="w-full border rounded-lg px-3 py-2.5"
-        />
-      </div>
+      {/* Outdoor-only fields */}
+      {isOutdoor && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Crag (optional)</label>
+          <input
+            {...register('crag')}
+            type="text"
+            placeholder="e.g. Fontainebleau, Magic Wood"
+            className="w-full border rounded-lg px-3 py-2.5"
+          />
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Attempts</label>
@@ -180,15 +224,17 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         <label htmlFor="sent" className="text-sm font-medium text-gray-700">Sent (completed)</label>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Gym (optional)</label>
-        <input
-          {...register('gym')}
-          type="text"
-          placeholder="e.g. Boulders Oslo"
-          className="w-full border rounded-lg px-3 py-2.5"
-        />
-      </div>
+      {!isOutdoor && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Gym (optional)</label>
+          <input
+            {...register('gym')}
+            type="text"
+            placeholder="e.g. Boulders Oslo"
+            className="w-full border rounded-lg px-3 py-2.5"
+          />
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Beta video (optional)</label>

@@ -225,6 +225,7 @@ export function SessionDetailPage() {
                     </span>
                   )}
                   {problem.gym && <span className="text-xs text-gray-400">· {problem.gym}</span>}
+                  {problem.crag && <span className="text-xs text-gray-400">🌲 {problem.crag}</span>}
                 </div>
                 {problem.beta_video_url && (
                   <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
