@@ -199,7 +199,7 @@ export function ChallengesPage() {
               <div className="border-t border-gray-100 px-2 py-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {publicChallenges.length === 0
                   ? <p className="text-gray-400 text-xs text-center py-3">No public challenges yet. Tap + to create one.</p>
-                  : publicChallenges.map(renderChallengeCard)}
+                  : publicChallenges.map(c => renderChallengeCard(c))}
               </div>
             )}
           </div>
@@ -223,7 +223,7 @@ export function ChallengesPage() {
               <div className="border-t border-gray-100 px-2 py-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {privateChallenges.length === 0
                   ? <p className="text-gray-400 text-xs text-center py-3">No private challenges yet.</p>
-                  : privateChallenges.map(renderChallengeCard)}
+                  : privateChallenges.map(c => renderChallengeCard(c))}
               </div>
             )}
           </div>
