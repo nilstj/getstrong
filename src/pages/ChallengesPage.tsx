@@ -14,6 +14,7 @@ import {
 } from '../hooks/useChallenges'
 import { useChallengeBetas, useAddBeta, useDeleteBeta, useMarkBetaHelpful } from '../hooks/useBetas'
 import { useFollowing } from '../hooks/useFollows'
+import { useChallengeTags } from '../hooks/useChallengeTags'
 import { useProfile } from '../hooks/useProfile'
 import { BottomSheet } from '../components/BottomSheet'
 import { FAB } from '../components/FAB'
@@ -21,8 +22,6 @@ import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
 import type { Challenge } from '../types'
-
-const CHALLENGE_TAGS = ['Power', 'Show-off', 'Power Endurance', 'Endurance', 'Slab', 'Technical'] as const
 
 function TagPills({ tags }: { tags: string[] }) {
   if (!tags || tags.length === 0) return null
@@ -265,6 +264,7 @@ function AttemptCountInline({ challengeId }: { challengeId: string }) {
 function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: () => void }) {
   const createChallenge = useCreateChallenge()
   const updateChallenge = useUpdateChallenge()
+  const { data: availableTags = [] } = useChallengeTags()
   const [tags, setTags] = useState<string[]>(existing?.tags ?? [])
   const [isPublic, setIsPublic] = useState<boolean>(existing?.is_public ?? true)
 
@@ -357,18 +357,18 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
         <div className="flex flex-wrap gap-2">
-          {CHALLENGE_TAGS.map(tag => (
+          {availableTags.map(t => (
             <button
-              key={tag}
+              key={t.id}
               type="button"
-              onClick={() => toggleTag(tag)}
+              onClick={() => toggleTag(t.name)}
               className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors ${
-                tags.includes(tag)
+                tags.includes(t.name)
                   ? 'bg-sage-700 border-sage-700 text-white'
                   : 'bg-white border-gray-300 text-gray-600'
               }`}
             >
-              {tag}
+              {t.name}
             </button>
           ))}
         </div>

@@ -6,6 +6,7 @@ import { useAppSetting, useUpdateAppSetting } from '../hooks/useAppSettings'
 import { useExerciseTemplates, useCreateExerciseTemplate, useUpdateExerciseTemplate, useDeleteExerciseTemplate } from '../hooks/useExerciseTemplates'
 import { useStrengthTests, useCreateStrengthTest, useUpdateStrengthTest, useDeleteStrengthTest } from '../hooks/useStrengthTests'
 import { useProblemTagDefinitions, useCreateProblemTagDefinition, useDeleteProblemTagDefinition } from '../hooks/useProblemTags'
+import { useChallengeTags, useCreateChallengeTag, useDeleteChallengeTag } from '../hooks/useChallengeTags'
 import { ExerciseTemplateModal } from '../components/ExerciseTemplateModal'
 import toast from 'react-hot-toast'
 
@@ -34,6 +35,7 @@ export function AdminPage() {
 
       <CoachPromptAdmin />
       <ProblemTagsAdmin />
+      <ChallengeTagsAdmin />
       <StrengthTestsAdmin />
       <ExerciseLibraryAdmin />
     </div>
@@ -149,6 +151,63 @@ function ProblemTagsAdmin() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ChallengeTagsAdmin() {
+  const { data: tags = [] } = useChallengeTags()
+  const createTag = useCreateChallengeTag()
+  const deleteTag = useDeleteChallengeTag()
+  const [name, setName] = useState('')
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold mb-3">Challenge Tags</h2>
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {tags.length === 0 && <p className="text-sm text-gray-400">No tags yet. Add some below.</p>}
+        {tags.map(t => (
+          <div key={t.id} className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full pl-3 pr-1.5 py-1">
+            <span className="text-sm text-gray-700">{t.name}</span>
+            <button
+              onClick={() => deleteTag.mutate(t.id, { onError: () => toast.error('Failed to delete') })}
+              className="w-4 h-4 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 transition-colors"
+            >
+              <Trash2 size={12} strokeWidth={1.75} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="border rounded-2xl p-4 space-y-3">
+        <p className="text-sm font-semibold text-gray-700">Add Tag</p>
+        <div className="flex gap-2">
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && name.trim()) {
+                e.preventDefault()
+                createTag.mutate(name.trim(), {
+                  onSuccess: () => { setName(''); toast.success('Tag added') },
+                  onError: () => toast.error('Failed (name may already exist)'),
+                })
+              }
+            }}
+            placeholder="Tag name (e.g. Coordination)"
+            className="flex-1 border rounded-xl px-3 py-2 text-sm"
+          />
+          <button
+            onClick={() => createTag.mutate(name.trim(), {
+              onSuccess: () => { setName(''); toast.success('Tag added') },
+              onError: () => toast.error('Failed (name may already exist)'),
+            })}
+            disabled={!name.trim() || createTag.isPending}
+            className="bg-sage-700 text-white px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+          >
+            {createTag.isPending ? '…' : 'Add'}
+          </button>
         </div>
       </div>
     </div>
