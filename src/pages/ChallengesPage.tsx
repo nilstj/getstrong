@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Pencil, Trash2, Globe, Lock, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Pencil, Trash2, Globe, Lock, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import {
   useChallenges,
   useCreateChallenge,
@@ -50,14 +50,26 @@ export function ChallengesPage() {
   const [editing, setEditing] = useState<Challenge | null>(null)
   const [publicOpen, setPublicOpen] = useState(true)
   const [privateOpen, setPrivateOpen] = useState(true)
+  const [query, setQuery] = useState('')
+
+  const isAdmin = profile?.is_admin ?? false
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return null
+    return challenges.filter(c =>
+      c.title.toLowerCase().includes(q) ||
+      (c.description ?? '').toLowerCase().includes(q) ||
+      (c.tags ?? []).some(t => t.toLowerCase().includes(q))
+    )
+  }, [challenges, query])
 
   const publicChallenges = challenges.filter(c => c.is_public)
   const privateChallenges = challenges.filter(c => !c.is_public)
-  const isAdmin = profile?.is_admin ?? false
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
 
-  const renderChallengeCard = (challenge: Challenge) => (
+  const renderChallengeCard = (challenge: Challenge, showBadge = false) => (
     <div key={challenge.id} className="relative flex items-stretch">
       <button
         onClick={() => setSelected(challenge)}
@@ -70,6 +82,11 @@ export function ChallengesPage() {
           <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{challenge.description}</p>
         )}
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          {showBadge && (
+            challenge.is_public
+              ? <span className="flex items-center gap-0.5 text-[10px] text-sage-700 font-medium"><Globe size={10} strokeWidth={2} />Public</span>
+              : <span className="flex items-center gap-0.5 text-[10px] text-gray-400 font-medium"><Lock size={10} strokeWidth={2} />Friends</span>
+          )}
           {challenge.tags?.map(tag => (
             <span key={tag} className="text-[11px] bg-gray-50 text-sage-800 border border-gray-200 rounded-full px-1.5 py-px">{tag}</span>
           ))}
@@ -108,7 +125,42 @@ export function ChallengesPage() {
     <div className="p-4 pb-28 space-y-3">
       <h1 className="text-2xl font-black tracking-tight">Challenges</h1>
 
-      {received.length > 0 && (
+      {/* Search */}
+      <div className="relative">
+        <Search size={15} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search challenges…"
+          className="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-8 py-2.5 text-sm focus:outline-none focus:border-sage-500"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X size={14} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+
+      {/* Search results */}
+      {filtered !== null && (
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <div className="px-3 py-2 border-b border-gray-100">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {filtered.length === 0 ? 'No results' : `${filtered.length} result${filtered.length !== 1 ? 's' : ''}`}
+            </span>
+          </div>
+          {filtered.length > 0 && (
+            <div className="px-2 py-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {filtered.map(c => renderChallengeCard(c, true))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {filtered === null && received.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-3 py-2 border-b border-gray-100">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sent to me</h2>
@@ -128,7 +180,7 @@ export function ChallengesPage() {
         </div>
       )}
 
-      <>
+      {filtered === null && <>
           {/* Public challenges section */}
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <button
@@ -176,7 +228,7 @@ export function ChallengesPage() {
               </div>
             )}
           </div>
-      </>
+      </>}
 
       <FAB onClick={() => setCreateOpen(true)} label="Create challenge" />
 
