@@ -567,6 +567,7 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
   const friendProblemIds = (detail?.problems ?? []).map(p => p.id)
   const { data: commentCounts = {} } = useProblemCommentCounts(friendProblemIds)
   const [openCommentProblemId, setOpenCommentProblemId] = useState<string | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const title = profile?.username ? `${profile.username} — this week` : 'This week'
 
@@ -588,7 +589,13 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
               <div className="space-y-2">
                 {detail.problems.map(p => (
                   <div key={p.id} className="bg-gray-50 rounded-xl px-3 py-2.5">
-                    <div>
+                    <div className="flex items-start gap-2">
+                    {p.image_url && (
+                      <button type="button" onClick={() => setLightboxUrl(p.image_url!)} className="flex-shrink-0">
+                        <img src={p.image_url} alt="" className="w-14 h-14 object-cover rounded-lg" />
+                      </button>
+                    )}
+                    <div className="flex-1 min-w-0">
                       {p.name && <p className="font-semibold text-sm text-gray-900">{p.name}</p>}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-medium">
@@ -633,6 +640,8 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                     {openCommentProblemId === p.id && (
                       <ProblemCommentThread problemId={p.id} />
                     )}
+                    </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -665,6 +674,11 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
               </div>
             )}
           </div>
+        </div>
+      )}
+      {lightboxUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onClick={() => setLightboxUrl(null)}>
+          <img src={lightboxUrl} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </BottomSheet>

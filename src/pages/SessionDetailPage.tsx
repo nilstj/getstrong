@@ -31,6 +31,17 @@ import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
 
+function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <img src={url} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={e => e.stopPropagation()} />
+    </div>
+  )
+}
+
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
 function SendBadge({ sent, attempts }: { sent: boolean; attempts: number }) {
@@ -52,6 +63,7 @@ export function SessionDetailPage() {
   const [sheetTab, setSheetTab] = useState<SheetTab>('problem')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null)
   const [editingAttempt, setEditingAttempt] = useState<ChallengeAttempt | null>(null)
 
@@ -191,7 +203,9 @@ export function SessionDetailPage() {
               <div key={problem.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-start gap-2">
                 {problem.image_url && (
-                  <img src={problem.image_url} alt="" className="w-16 h-16 object-cover rounded-xl flex-shrink-0" />
+                  <button type="button" onClick={() => setLightboxUrl(problem.image_url!)} className="flex-shrink-0">
+                    <img src={problem.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
+                  </button>
                 )}
                 <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
@@ -944,6 +958,7 @@ function WisdomSection({ session }: { session: import('../types').Session }) {
           </div>
         </div>
       )}
+      {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     </div>
   )
 }
