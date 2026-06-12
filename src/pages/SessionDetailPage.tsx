@@ -526,6 +526,7 @@ export function SessionDetailPage() {
           isSaving={updateChallengeAttempt.isPending}
         />
       )}
+      {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     </div>
   )
 }
@@ -958,7 +959,6 @@ function WisdomSection({ session }: { session: import('../types').Session }) {
           </div>
         </div>
       )}
-      {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     </div>
   )
 }
