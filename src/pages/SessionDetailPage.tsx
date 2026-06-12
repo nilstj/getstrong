@@ -189,6 +189,11 @@ export function SessionDetailPage() {
           <div className="space-y-2">
             {problems.map(problem => (
               <div key={problem.id} className="bg-gray-50 rounded-2xl p-3">
+                <div className="flex items-start gap-2">
+                {problem.image_url && (
+                  <img src={problem.image_url} alt="" className="w-16 h-16 object-cover rounded-xl flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div>
                     {problem.name && <p className="font-semibold text-gray-900">{problem.name}</p>}
@@ -258,6 +263,8 @@ export function SessionDetailPage() {
                 {openCommentProblemId === problem.id && (
                   <ProblemCommentThread problemId={problem.id} />
                 )}
+                </div>
+                </div>
               </div>
             ))}
           </div>

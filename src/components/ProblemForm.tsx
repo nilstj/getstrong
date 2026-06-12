@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
+import { Camera, X } from 'lucide-react'
 import type { Problem, ProblemTagDefinition } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
 import { useProblemTagDefinitions } from '../hooks/useProblemTags'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../providers/AuthProvider'
 
 const BOARDS = ['Kilterboard', 'Moonboard', 'TB2'] as const
 
@@ -29,11 +32,29 @@ interface ProblemFormProps {
 }
 
 export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font', existing, existingTagIds }: ProblemFormProps) {
+  const { user } = useAuth()
   const grades = initialGradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
   const scaleLabel = initialGradeSystem === 'v_scale' ? 'V-Scale' : 'Font'
   const { data: tagDefinitions = [] } = useProblemTagDefinitions()
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(existingTagIds ?? []))
   const [isOutdoor, setIsOutdoor] = useState<boolean>(!!(existing?.crag))
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(existing?.image_url ?? null)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSelectedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const clearImage = () => {
+    setSelectedFile(null)
+    setPreviewUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const toggleTag = (id: string) => {
     setSelectedTagIds(prev => {
@@ -69,7 +90,25 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const attempts = watch('attempts')
   const board = watch('board')
 
-  const submit = (values: FormValues) => {
+  const submit = async (values: FormValues) => {
+    let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? null) : null
+
+    if (selectedFile && user) {
+      setIsUploading(true)
+      try {
+        const ext = selectedFile.name.split('.').pop() ?? 'jpg'
+        const path = `${user.id}/${Date.now()}.${ext}`
+        const { error } = await supabase.storage
+          .from('problem-images')
+          .upload(path, selectedFile, { upsert: true })
+        if (!error) {
+          image_url = supabase.storage.from('problem-images').getPublicUrl(path).data.publicUrl
+        }
+      } finally {
+        setIsUploading(false)
+      }
+    }
+
     onSubmit({
       tagIds: Array.from(selectedTagIds),
       name: values.name || null,
@@ -82,6 +121,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       board_angle: (!isOutdoor && values.board && values.board_angle !== '') ? Number(values.board_angle) : null,
       gym: isOutdoor ? null : (values.gym || null),
       crag: isOutdoor ? (values.crag || null) : null,
+      image_url,
       beta_video_url: values.beta_video_url || null,
       notes: values.notes || null,
     })
@@ -285,12 +325,45 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         </div>
       )}
 
+      {/* Image picker */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Photo (optional)</label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {previewUrl ? (
+          <div className="relative inline-block">
+            <img src={previewUrl} alt="Problem preview" className="w-24 h-24 object-cover rounded-lg border" />
+            <button
+              type="button"
+              onClick={clearImage}
+              className="absolute -top-2 -right-2 bg-white border rounded-full p-0.5 shadow"
+            >
+              <X className="w-3.5 h-3.5 text-gray-600" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <Camera className="w-4 h-4" />
+            Add photo
+          </button>
+        )}
+      </div>
+
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isUploading}
         className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50"
       >
-        {isSubmitting ? 'Saving...' : existing ? 'Save Changes' : 'Add Problem'}
+        {isUploading ? 'Uploading...' : isSubmitting ? 'Saving...' : existing ? 'Save Changes' : 'Add Problem'}
       </button>
     </form>
   )
