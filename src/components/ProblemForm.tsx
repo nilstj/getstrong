@@ -286,6 +286,39 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         />
       </div>
 
+      {/* Image picker */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Photo (optional)</label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {previewUrl ? (
+          <div className="relative inline-block">
+            <img src={previewUrl} alt="Problem preview" className="w-24 h-24 object-cover rounded-lg border" />
+            <button
+              type="button"
+              onClick={clearImage}
+              className="absolute -top-2 -right-2 bg-white border rounded-full p-0.5 shadow"
+            >
+              <X className="w-3.5 h-3.5 text-gray-600" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <Camera className="w-4 h-4" />
+            Add photo
+          </button>
+        )}
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
         <textarea
@@ -324,39 +357,6 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
           </div>
         </div>
       )}
-
-      {/* Image picker */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Photo (optional)</label>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        {previewUrl ? (
-          <div className="relative inline-block">
-            <img src={previewUrl} alt="Problem preview" className="w-24 h-24 object-cover rounded-lg border" />
-            <button
-              type="button"
-              onClick={clearImage}
-              className="absolute -top-2 -right-2 bg-white border rounded-full p-0.5 shadow"
-            >
-              <X className="w-3.5 h-3.5 text-gray-600" />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-          >
-            <Camera className="w-4 h-4" />
-            Add photo
-          </button>
-        )}
-      </div>
 
       <button
         type="submit"
