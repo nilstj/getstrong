@@ -41,6 +41,7 @@ export interface Problem {
   board_angle: number | null
   gym: string | null
   beta_video_url: string | null
+  image_url: string | null
   crag: string | null
   notes: string | null
   created_at: string
