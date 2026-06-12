@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trophy, CalendarDays } from 'lucide-react'
+import { Trophy, CalendarDays, Play } from 'lucide-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useMyCompletedChallenges, useReceivedChallenges } from '../hooks/useChallenges'
 import { useFriendsWeeklyActivity } from '../hooks/useFriendsActivity'
@@ -590,11 +590,16 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                 {detail.problems.map(p => (
                   <div key={p.id} className="bg-gray-50 rounded-xl px-3 py-2.5">
                     <div className="flex items-start gap-2">
-                      {p.image_url && (
+                      {p.image_url ? (
                         <button type="button" onClick={() => setLightboxUrl(p.image_url!)} className="flex-shrink-0">
                           <img src={p.image_url} alt="" className="w-14 h-14 object-cover rounded-lg" />
                         </button>
-                      )}
+                      ) : p.beta_video_url ? (
+                        <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
+                          className="flex-shrink-0 w-14 h-14 rounded-lg bg-gray-800 flex items-center justify-center">
+                          <Play className="w-5 h-5 text-white fill-white ml-0.5" />
+                        </a>
+                      ) : null}
                       <div className="flex-1 min-w-0">
                         {p.name && <p className="font-semibold text-sm text-gray-900">{p.name}</p>}
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -611,7 +616,7 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                           {p.gym && <span className="text-xs text-gray-400">{p.gym}</span>}
                         </div>
                         <p className="text-xs text-gray-400 mt-0.5">{p.attempts} attempt{p.attempts !== 1 ? 's' : ''}</p>
-                        {p.beta_video_url && (
+                        {p.beta_video_url && p.image_url && (
                           <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
                             className="text-xs text-sage-800 font-medium mt-0.5 inline-block">
                             ▶ Beta video

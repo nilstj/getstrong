@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Play } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession, useUpdateSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
@@ -202,11 +202,16 @@ export function SessionDetailPage() {
             {problems.map(problem => (
               <div key={problem.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-start gap-2">
-                {problem.image_url && (
+                {problem.image_url ? (
                   <button type="button" onClick={() => setLightboxUrl(problem.image_url!)} className="flex-shrink-0">
                     <img src={problem.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
                   </button>
-                )}
+                ) : problem.beta_video_url ? (
+                  <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
+                    className="flex-shrink-0 w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
+                    <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                  </a>
+                ) : null}
                 <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div>
@@ -246,7 +251,7 @@ export function SessionDetailPage() {
                   {problem.gym && <span className="text-xs text-gray-400">· {problem.gym}</span>}
                   {problem.crag && <span className="text-xs text-gray-400">🌲 {problem.crag}</span>}
                 </div>
-                {problem.beta_video_url && (
+                {problem.beta_video_url && problem.image_url && (
                   <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
                     className="text-xs text-gray-500 mt-0.5 inline-block">
                     ▶ Beta video
