@@ -590,33 +590,34 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                 {detail.problems.map(p => (
                   <div key={p.id} className="bg-gray-50 rounded-xl px-3 py-2.5">
                     <div className="flex items-start gap-2">
-                    {p.image_url && (
-                      <button type="button" onClick={() => setLightboxUrl(p.image_url!)} className="flex-shrink-0">
-                        <img src={p.image_url} alt="" className="w-14 h-14 object-cover rounded-lg" />
-                      </button>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      {p.name && <p className="font-semibold text-sm text-gray-900">{p.name}</p>}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-medium">
-                          {gradeScale === 'v_scale' && p.grade_value_vscale
-                            ? p.grade_value_vscale
-                            : (p.grade_value_font ?? p.color ?? '—')}
-                        </span>
-                        {p.board && (
-                          <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2 py-0.5">
-                            {p.board}{p.board_angle != null ? ` ${p.board_angle}°` : ''}
-                          </span>
-                        )}
-                        {p.gym && <span className="text-xs text-gray-400">{p.gym}</span>}
-                      </div>
-                      <p className="text-xs text-gray-400 mt-0.5">{p.attempts} attempt{p.attempts !== 1 ? 's' : ''}</p>
-                      {p.beta_video_url && (
-                        <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-sage-800 font-medium mt-0.5 inline-block">
-                          ▶ Beta video
-                        </a>
+                      {p.image_url && (
+                        <button type="button" onClick={() => setLightboxUrl(p.image_url!)} className="flex-shrink-0">
+                          <img src={p.image_url} alt="" className="w-14 h-14 object-cover rounded-lg" />
+                        </button>
                       )}
+                      <div className="flex-1 min-w-0">
+                        {p.name && <p className="font-semibold text-sm text-gray-900">{p.name}</p>}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm font-medium">
+                            {gradeScale === 'v_scale' && p.grade_value_vscale
+                              ? p.grade_value_vscale
+                              : (p.grade_value_font ?? p.color ?? '—')}
+                          </span>
+                          {p.board && (
+                            <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2 py-0.5">
+                              {p.board}{p.board_angle != null ? ` ${p.board_angle}°` : ''}
+                            </span>
+                          )}
+                          {p.gym && <span className="text-xs text-gray-400">{p.gym}</span>}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5">{p.attempts} attempt{p.attempts !== 1 ? 's' : ''}</p>
+                        {p.beta_video_url && (
+                          <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-sage-800 font-medium mt-0.5 inline-block">
+                            ▶ Beta video
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <ReactionBar problemId={p.id} />
@@ -632,7 +633,7 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ml-auto ${
                         p.sent && p.attempts === 1 ? 'bg-yellow-300 text-yellow-900' :
-                      p.sent ? 'bg-sage-700 text-white' : 'bg-gray-200 text-gray-500'
+                        p.sent ? 'bg-sage-700 text-white' : 'bg-gray-200 text-gray-500'
                       }`}>
                         {p.sent && p.attempts === 1 ? 'Flash ⚡' : p.sent ? 'Sent' : 'Project'}
                       </span>
@@ -640,8 +641,6 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
                     {openCommentProblemId === p.id && (
                       <ProblemCommentThread problemId={p.id} />
                     )}
-                    </div>
-                    </div>
                   </div>
                 ))}
               </div>
