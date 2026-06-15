@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useFollowing } from './useFollows'
-import type { Problem } from '../types'
+import type { Problem, Exercise } from '../types'
 
 export interface FriendWeeklySummary {
   userId: string
@@ -78,6 +78,7 @@ export function useFriendsWeeklyActivity() {
 export interface FriendWeeklyDetail {
   problems: Problem[]
   attempts: { id: string; completed: boolean; notes: string | null; challenges: { title: string } | null }[]
+  exercises: Exercise[]
 }
 
 export function useFriendWeeklyDetail(userId: string | null) {
@@ -88,7 +89,7 @@ export function useFriendWeeklyDetail(userId: string | null) {
       since.setDate(since.getDate() - 7)
       const sinceStr = since.toISOString()
 
-      const [problemsRes, attemptsRes] = await Promise.all([
+      const [problemsRes, attemptsRes, exercisesRes] = await Promise.all([
         supabase
           .from('problems')
           .select('*')
@@ -101,14 +102,22 @@ export function useFriendWeeklyDetail(userId: string | null) {
           .eq('user_id', userId!)
           .gte('created_at', sinceStr)
           .order('created_at', { ascending: false }),
+        supabase
+          .from('exercises')
+          .select('*')
+          .eq('user_id', userId!)
+          .gte('created_at', sinceStr)
+          .order('created_at', { ascending: false }),
       ])
 
       if (problemsRes.error) throw problemsRes.error
       if (attemptsRes.error) throw attemptsRes.error
+      if (exercisesRes.error) throw exercisesRes.error
 
       return {
         problems: problemsRes.data as Problem[],
         attempts: attemptsRes.data as unknown as FriendWeeklyDetail['attempts'],
+        exercises: exercisesRes.data as Exercise[],
       }
     },
     enabled: !!userId,
