@@ -104,7 +104,7 @@ export function useFriendsWisdoms(followingIds: string[]) {
     queryKey: ['friends_wisdoms', [...followingIds].sort().join(',')],
     queryFn: async () => {
       const since = new Date()
-      since.setDate(since.getDate() - 7)
+      since.setDate(since.getDate() - 14)
       const { data, error } = await supabase
         .from('sessions')
         .select('id, user_id, date, location, wisdom')
