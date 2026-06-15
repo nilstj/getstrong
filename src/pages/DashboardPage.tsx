@@ -684,6 +684,37 @@ function FriendDetailSheet({ userId, gradeScale, onClose }: { userId: string; gr
               </div>
             )}
           </div>
+
+          {/* Exercises */}
+          <div>
+            <p className="text-sm font-bold mb-2">
+              Exercises
+              <span className="text-gray-400 font-normal ml-1">({detail.exercises.length})</span>
+            </p>
+            {detail.exercises.length === 0 ? (
+              <p className="text-sm text-gray-400">No exercises logged this week.</p>
+            ) : (
+              <div className="space-y-2">
+                {detail.exercises.map(ex => (
+                  <div key={ex.id} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">{ex.name}</p>
+                      <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2 py-0.5 flex-shrink-0">
+                        {ex.type === 'reps' ? 'Reps' : 'Time'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {ex.type === 'reps'
+                        ? [ex.sets != null && `${ex.sets} sets`, ex.reps != null && `${ex.reps} reps`].filter(Boolean).join(' × ')
+                        : [ex.sets != null && `${ex.sets} sets`, ex.duration_seconds != null && `${ex.duration_seconds}s`].filter(Boolean).join(' × ')}
+                      {ex.weight_kg != null && <span className="ml-1 text-gray-400">+{ex.weight_kg} kg</span>}
+                    </p>
+                    {ex.notes && <p className="text-xs text-gray-400 mt-0.5">{ex.notes}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
       {lightboxUrl && (
