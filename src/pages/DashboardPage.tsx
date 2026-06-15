@@ -518,17 +518,19 @@ function PowerRankings({ activity }: { activity: FriendWeeklySummary[] }) {
   const byProblems = [...activity].sort((a, b) => b.problems - a.problems).slice(0, 3)
   const bySends = [...activity].sort((a, b) => b.sends - a.sends).filter(a => a.sends > 0).slice(0, 3)
   const byChallenges = [...activity].sort((a, b) => b.challengesCompleted - a.challengesCompleted).filter(a => a.challengesCompleted > 0).slice(0, 3)
+  const byExercises = [...activity].sort((a, b) => b.exercises - a.exercises).filter(a => a.exercises > 0).slice(0, 3)
 
   if (byProblems.length < 2) return null
 
   return (
     <div>
       <h2 className="text-base font-bold mb-2">Weekly Rankings</h2>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {[
           { title: '🧗 Problems', list: byProblems, value: (f: FriendWeeklySummary) => f.problems },
           { title: '✅ Sends', list: bySends, value: (f: FriendWeeklySummary) => f.sends },
           { title: '🏆 Challenges', list: byChallenges, value: (f: FriendWeeklySummary) => f.challengesCompleted },
+          { title: '💪 Exercises', list: byExercises, value: (f: FriendWeeklySummary) => f.exercises },
         ].map(cat => (
           <div key={cat.title} className="bg-white border border-gray-200 rounded-2xl p-3">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{cat.title}</p>
