@@ -314,6 +314,7 @@ export function DashboardPage() {
                   <th className="text-center px-2 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Problems</th>
                   <th className="text-center px-2 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sends</th>
                   <th className="text-center px-2 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Challenges</th>
+                  <th className="text-center px-2 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Exercises</th>
                 </tr>
               </thead>
               <tbody>
@@ -484,6 +485,11 @@ function FriendRow({ friend, last, announcement, hasJoined, onClick }: {
               : friend.challengeAttempts}
           </span>
         ) : <span className="text-gray-300">—</span>}
+      </td>
+      <td className="text-center px-2 py-3">
+        {friend.exercises > 0
+          ? <span className="font-semibold text-gray-800">{friend.exercises}</span>
+          : <span className="text-gray-300">—</span>}
       </td>
     </tr>
   )
