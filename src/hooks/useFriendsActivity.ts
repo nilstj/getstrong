@@ -9,6 +9,7 @@ export interface FriendWeeklySummary {
   sends: number
   challengeAttempts: number
   challengesCompleted: number
+  exercises: number
 }
 
 export function useFriendsWeeklyActivity() {
@@ -22,7 +23,7 @@ export function useFriendsWeeklyActivity() {
       since.setDate(since.getDate() - 7)
       const sinceStr = since.toISOString()
 
-      const [problemsRes, attemptsRes] = await Promise.all([
+      const [problemsRes, attemptsRes, exercisesRes] = await Promise.all([
         supabase
           .from('problems')
           .select('user_id, sent')
@@ -33,14 +34,20 @@ export function useFriendsWeeklyActivity() {
           .select('user_id, completed')
           .in('user_id', followingIds)
           .gte('created_at', sinceStr),
+        supabase
+          .from('exercises')
+          .select('user_id')
+          .in('user_id', followingIds)
+          .gte('created_at', sinceStr),
       ])
 
       if (problemsRes.error) throw problemsRes.error
       if (attemptsRes.error) throw attemptsRes.error
+      if (exercisesRes.error) throw exercisesRes.error
 
       const summary: Record<string, FriendWeeklySummary> = {}
       for (const id of followingIds) {
-        summary[id] = { userId: id, problems: 0, sends: 0, challengeAttempts: 0, challengesCompleted: 0 }
+        summary[id] = { userId: id, problems: 0, sends: 0, challengeAttempts: 0, challengesCompleted: 0, exercises: 0 }
       }
       for (const p of problemsRes.data) {
         if (summary[p.user_id]) {
@@ -54,10 +61,15 @@ export function useFriendsWeeklyActivity() {
           if (a.completed) summary[a.user_id].challengesCompleted++
         }
       }
+      for (const e of exercisesRes.data) {
+        if (summary[e.user_id]) {
+          summary[e.user_id].exercises++
+        }
+      }
 
       return Object.values(summary)
-        .filter(s => s.problems + s.challengeAttempts > 0)
-        .sort((a, b) => (b.problems + b.challengeAttempts) - (a.problems + a.challengeAttempts))
+        .filter(s => s.problems + s.challengeAttempts + s.exercises > 0)
+        .sort((a, b) => (b.problems + b.challengeAttempts + b.exercises) - (a.problems + a.challengeAttempts + a.exercises))
     },
     enabled: followingIds.length > 0,
   })
