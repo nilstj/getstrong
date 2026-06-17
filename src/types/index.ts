@@ -205,6 +205,9 @@ export type NotificationType =
   | 'wall_comment'
   | 'beta_video'
   | 'proof_video'
+  | 'help_response'
+  | 'help_marked_helpful'
+  | 'badge_earned'
 
 export interface Notification {
   id: string
@@ -216,3 +219,40 @@ export interface Notification {
   read_at: string | null
   created_at: string
 }
+
+export type HelpVisibility = 'friends' | 'global'
+
+export interface HelpRequest {
+  id: string
+  problem_id: string
+  user_id: string
+  message: string | null
+  visibility: HelpVisibility
+  resolved: boolean
+  created_at: string
+}
+
+export interface HelpResponse {
+  id: string
+  request_id: string
+  user_id: string
+  body: string
+  video_url: string | null
+  helpful: boolean
+  created_at: string
+}
+
+export type BadgeKey = 'spotter' | 'beta_sprayer' | 'crux_crusher' | 'beta_legend'
+
+export interface UserBadge {
+  user_id: string
+  badge: BadgeKey
+  earned_at: string
+}
+
+export const BADGES: { key: BadgeKey; label: string; emoji: string; threshold: number; blurb: string }[] = [
+  { key: 'spotter',      label: 'Spotter',      emoji: '🤲', threshold: 1,   blurb: 'First helpful beta' },
+  { key: 'beta_sprayer', label: 'Beta Sprayer', emoji: '💦', threshold: 5,   blurb: '5 helpful betas' },
+  { key: 'crux_crusher', label: 'Crux Crusher', emoji: '💥', threshold: 25,  blurb: '25 helpful betas' },
+  { key: 'beta_legend',  label: 'Beta Legend',  emoji: '👑', threshold: 100, blurb: '100 helpful betas' },
+]

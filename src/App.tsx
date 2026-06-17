@@ -13,6 +13,7 @@ import { EditSessionPage } from './pages/EditSessionPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { ChallengesPage } from './pages/ChallengesPage'
 import { AnalysisPage } from './pages/AnalysisPage'
+import { HelpPage } from './pages/HelpPage'
 import { AdminPage } from './pages/AdminPage'
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/sessions/:id/edit" element={<EditSessionPage />} />
               <Route path="/challenges" element={<ChallengesPage />} />
               <Route path="/analysis" element={<AnalysisPage />} />
+              <Route path="/help" element={<HelpPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>

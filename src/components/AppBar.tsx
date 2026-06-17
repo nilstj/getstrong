@@ -12,6 +12,7 @@ import {
 } from '../hooks/useNotifications'
 import { useProfile } from '../hooks/useProfile'
 import type { Notification } from '../types'
+import { BADGES } from '../types'
 import toast from 'react-hot-toast'
 
 const TOP_LEVEL_PATHS = ['/dashboard', '/sessions', '/challenges', '/profile']
@@ -111,6 +112,9 @@ const ICONS: Record<Notification['type'], string> = {
   wall_comment: '🗣️',
   beta_video: '🎥',
   proof_video: '🎬',
+  help_response: '🆘',
+  help_marked_helpful: '🙌',
+  badge_earned: '🏅',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
@@ -140,6 +144,14 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       return { text: `${username} added a beta video${d.grade ? ` for a ${d.grade}` : ''}${d.location ? ` at ${d.location}` : ''}` }
     case 'proof_video':
       return { text: `${username} added a proof video for "${d.challenge_title ?? 'a challenge'}"` }
+    case 'help_response':
+      return { text: `${username} responded to your call for help${d.grade ? ` on a ${d.grade}` : ''}`, detail: d.body ? `"${d.body}"` : undefined }
+    case 'help_marked_helpful':
+      return { text: `${username} marked your beta helpful 🙌` }
+    case 'badge_earned': {
+      const badge = BADGES.find(b => b.key === d.badge)
+      return { text: `You earned the “${badge?.label ?? 'Helper'}” badge! ${badge?.emoji ?? '🏅'}` }
+    }
   }
 }
 
@@ -156,7 +168,11 @@ function routeFor(n: Notification): string | null {
       return '/challenges'
     case 'follow_request':
     case 'new_follower':
+    case 'badge_earned':
       return '/profile'
+    case 'help_response':
+    case 'help_marked_helpful':
+      return '/help'
     default:
       return null
   }

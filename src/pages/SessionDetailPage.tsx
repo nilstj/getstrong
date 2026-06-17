@@ -29,6 +29,7 @@ import { PartnerPicker, PartnerAvatars } from '../components/PartnerPicker'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
+import { CallForHelp } from '../components/CallForHelp'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
 
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
@@ -282,6 +283,7 @@ export function SessionDetailPage() {
                 {openCommentProblemId === problem.id && (
                   <ProblemCommentThread problemId={problem.id} />
                 )}
+                <CallForHelp problem={problem} />
                 </div>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Plus, Trophy, BarChart2, User } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Plus, Trophy, BarChart2, User, LifeBuoy } from 'lucide-react'
 import { useReceivedChallenges } from '../hooks/useChallenges'
 import { useReceivedFollowRequests } from '../hooks/useFollows'
 
@@ -52,6 +52,15 @@ export function BottomNav() {
               )}
             </div>
             <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Challenges</span>
+          </>
+        )}
+      </NavLink>
+
+      <NavLink to="/help" className={linkClass}>
+        {({ isActive }) => (
+          <>
+            <LifeBuoy size={22} strokeWidth={isActive ? 2.5 : 1.75} />
+            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Help</span>
           </>
         )}
       </NavLink>

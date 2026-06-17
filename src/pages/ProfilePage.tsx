@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
+import { useUserBadges } from '../hooks/useBadges'
+import { BADGES } from '../types'
 import {
   useFollowing, useFollowersCount, useRemoveFriend,
   useSentFollowRequests, useReceivedFollowRequests,
@@ -159,6 +161,8 @@ export function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <BadgesCard />
 
       {/* Search users */}
       <div>
@@ -340,6 +344,40 @@ function FollowingItem({ userId, onRemove }: { userId: string; onRemove: () => v
       >
         Remove
       </button>
+    </div>
+  )
+}
+
+function BadgesCard() {
+  const { data } = useUserBadges()
+  const earned = new Set((data?.badges ?? []).map(b => b.badge))
+  const helpfulCount = data?.helpfulCount ?? 0
+  const next = BADGES.find(b => !earned.has(b.key))
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold mb-2">Helper Badges</h2>
+      <div className="grid grid-cols-4 gap-2">
+        {BADGES.map(b => {
+          const has = earned.has(b.key)
+          return (
+            <div
+              key={b.key}
+              title={`${b.label} — ${b.blurb}`}
+              className={`flex flex-col items-center gap-1 rounded-2xl py-3 px-1 border text-center ${
+                has ? 'bg-sage-50 border-sage-200' : 'bg-gray-50 border-gray-100'
+              }`}
+            >
+              <span className={`text-2xl ${has ? '' : 'grayscale opacity-30'}`}>{b.emoji}</span>
+              <span className={`text-[10px] font-semibold leading-tight ${has ? 'text-sage-800' : 'text-gray-400'}`}>{b.label}</span>
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-xs text-gray-400 mt-2 text-center">
+        {helpfulCount} helpful beta{helpfulCount !== 1 ? 's' : ''}
+        {next ? ` · ${next.threshold - helpfulCount} to ${next.label}` : ' · all badges earned 👑'}
+      </p>
     </div>
   )
 }
