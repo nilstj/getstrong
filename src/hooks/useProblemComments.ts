@@ -10,20 +10,6 @@ export interface ProblemComment {
   created_at: string
 }
 
-export interface ProblemCommentNotif {
-  id: string
-  user_id: string
-  body: string
-  created_at: string
-  problem_id: string
-  problems: {
-    grade_value_font: string | null
-    color: string | null
-    user_id: string
-    sessions: { location: string } | null
-  } | null
-}
-
 export function useProblemComments(problemId: string) {
   return useQuery({
     queryKey: ['problem_comments', problemId],
@@ -79,22 +65,3 @@ export function usePostProblemComment() {
   })
 }
 
-export function useMyProblemCommentNotifs() {
-  const { user } = useAuth()
-  return useQuery({
-    queryKey: ['my_problem_comment_notifs', user?.id],
-    queryFn: async () => {
-      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-      const { data, error } = await supabase
-        .from('problem_comments')
-        .select('id, user_id, body, created_at, problem_id, problems!inner(grade_value_font, color, user_id, sessions!inner(location))')
-        .eq('problems.user_id', user!.id)
-        .neq('user_id', user!.id)
-        .gte('created_at', cutoff)
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      return (data ?? []) as unknown as ProblemCommentNotif[]
-    },
-    enabled: !!user,
-  })
-}

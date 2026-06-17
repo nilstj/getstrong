@@ -191,3 +191,28 @@ export interface ChallengeInvitation {
   recipient_id: string
   created_at: string
 }
+
+export type NotificationType =
+  | 'problem_comment'
+  | 'problem_reaction'
+  | 'attempt_reaction'
+  | 'challenge_comment'
+  | 'follow_request'
+  | 'new_follower'
+  | 'challenge_invitation'
+  | 'hype'
+  | 'session_tag'
+  | 'wall_comment'
+  | 'beta_video'
+  | 'proof_video'
+
+export interface Notification {
+  id: string
+  recipient_id: string
+  actor_id: string | null
+  type: NotificationType
+  entity_id: string | null
+  data: Record<string, unknown>
+  read_at: string | null
+  created_at: string
+}
