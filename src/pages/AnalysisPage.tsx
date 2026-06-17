@@ -10,9 +10,8 @@ import { useRecentExercises } from '../hooks/useRecentExercises'
 import { useCoach } from '../hooks/useCoach'
 import { useAppSetting } from '../hooks/useAppSettings'
 import { subDays, formatDistanceToNow } from 'date-fns'
-import { RefreshCw, Sparkles, Film, ChevronRight } from 'lucide-react'
+import { RefreshCw, Sparkles } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 
 const COACH_STORAGE_KEY = 'lastCoachUsed'
 const COACH_COOLDOWN_MS = 24 * 60 * 60 * 1000
@@ -140,18 +139,6 @@ export function AnalysisPage() {
             </div>
           </div>
         )}
-
-        <Link
-          to="/video-analysis"
-          className="mt-3 w-full flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-4 py-3 hover:border-sage-400 transition-colors"
-        >
-          <Film size={18} strokeWidth={1.75} className="text-sage-700" />
-          <div className="flex-1 text-left">
-            <p className="text-sm font-medium text-gray-900">Video Analysis</p>
-            <p className="text-xs text-gray-400">Upload an attempt clip for technique feedback</p>
-          </div>
-          <ChevronRight size={18} strokeWidth={1.75} className="text-gray-300" />
-        </Link>
       </div>
 
       {allTagDefs.length > 0 && (
