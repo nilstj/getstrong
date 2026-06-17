@@ -49,11 +49,23 @@ export async function extractFrames(
       throw new Error('Could not read this video’s duration')
     }
 
-    // loadedmetadata only guarantees dimensions/duration — wait until a frame
-    // is actually decodable (readyState >= HAVE_CURRENT_DATA) before seeking,
-    // otherwise the first 'seeked' event may never fire.
+    // loadedmetadata only guarantees dimensions/duration — we need an actual
+    // decodable frame (readyState >= HAVE_CURRENT_DATA) before seeking.
+    //
+    // iOS WebKit (every iPhone browser, incl. Firefox) ignores `preload` and
+    // won't buffer frame data until playback starts. A muted, inline play() is
+    // allowed without a user gesture and kicks the decoder; we pause once a
+    // frame is available, then seek.
     if (video.readyState < 2 /* HAVE_CURRENT_DATA */) {
-      await waitForEvent(video, ['loadeddata', 'canplay'], METADATA_TIMEOUT_MS, 'buffer video data')
+      try {
+        const p = video.play()
+        if (p && typeof p.catch === 'function') p.catch(() => { /* autoplay may be blocked */ })
+      } catch { /* ignore */ }
+      try {
+        await waitForEvent(video, ['loadeddata', 'canplay', 'playing'], METADATA_TIMEOUT_MS, 'buffer video data')
+      } finally {
+        try { video.pause() } catch { /* ignore */ }
+      }
     }
 
     const canvas = document.createElement('canvas')
