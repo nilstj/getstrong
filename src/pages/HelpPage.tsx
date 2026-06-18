@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LifeBuoy, Play, Users, Globe, Check, MessageSquare } from 'lucide-react'
+import { LifeBuoy, Play, Users, Globe, Check, MessageSquare, ChevronUp, ChevronDown } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
@@ -16,6 +16,11 @@ import type { HelpResponse } from '../types'
 
 export function HelpPage() {
   const { data: requests = [], isLoading } = useHelpRequests()
+  const [globalOpen, setGlobalOpen] = useState(true)
+  const [friendsOpen, setFriendsOpen] = useState(true)
+
+  const globalRequests = requests.filter(r => r.visibility === 'global')
+  const friendsRequests = requests.filter(r => r.visibility === 'friends')
 
   return (
     <div className="p-4 space-y-4 pb-28">
@@ -28,15 +33,56 @@ export function HelpPage() {
 
       {isLoading ? (
         <p className="text-gray-500 text-sm">Loading…</p>
-      ) : requests.length === 0 ? (
-        <div className="py-16 text-center">
-          <p className="text-3xl mb-2">🤲</p>
-          <p className="text-gray-400 text-sm">No open calls for help right now.</p>
-        </div>
       ) : (
-        <div className="space-y-3">
-          {requests.map(r => <RequestCard key={r.id} request={r} />)}
-        </div>
+        <>
+          {/* Everyone section */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setGlobalOpen(o => !o)}
+              className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <Globe size={13} strokeWidth={1.75} className="text-sage-700" />
+                <span className="text-sm font-semibold text-sage-900">Everyone</span>
+                <span className="text-xs text-gray-400 font-normal">({globalRequests.length})</span>
+              </div>
+              {globalOpen
+                ? <ChevronUp size={15} strokeWidth={1.75} className="text-gray-400" />
+                : <ChevronDown size={15} strokeWidth={1.75} className="text-gray-400" />}
+            </button>
+            {globalOpen && (
+              <div className="border-t border-gray-100 px-2 py-2 space-y-2">
+                {globalRequests.length === 0
+                  ? <p className="text-gray-400 text-xs text-center py-3">No public beta requests right now.</p>
+                  : globalRequests.map(r => <RequestCard key={r.id} request={r} />)}
+              </div>
+            )}
+          </div>
+
+          {/* Friends section */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setFriendsOpen(o => !o)}
+              className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <Users size={13} strokeWidth={1.75} className="text-gray-500" />
+                <span className="text-sm font-semibold text-gray-700">Friends</span>
+                <span className="text-xs text-gray-400 font-normal">({friendsRequests.length})</span>
+              </div>
+              {friendsOpen
+                ? <ChevronUp size={15} strokeWidth={1.75} className="text-gray-400" />
+                : <ChevronDown size={15} strokeWidth={1.75} className="text-gray-400" />}
+            </button>
+            {friendsOpen && (
+              <div className="border-t border-gray-100 px-2 py-2 space-y-2">
+                {friendsRequests.length === 0
+                  ? <p className="text-gray-400 text-xs text-center py-3">No beta requests from friends right now.</p>
+                  : friendsRequests.map(r => <RequestCard key={r.id} request={r} />)}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   )
