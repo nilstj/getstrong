@@ -6,18 +6,22 @@ import { useAuth } from '../providers/AuthProvider'
 import { useProfile } from '../hooks/useProfile'
 import {
   useHelpRequests,
+  useResolvedHelpRequests,
   useHelpResponses,
   useAddHelpResponse,
   useMarkResponseHelpful,
   useResolveHelpRequest,
+  useAddReplyToResponse,
 } from '../hooks/useHelp'
 import type { HelpRequestWithProblem } from '../hooks/useHelp'
 import type { HelpResponse } from '../types'
 
 export function HelpPage() {
   const { data: requests = [], isLoading } = useHelpRequests()
+  const { data: resolved = [] } = useResolvedHelpRequests()
   const [globalOpen, setGlobalOpen] = useState(true)
   const [friendsOpen, setFriendsOpen] = useState(true)
+  const [resolvedOpen, setResolvedOpen] = useState(false)
 
   const globalRequests = requests.filter(r => r.visibility === 'global')
   const friendsRequests = requests.filter(r => r.visibility === 'friends')
@@ -82,6 +86,30 @@ export function HelpPage() {
               </div>
             )}
           </div>
+
+          {/* Resolved section */}
+          {resolved.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <button
+                onClick={() => setResolvedOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Check size={13} strokeWidth={1.75} className="text-green-600" />
+                  <span className="text-sm font-semibold text-gray-500">Resolved</span>
+                  <span className="text-xs text-gray-400 font-normal">({resolved.length})</span>
+                </div>
+                {resolvedOpen
+                  ? <ChevronUp size={15} strokeWidth={1.75} className="text-gray-400" />
+                  : <ChevronDown size={15} strokeWidth={1.75} className="text-gray-400" />}
+              </button>
+              {resolvedOpen && (
+                <div className="border-t border-gray-100 px-2 py-2 space-y-2">
+                  {resolved.map(r => <RequestCard key={r.id} request={r} />)}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
@@ -137,7 +165,7 @@ function RequestCard({ request }: { request: HelpRequestWithProblem }) {
               <MessageSquare size={13} strokeWidth={2} />
               {responseCount > 0 ? `${responseCount} response${responseCount !== 1 ? 's' : ''}` : 'Add beta'}
             </button>
-            {isAsker && (
+            {isAsker && !request.resolved && (
               <button
                 onClick={() => resolve.mutate(request.id, { onSuccess: () => toast.success('Resolved'), onError: () => toast.error('Failed') })}
                 className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
@@ -209,6 +237,20 @@ function Responses({ request, isAsker }: { request: HelpRequestWithProblem; isAs
 function ResponseRow({ response, requestId, isAsker }: { response: HelpResponse; requestId: string; isAsker: boolean }) {
   const { data: helper } = useProfile(response.user_id)
   const mark = useMarkResponseHelpful()
+  const addReply = useAddReplyToResponse()
+  const [replyOpen, setReplyOpen] = useState(false)
+  const [replyText, setReplyText] = useState('')
+
+  const submitReply = () => {
+    if (!replyText.trim()) return
+    addReply.mutate(
+      { id: response.id, requestId, reply: replyText.trim() },
+      {
+        onSuccess: () => { setReplyText(''); setReplyOpen(false) },
+        onError: () => toast.error('Failed to save reply'),
+      },
+    )
+  }
 
   return (
     <div className={`rounded-xl p-2.5 ${response.helpful ? 'bg-sage-50 border border-sage-200' : 'bg-gray-50'}`}>
@@ -227,6 +269,43 @@ function ResponseRow({ response, requestId, isAsker }: { response: HelpResponse;
           {response.video_url && (
             <a href={response.video_url} target="_blank" rel="noopener noreferrer"
               className="text-[11px] text-sage-700 font-medium mt-0.5 inline-block">▶ Beta video</a>
+          )}
+
+          {/* Existing reply */}
+          {response.reply && (
+            <div className="mt-1.5 pl-2 border-l-2 border-gray-300">
+              <p className="text-[11px] text-gray-500 italic break-words">{response.reply}</p>
+            </div>
+          )}
+
+          {/* Asker reply controls */}
+          {isAsker && !replyOpen && (
+            <button
+              onClick={() => { setReplyText(response.reply ?? ''); setReplyOpen(true) }}
+              className="text-[11px] text-gray-400 hover:text-gray-600 mt-1 inline-block"
+            >
+              {response.reply ? 'Edit reply' : 'Reply'}
+            </button>
+          )}
+          {isAsker && replyOpen && (
+            <div className="mt-1.5 flex gap-1.5">
+              <input
+                value={replyText}
+                onChange={e => setReplyText(e.target.value)}
+                placeholder="Your reply…"
+                autoFocus
+                className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1"
+                onKeyDown={e => { if (e.key === 'Enter') submitReply(); if (e.key === 'Escape') setReplyOpen(false) }}
+              />
+              <button
+                onClick={submitReply}
+                disabled={!replyText.trim() || addReply.isPending}
+                className="text-xs px-2.5 py-1 bg-sage-700 text-white rounded-lg font-medium disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button onClick={() => setReplyOpen(false)} className="text-xs text-gray-400 hover:text-gray-600 px-1">✕</button>
+            </div>
           )}
         </div>
         {isAsker && (

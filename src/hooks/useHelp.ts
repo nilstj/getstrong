@@ -39,6 +39,27 @@ export function useHelpRequests() {
   })
 }
 
+// Resolved help requests visible to the current user.
+export function useResolvedHelpRequests() {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['help_requests_resolved'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('help_requests')
+        .select(
+          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, sessions(location)), help_responses(count)',
+        )
+        .eq('resolved', true)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      if (error) throw error
+      return (data ?? []) as unknown as HelpRequestWithProblem[]
+    },
+    enabled: !!user,
+  })
+}
+
 // The current user's request for a specific problem (drives the problem button).
 export function useProblemHelpRequest(problemId: string) {
   const { user } = useAuth()
@@ -89,6 +110,7 @@ export function useResolveHelpRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['help_requests'] })
+      queryClient.invalidateQueries({ queryKey: ['help_requests_resolved'] })
       queryClient.invalidateQueries({ queryKey: ['help_request_for_problem'] })
     },
   })
@@ -150,6 +172,19 @@ export function useMarkResponseHelpful() {
   return useMutation({
     mutationFn: async ({ id, helpful }: { id: string; requestId: string; helpful: boolean }) => {
       const { error } = await supabase.from('help_responses').update({ helpful }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['help_responses', variables.requestId] })
+    },
+  })
+}
+
+export function useAddReplyToResponse() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, requestId, reply }: { id: string; requestId: string; reply: string }) => {
+      const { error } = await supabase.from('help_responses').update({ reply }).eq('id', id)
       if (error) throw error
     },
     onSuccess: (_, variables) => {

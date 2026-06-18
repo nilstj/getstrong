@@ -239,6 +239,7 @@ export interface HelpResponse {
   body: string
   video_url: string | null
   helpful: boolean
+  reply: string | null
   created_at: string
 }
 
