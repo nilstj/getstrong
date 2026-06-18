@@ -60,7 +60,6 @@ export function useProblemHelpRequest(problemId: string) {
 
 export function useCreateHelpRequest() {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
   return useMutation({
     mutationFn: async ({ problemId, message, visibility }: { problemId: string; message: string | null; visibility: HelpVisibility }) => {
       const { data: id, error: rpcError } = await supabase
