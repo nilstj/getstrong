@@ -63,10 +63,13 @@ export function useCreateHelpRequest() {
   const { user } = useAuth()
   return useMutation({
     mutationFn: async ({ problemId, message, visibility }: { problemId: string; message: string | null; visibility: HelpVisibility }) => {
+      const { data: id, error: rpcError } = await supabase
+        .rpc('create_help_request', { p_problem_id: problemId, p_message: message, p_visibility: visibility })
+      if (rpcError) throw new Error(rpcError.message)
       const { data, error } = await supabase
         .from('help_requests')
-        .insert({ problem_id: problemId, user_id: user!.id, message, visibility })
-        .select()
+        .select('*')
+        .eq('id', id)
         .single()
       if (error) throw new Error(error.message)
       return data as HelpRequest
