@@ -27,6 +27,8 @@ import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
 import { useMyTaggedSessions } from '../hooks/usePartners'
 import { useAuth } from '../providers/AuthProvider'
+import { useUserBadges } from '../hooks/useBadges'
+import { BADGES } from '../types'
 import type { FriendWeeklySummary } from '../hooks/useFriendsActivity'
 import { useFriendWeeklyDetail } from '../hooks/useFriendsActivity'
 import toast from 'react-hot-toast'
@@ -394,10 +396,14 @@ function FriendRow({ friend, last, announcement, hasJoined, onClick }: {
   onClick: () => void
 }) {
   const { data: profile } = useProfile(friend.userId)
+  const { data: badgesData } = useUserBadges(friend.userId)
   const sendHype = useSendHype(friend.userId)
   const joinAnnouncement = useJoinAnnouncement()
   const unjoinAnnouncement = useUnjoinAnnouncement()
   if (!profile) return null
+
+  const earnedKeys = new Set((badgesData?.badges ?? []).map(b => b.badge))
+  const earnedEmojis = BADGES.filter(b => earnedKeys.has(b.key)).map(b => b.emoji)
 
   const now = new Date()
   const isLiveAnnouncement = !!announcement && new Date(announcement.starts_at) <= now
@@ -427,6 +433,9 @@ function FriendRow({ friend, last, announcement, hasJoined, onClick }: {
           </div>
           <div className="min-w-0">
             <span className="font-medium text-gray-900 text-sm">{profile.username}</span>
+            {earnedEmojis.length > 0 && (
+              <p className="text-sm leading-none mt-0.5">{earnedEmojis.join(' ')}</p>
+            )}
             {isLiveAnnouncement && announcement && (
               <p className="text-[10px] text-green-600 truncate max-w-[100px]">{announcement.location}</p>
             )}
