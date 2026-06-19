@@ -320,3 +320,13 @@ export interface LeaderboardEntry {
   points: number
   rank: number
 }
+
+export interface BoulderSummary {
+  id: string
+  title: string
+  gym: string
+  color: string | null
+  expires_at: string
+  crewCount: number
+  claimed: boolean
+}
