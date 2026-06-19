@@ -209,6 +209,7 @@ export type NotificationType =
   | 'help_response'
   | 'help_marked_helpful'
   | 'badge_earned'
+  | 'crew_send'
 
 export interface Notification {
   id: string
