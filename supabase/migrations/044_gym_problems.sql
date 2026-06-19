@@ -12,7 +12,7 @@ create table gym_problems (
   community_grade text,                  -- crowd consensus; null until enough data
   name text,                             -- first logger names it
   image_url text,                        -- canonical photo from first logger
-  created_by uuid not null references auth.users(id) on delete set null,
+  created_by uuid references auth.users(id) on delete set null,
   set_at date not null default current_date,
   expires_at date not null default (current_date + 30),
   status text not null default 'active' check (status in ('active', 'archived')),

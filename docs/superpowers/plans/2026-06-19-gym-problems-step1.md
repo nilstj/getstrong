@@ -53,7 +53,7 @@ create table gym_problems (
   community_grade text,                  -- crowd consensus; null until enough data
   name text,                             -- first logger names it
   image_url text,                        -- canonical photo from first logger
-  created_by uuid not null references auth.users(id) on delete set null,
+  created_by uuid references auth.users(id) on delete set null,
   set_at date not null default current_date,
   expires_at date not null default (current_date + 30),
   status text not null default 'active' check (status in ('active', 'archived')),
@@ -150,7 +150,7 @@ where table_name = 'problems' and column_name = 'gym_problem_id';
 select proname from pg_proc
 where proname in ('create_gym_problem', 'claim_gym_problem');
 ```
-Expected: 11 `gym_problems` columns; one `problems.gym_problem_id` row; both function names listed.
+Expected: 12 `gym_problems` columns; one `problems.gym_problem_id` row; both function names listed.
 
 - [ ] **Step 4: Commit**
 
@@ -264,7 +264,7 @@ export interface GymProblem {
   community_grade: string | null
   name: string | null
   image_url: string | null
-  created_by: string
+  created_by: string | null
   set_at: string
   expires_at: string
   status: 'active' | 'archived'
