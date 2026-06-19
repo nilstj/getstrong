@@ -278,3 +278,29 @@ export interface GymProblemMatchCriteria {
   gym: string | null
   color: string | null
 }
+
+export type CrewState = 'projecting' | 'sent' | 'flashed'
+
+export interface CrewMember {
+  user_id: string
+  username: string | null
+  avatar_url: string | null
+  state: CrewState
+  joined_at: string
+}
+
+export interface CrewSummary {
+  total: number
+  sent: number
+  flashed: number
+  sendRate: number
+}
+
+export interface CrewProblemRow {
+  user_id: string
+  username: string | null
+  avatar_url: string | null
+  sent: boolean
+  attempts: number
+  created_at: string
+}
