@@ -68,6 +68,7 @@ export function useClaimGymProblem() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['problems'] })
       queryClient.invalidateQueries({ queryKey: ['gym_problems'] })
+      queryClient.invalidateQueries({ queryKey: ['crew'] })
     },
   })
 }
