@@ -183,7 +183,7 @@ export function useMarkResponseHelpful() {
 export function useAddReplyToResponse() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, requestId, reply }: { id: string; requestId: string; reply: string }) => {
+    mutationFn: async ({ id, reply }: { id: string; requestId: string; reply: string }) => {
       const { error } = await supabase.from('help_responses').update({ reply }).eq('id', id)
       if (error) throw error
     },

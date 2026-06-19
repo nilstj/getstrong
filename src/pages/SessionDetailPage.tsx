@@ -30,6 +30,7 @@ import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate }
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { CallForHelp } from '../components/CallForHelp'
+import { GymProblemMatcher } from '../components/GymProblemMatcher'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
 
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
@@ -104,7 +105,7 @@ export function SessionDetailPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (!session) return <div className="p-4 text-red-600">Session not found.</div>
 
-  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'> & { tagIds?: string[] }) => {
+  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[] }) => {
     addProblem.mutate(
       { ...values, session_id: id! },
       {
@@ -284,6 +285,7 @@ export function SessionDetailPage() {
                   <ProblemCommentThread problemId={problem.id} />
                 )}
                 <CallForHelp problem={problem} />
+                <GymProblemMatcher problem={problem} />
                 </div>
                 </div>
               </div>
@@ -545,7 +547,7 @@ function EditProblemSheet({
   sessionId?: string
   gradeSystem: 'font' | 'v_scale'
   onClose: () => void
-  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale'>, tagIds: string[]) => void
+  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'>, tagIds: string[]) => void
   isSaving: boolean
 }) {
   const { data: currentTags, isLoading: tagsLoading } = useProblemTags(problem.id)
