@@ -24,6 +24,7 @@ import { BottomSheet } from '../components/BottomSheet'
 import { WallAnnouncementSheet } from '../components/WallAnnouncementSheet'
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
+import { CrewsSection } from '../components/CrewsSection'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
 import { useMyTaggedSessions } from '../hooks/usePartners'
 import { useAuth } from '../providers/AuthProvider'
@@ -303,6 +304,8 @@ export function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      <CrewsSection />
 
       {/* Friends activity this week */}
       {friendsActivity.length > 0 && (
