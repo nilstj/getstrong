@@ -53,6 +53,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists on_problem_crew_send on problems;
 create trigger on_problem_crew_send
   after update on problems
   for each row execute procedure public.notify_crew_send();

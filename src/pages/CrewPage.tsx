@@ -1,7 +1,10 @@
 import { useParams, Link } from 'react-router-dom'
-import { Users, ArrowLeft } from 'lucide-react'
+import { Users, ArrowLeft, Trophy } from 'lucide-react'
 import { useGymProblem, useCrew } from '../hooks/useCrew'
+import { useGymLeaderboard } from '../hooks/useLeaderboard'
 import { daysUntil } from '../utils/gymProblems'
+import { cycleMonth } from '../utils/leaderboard'
+import { useAuth } from '../providers/AuthProvider'
 import type { CrewState } from '../types'
 
 const STATE_LABEL: Record<CrewState, string> = {
@@ -19,6 +22,9 @@ export function CrewPage() {
   const { id = '' } = useParams<{ id: string }>()
   const { data: boulder, isLoading: loadingBoulder } = useGymProblem(id)
   const { data: crew, isLoading: loadingCrew } = useCrew(id)
+  const { user } = useAuth()
+  const month = cycleMonth(new Date())
+  const { data: leaderboard = [] } = useGymLeaderboard(boulder?.gym ?? '', month)
 
   if (loadingBoulder || loadingCrew) {
     return <div className="p-5 text-sm text-gray-400">Loading crew…</div>
@@ -87,6 +93,30 @@ export function CrewPage() {
             ))
           )}
         </div>
+
+        {boulder.gym && leaderboard.length > 0 && (
+          <div className="pt-2">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800 mb-2">
+              <Trophy size={15} strokeWidth={2} className="text-amber-500" />
+              {new Date(`${month}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })} leaderboard
+              <span className="font-normal text-gray-400">· {boulder.gym}</span>
+            </h2>
+            <div className="space-y-1">
+              {leaderboard.slice(0, 5).map(entry => (
+                <div
+                  key={entry.user_id}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm ${
+                    entry.user_id === user?.id ? 'bg-sage-50 border border-sage-200' : 'bg-gray-50'
+                  }`}
+                >
+                  <span className="w-5 text-center font-bold text-gray-400">{entry.rank}</span>
+                  <span className="flex-1 font-medium text-gray-800 truncate">{entry.username ?? 'Someone'}</span>
+                  <span className="font-semibold text-sage-700">{entry.points}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
