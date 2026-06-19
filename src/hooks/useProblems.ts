@@ -46,6 +46,7 @@ export function useUpdateProblem() {
       queryClient.invalidateQueries({ queryKey: ['problems', variables.sessionId] })
       queryClient.invalidateQueries({ queryKey: ['session_problem_tags'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['crew'] })
     },
   })
 }

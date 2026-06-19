@@ -209,6 +209,7 @@ export type NotificationType =
   | 'help_response'
   | 'help_marked_helpful'
   | 'badge_earned'
+  | 'crew_send'
 
 export interface Notification {
   id: string
@@ -277,4 +278,30 @@ export interface GymProblem {
 export interface GymProblemMatchCriteria {
   gym: string | null
   color: string | null
+}
+
+export type CrewState = 'projecting' | 'sent' | 'flashed'
+
+export interface CrewMember {
+  user_id: string
+  username: string | null
+  avatar_url: string | null
+  state: CrewState
+  joined_at: string
+}
+
+export interface CrewSummary {
+  total: number
+  sent: number
+  flashed: number
+  sendRate: number
+}
+
+export interface CrewProblemRow {
+  user_id: string
+  username: string | null
+  avatar_url: string | null
+  sent: boolean
+  attempts: number
+  created_at: string
 }

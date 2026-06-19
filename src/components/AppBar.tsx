@@ -115,6 +115,7 @@ const ICONS: Record<Notification['type'], string> = {
   help_response: '🆘',
   help_marked_helpful: '🙌',
   badge_earned: '🏅',
+  crew_send: '🧗',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
@@ -146,6 +147,11 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       return { text: `${username} added a proof video for "${d.challenge_title ?? 'a challenge'}"` }
     case 'help_response':
       return { text: `${username} responded to your call for help${d.grade ? ` on a ${d.grade}` : ''}`, detail: d.body ? `"${d.body}"` : undefined }
+    case 'crew_send': {
+      const what = d.name || [d.color, d.grade].filter(Boolean).join(' ') || 'the boulder'
+      const isFlashed = String(d.flashed) === 'true'
+      return { text: `${username} ${isFlashed ? 'flashed' : 'sent'} ${what} 🧗` }
+    }
     case 'help_marked_helpful':
       return { text: `${username} marked your beta helpful 🙌` }
     case 'badge_earned': {
@@ -173,6 +179,8 @@ function routeFor(n: Notification): string | null {
     case 'help_response':
     case 'help_marked_helpful':
       return '/help'
+    case 'crew_send':
+      return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     default:
       return null
   }

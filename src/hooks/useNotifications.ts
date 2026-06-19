@@ -92,6 +92,7 @@ export function useNotificationsRealtime() {
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['notifications', user.id] })
+          queryClient.invalidateQueries({ queryKey: ['crew'] })
         }
       )
       .subscribe()
