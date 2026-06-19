@@ -30,6 +30,7 @@ import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate }
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { CallForHelp } from '../components/CallForHelp'
+import { GymProblemMatcher } from '../components/GymProblemMatcher'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
 
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
@@ -284,6 +285,7 @@ export function SessionDetailPage() {
                   <ProblemCommentThread problemId={problem.id} />
                 )}
                 <CallForHelp problem={problem} />
+                <GymProblemMatcher problem={problem} />
                 </div>
                 </div>
               </div>

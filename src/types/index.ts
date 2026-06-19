@@ -45,6 +45,7 @@ export interface Problem {
   crag: string | null
   notes: string | null
   created_at: string
+  gym_problem_id?: string | null
 }
 
 export interface Exercise {
