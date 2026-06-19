@@ -305,3 +305,18 @@ export interface CrewProblemRow {
   attempts: number
   created_at: string
 }
+
+export type BetaPointReason = 'bounty_won' | 'helpful' | 'first_logger'
+
+export interface BetaPointRow {
+  user_id: string
+  points: number
+}
+
+export interface LeaderboardEntry {
+  user_id: string
+  username: string | null
+  avatar_url: string | null
+  points: number
+  rank: number
+}
