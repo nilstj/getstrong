@@ -4,7 +4,7 @@
 -- The monthly leaderboard is computed client-side from these rows (no SQL
 -- aggregation function). Bounty (`bounty_won`) points arrive in step 3b.
 
-create table beta_points (
+create table if not exists beta_points (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   gym text not null,
@@ -16,8 +16,9 @@ create table beta_points (
 );
 alter table beta_points enable row level security;
 
-create index beta_points_leaderboard_idx on beta_points (gym, cycle_month);
+create index if not exists beta_points_leaderboard_idx on beta_points (gym, cycle_month);
 
+drop policy if exists "beta_points viewable by authenticated users" on beta_points;
 create policy "beta_points viewable by authenticated users"
   on beta_points for select
   using (auth.role() = 'authenticated');
