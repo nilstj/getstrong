@@ -149,7 +149,7 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       return { text: `${username} responded to your call for help${d.grade ? ` on a ${d.grade}` : ''}`, detail: d.body ? `"${d.body}"` : undefined }
     case 'crew_send': {
       const what = d.name || [d.color, d.grade].filter(Boolean).join(' ') || 'the boulder'
-      const isFlashed = d.flashed === 'true' || (d.flashed as any) === true
+      const isFlashed = String(d.flashed) === 'true'
       return { text: `${username} ${isFlashed ? 'flashed' : 'sent'} ${what} 🧗` }
     }
     case 'help_marked_helpful':
