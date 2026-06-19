@@ -15,6 +15,7 @@ import { ChallengesPage } from './pages/ChallengesPage'
 import { AnalysisPage } from './pages/AnalysisPage'
 import { HelpPage } from './pages/HelpPage'
 import { AdminPage } from './pages/AdminPage'
+import { CrewPage } from './pages/CrewPage'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
               <Route path="/challenges" element={<ChallengesPage />} />
               <Route path="/analysis" element={<AnalysisPage />} />
               <Route path="/help" element={<HelpPage />} />
+              <Route path="/gym-problems/:id" element={<CrewPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>

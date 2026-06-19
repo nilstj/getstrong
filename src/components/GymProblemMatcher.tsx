@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Users, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from './BottomSheet'
@@ -23,9 +24,12 @@ export function GymProblemMatcher({ problem }: { problem: Problem }) {
   // Already claimed onto a shared boulder.
   if (problem.gym_problem_id) {
     return (
-      <span className="inline-flex items-center gap-1 mt-1.5 text-xs text-sage-700 font-medium">
-        <Users size={13} strokeWidth={2} /> On a shared boulder
-      </span>
+      <Link
+        to={`/gym-problems/${problem.gym_problem_id}`}
+        className="inline-flex items-center gap-1 mt-1.5 text-xs text-sage-700 font-medium hover:underline"
+      >
+        <Users size={13} strokeWidth={2} /> View the crew
+      </Link>
     )
   }
 
