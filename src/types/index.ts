@@ -257,3 +257,23 @@ export const BADGES: { key: BadgeKey; label: string; emoji: string; threshold: n
   { key: 'crux_crusher', label: 'Crux Crusher', emoji: '💥', threshold: 25,  blurb: '25 helpful betas' },
   { key: 'beta_legend',  label: 'Beta Legend',  emoji: '👑', threshold: 100, blurb: '100 helpful betas' },
 ]
+
+export interface GymProblem {
+  id: string
+  gym: string
+  wall_angle: string | null
+  color: string | null
+  community_grade: string | null
+  name: string | null
+  image_url: string | null
+  created_by: string | null
+  set_at: string
+  expires_at: string
+  status: 'active' | 'archived'
+  created_at: string
+}
+
+export interface GymProblemMatchCriteria {
+  gym: string | null
+  color: string | null
+}
