@@ -85,7 +85,10 @@ begin
       from public.help_requests r
       join public.problems p on p.id = r.problem_id
       left join public.gym_problems gp on gp.id = coalesce(r.gym_problem_id, p.gym_problem_id)
-     where r.id = new.request_id;
+     where r.id = new.request_id
+     for update of r;  -- lock the request row so two responses marked helpful
+                       -- concurrently can't both see bounty_awarded=false and
+                       -- double-award the bounty.
 
     perform public.create_notification(
       new.user_id, v_asker, 'help_marked_helpful', new.request_id, '{}'::jsonb
