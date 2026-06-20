@@ -1,7 +1,9 @@
 import { useParams, Link } from 'react-router-dom'
 import { Users, ArrowLeft, Trophy } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useGymProblem, useCrew } from '../hooks/useCrew'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
+import { useStripGymProblem } from '../hooks/useGymProblems'
 import { daysUntil } from '../utils/gymProblems'
 import { cycleMonth } from '../utils/leaderboard'
 import { useAuth } from '../providers/AuthProvider'
@@ -23,6 +25,7 @@ export function CrewPage() {
   const { data: boulder, isLoading: loadingBoulder } = useGymProblem(id)
   const { data: crew, isLoading: loadingCrew } = useCrew(id)
   const { user } = useAuth()
+  const strip = useStripGymProblem()
   const month = cycleMonth(new Date())
   const { data: leaderboard = [] } = useGymLeaderboard(boulder?.gym ?? '', month)
 
@@ -72,6 +75,22 @@ export function CrewPage() {
               </>
             )}
           </div>
+        )}
+
+        {boulder.status === 'active' && left >= 0 && members.some(m => m.user_id === user?.id) && (
+          <button
+            onClick={() => {
+              if (!confirm('Mark this boulder as stripped? It will be archived for everyone.')) return
+              strip.mutate(boulder.id, {
+                onSuccess: () => toast.success('Marked as stripped'),
+                onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+              })
+            }}
+            disabled={strip.isPending}
+            className="text-xs text-gray-400 hover:text-red-600 underline disabled:opacity-50"
+          >
+            This got stripped
+          </button>
         )}
 
         <div className="space-y-2">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gymProblemMatches, daysUntil } from '../gymProblems'
+import { gymProblemMatches, daysUntil, isActiveBoulder } from '../gymProblems'
 
 const base = { gym: 'Boulders Oslo', color: 'Blue', status: 'active' as const }
 
@@ -31,5 +31,21 @@ describe('daysUntil', () => {
   })
   it('is negative after expiry', () => {
     expect(daysUntil('2026-06-18', new Date('2026-06-19T10:00:00Z'))).toBe(-1)
+  })
+})
+
+describe('isActiveBoulder', () => {
+  const now = new Date('2026-06-20T10:00:00Z')
+  it('is active when status active and expiry is in the future', () => {
+    expect(isActiveBoulder({ status: 'active', expires_at: '2026-06-28' }, now)).toBe(true)
+  })
+  it('is active on the expiry day itself (inclusive)', () => {
+    expect(isActiveBoulder({ status: 'active', expires_at: '2026-06-20' }, now)).toBe(true)
+  })
+  it('is inactive once past expiry', () => {
+    expect(isActiveBoulder({ status: 'active', expires_at: '2026-06-19' }, now)).toBe(false)
+  })
+  it('is inactive when archived regardless of date', () => {
+    expect(isActiveBoulder({ status: 'archived', expires_at: '2026-06-28' }, now)).toBe(false)
   })
 })

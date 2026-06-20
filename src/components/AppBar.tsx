@@ -116,6 +116,7 @@ const ICONS: Record<Notification['type'], string> = {
   help_marked_helpful: '🙌',
   badge_earned: '🏅',
   crew_send: '🧗',
+  crew_stripped: '🧹',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
@@ -152,6 +153,10 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       const isFlashed = String(d.flashed) === 'true'
       return { text: `${username} ${isFlashed ? 'flashed' : 'sent'} ${what} 🧗` }
     }
+    case 'crew_stripped': {
+      const what = d.name || d.color || 'a boulder'
+      return { text: `${username} marked ${what} as stripped — it's archived` }
+    }
     case 'help_marked_helpful':
       return { text: `${username} marked your beta helpful 🙌` }
     case 'badge_earned': {
@@ -180,6 +185,8 @@ function routeFor(n: Notification): string | null {
     case 'help_marked_helpful':
       return '/help'
     case 'crew_send':
+      return n.entity_id ? `/gym-problems/${n.entity_id}` : null
+    case 'crew_stripped':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     default:
       return null

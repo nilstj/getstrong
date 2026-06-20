@@ -19,3 +19,12 @@ export function daysUntil(dateStr: string, now: Date): number {
   ).getTime()
   return Math.round((target - today) / 86_400_000)
 }
+
+// A shared boulder counts as active only while it is status-active AND not past
+// its expiry (inclusive of the expiry day, matching the "N days left" display).
+export function isActiveBoulder(
+  gp: { status: string; expires_at: string },
+  now: Date,
+): boolean {
+  return gp.status === 'active' && daysUntil(gp.expires_at, now) >= 0
+}
