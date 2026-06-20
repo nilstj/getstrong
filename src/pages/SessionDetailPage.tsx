@@ -472,6 +472,7 @@ export function SessionDetailPage() {
             onSubmit={handleAddProblem}
             isSubmitting={addProblem.isPending}
             initialGradeSystem={myProfile?.grade_preference ?? 'font'}
+            defaultGym={session.location}
           />
         ) : sheetTab === 'exercise' ? (
           <ExerciseSelector onSubmit={handleAddExercise} isSubmitting={addExercise.isPending} />

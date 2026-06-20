@@ -29,9 +29,11 @@ interface ProblemFormProps {
   initialGradeSystem?: 'font' | 'v_scale'
   existing?: Problem
   existingTagIds?: string[]
+  /** Pre-fills the Gym field for a new indoor problem (e.g. from the session location). */
+  defaultGym?: string
 }
 
-export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font', existing, existingTagIds }: ProblemFormProps) {
+export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font', existing, existingTagIds, defaultGym }: ProblemFormProps) {
   const { user } = useAuth()
   const grades = initialGradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
   const scaleLabel = initialGradeSystem === 'v_scale' ? 'V-Scale' : 'Font'
@@ -80,7 +82,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       sent: existing?.sent ?? false,
       board: existing?.board ?? '',
       board_angle: existing?.board_angle ?? '',
-      gym: existing?.gym ?? '',
+      gym: existing?.gym ?? defaultGym ?? '',
       crag: existing?.crag ?? '',
       beta_video_url: existing?.beta_video_url ?? '',
       notes: existing?.notes ?? '',
