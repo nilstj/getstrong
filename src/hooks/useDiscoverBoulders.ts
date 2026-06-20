@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import { boulderTitle, countMembersByBoulder } from '../utils/boulders'
+import { isActiveBoulder } from '../utils/gymProblems'
 import type { GymProblem, BoulderSummary } from '../types'
 
 export function useDiscoverBoulders() {
@@ -38,10 +39,12 @@ export function useDiscoverBoulders() {
         for (const b of (data ?? []) as GymProblem[]) boulders.set(b.id, b)
       }
       const list = Array.from(boulders.values())
-      if (list.length === 0) return { yours: [], discover: [] }
+      const now = new Date()
+      const activeList = list.filter(b => isActiveBoulder(b, now))
+      if (activeList.length === 0) return { yours: [], discover: [] }
 
       // 3. Crew counts (distinct users per boulder).
-      const ids = list.map(b => b.id)
+      const ids = activeList.map(b => b.id)
       const { data: probs, error: e3 } = await supabase
         .from('problems').select('gym_problem_id, user_id').in('gym_problem_id', ids)
       if (e3) throw e3
@@ -49,7 +52,7 @@ export function useDiscoverBoulders() {
         (probs ?? []) as { gym_problem_id: string | null; user_id: string }[],
       )
 
-      const summaries: BoulderSummary[] = list.map(b => ({
+      const summaries: BoulderSummary[] = activeList.map(b => ({
         id: b.id,
         title: boulderTitle(b),
         gym: b.gym,
