@@ -1,3 +1,4 @@
+/// <reference types="node" />
 export const config = { runtime: 'edge' }
 
 // Groq vision model. Llama 4 Scout accepts up to 5 images per request.
