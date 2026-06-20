@@ -210,6 +210,7 @@ export type NotificationType =
   | 'help_marked_helpful'
   | 'badge_earned'
   | 'crew_send'
+  | 'crew_stripped'
 
 export interface Notification {
   id: string
