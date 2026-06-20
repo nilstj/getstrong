@@ -82,9 +82,15 @@ export function useProblemHelpRequest(problemId: string) {
 export function useCreateHelpRequest() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ problemId, message, visibility }: { problemId: string; message: string | null; visibility: HelpVisibility }) => {
+    mutationFn: async ({ problemId, message, visibility, bounty = 0, gymProblemId = null }: { problemId: string; message: string | null; visibility: HelpVisibility; bounty?: number; gymProblemId?: string | null }) => {
       const { data: id, error: rpcError } = await supabase
-        .rpc('create_help_request', { p_problem_id: problemId, p_message: message, p_visibility: visibility })
+        .rpc('create_help_request', {
+          p_problem_id: problemId,
+          p_message: message,
+          p_visibility: visibility,
+          p_bounty: bounty,
+          p_gym_problem_id: gymProblemId,
+        })
       if (rpcError) throw new Error(rpcError.message)
       const { data, error } = await supabase
         .from('help_requests')
@@ -97,6 +103,7 @@ export function useCreateHelpRequest() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['help_requests'] })
       queryClient.invalidateQueries({ queryKey: ['help_request_for_problem', data.problem_id] })
+      queryClient.invalidateQueries({ queryKey: ['bounty_budget'] })
     },
   })
 }
