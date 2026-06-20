@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LifeBuoy, Play, Users, Globe, Check, MessageSquare, ChevronUp, ChevronDown } from 'lucide-react'
+import { LifeBuoy, Play, Users, Globe, Check, MessageSquare, ChevronUp, ChevronDown, Trophy } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
@@ -165,6 +165,13 @@ function RequestCard({ request }: { request: HelpRequestWithProblem }) {
               <MessageSquare size={13} strokeWidth={2} />
               {responseCount > 0 ? `${responseCount} response${responseCount !== 1 ? 's' : ''}` : 'Add beta'}
             </button>
+            {request.bounty > 0 && (
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                request.bounty_awarded ? 'bg-gray-100 text-gray-400' : 'bg-amber-100 text-amber-700'
+              }`}>
+                <Trophy size={11} strokeWidth={2} /> {request.bounty}{request.bounty_awarded ? ' awarded' : ''}
+              </span>
+            )}
             {isAsker && !request.resolved && (
               <button
                 onClick={() => resolve.mutate(request.id, { onSuccess: () => toast.success('Resolved'), onError: () => toast.error('Failed') })}

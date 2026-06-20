@@ -231,6 +231,9 @@ export interface HelpRequest {
   message: string | null
   visibility: HelpVisibility
   resolved: boolean
+  bounty: number
+  gym_problem_id: string | null
+  bounty_awarded: boolean
   created_at: string
 }
 

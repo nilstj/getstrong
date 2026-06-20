@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LifeBuoy, Users, Globe } from 'lucide-react'
+import { LifeBuoy, Users, Globe, Trophy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from './BottomSheet'
 import {
@@ -8,14 +8,20 @@ import {
   useCreateHelpRequest,
   useResolveHelpRequest,
 } from '../hooks/useHelp'
+import { useMyBountyBudget } from '../hooks/useBountyBudget'
+import { BOUNTY_BUDGET } from '../utils/bounty'
 import type { HelpVisibility, Problem } from '../types'
 
-export function CallForHelp({ problem }: { problem: Pick<Problem, 'id' | 'image_url' | 'beta_video_url'> }) {
+export function CallForHelp({ problem }: { problem: Pick<Problem, 'id' | 'image_url' | 'beta_video_url' | 'gym_problem_id'> }) {
   const hasMedia = !!(problem.image_url || problem.beta_video_url)
   const { data: existing } = useProblemHelpRequest(problem.id)
   const [open, setOpen] = useState(false)
   const [visibility, setVisibility] = useState<HelpVisibility>('friends')
   const [message, setMessage] = useState('')
+  const [bounty, setBounty] = useState(0)
+  const { data: budget } = useMyBountyBudget()
+  const canBounty = !!problem.gym_problem_id
+  const maxBounty = Math.min(50, budget?.remaining ?? BOUNTY_BUDGET)
 
   const create = useCreateHelpRequest()
   const resolve = useResolveHelpRequest()
@@ -45,9 +51,15 @@ export function CallForHelp({ problem }: { problem: Pick<Problem, 'id' | 'image_
 
   const submit = () => {
     create.mutate(
-      { problemId: problem.id, message: message.trim() || null, visibility },
       {
-        onSuccess: () => { toast.success('Call for help posted! 🆘'); setOpen(false); setMessage('') },
+        problemId: problem.id,
+        message: message.trim() || null,
+        visibility,
+        bounty: canBounty ? bounty : 0,
+        gymProblemId: problem.gym_problem_id,
+      },
+      {
+        onSuccess: () => { toast.success(bounty > 0 ? `Bounty of ${bounty} posted! 🏆` : 'Call for help posted! 🆘'); setOpen(false); setMessage(''); setBounty(0) },
         onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
       },
     )
@@ -97,6 +109,28 @@ export function CallForHelp({ problem }: { problem: Pick<Problem, 'id' | 'image_
             rows={3}
             className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none"
           />
+
+          {canBounty && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <Trophy size={13} className="text-amber-500" /> Bounty (optional)
+              </p>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setBounty(b => Math.max(0, b - 5))}
+                  className="w-9 h-9 rounded-full border text-xl flex items-center justify-center"
+                >−</button>
+                <span className="text-lg font-semibold w-10 text-center">{bounty}</span>
+                <button
+                  type="button"
+                  onClick={() => setBounty(b => Math.min(maxBounty, b + 5))}
+                  className="w-9 h-9 rounded-full border text-xl flex items-center justify-center"
+                >+</button>
+                <span className="text-xs text-gray-400">{budget?.remaining ?? BOUNTY_BUDGET} of {BOUNTY_BUDGET} left this month</span>
+              </div>
+            </div>
+          )}
 
           <button
             onClick={submit}
