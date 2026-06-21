@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LifeBuoy, Play, Users, Globe, Check, MessageSquare, ChevronUp, ChevronDown, Trophy } from 'lucide-react'
+import { LifeBuoy, Play, Users, Globe, Check, MessageSquare, ChevronUp, ChevronDown, Trophy, Sparkles } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
@@ -15,6 +15,7 @@ import {
 } from '../hooks/useHelp'
 import type { HelpRequestWithProblem } from '../hooks/useHelp'
 import type { HelpResponse } from '../types'
+import { HoldHighlightViewer } from '../components/HoldHighlightViewer'
 
 export function HelpPage() {
   const { data: requests = [], isLoading } = useHelpRequests()
@@ -120,6 +121,7 @@ function RequestCard({ request }: { request: HelpRequestWithProblem }) {
   const { user } = useAuth()
   const { data: asker } = useProfile(request.user_id)
   const [expanded, setExpanded] = useState(false)
+  const [holdOpen, setHoldOpen] = useState(false)
   const resolve = useResolveHelpRequest()
 
   const isAsker = user?.id === request.user_id
@@ -165,6 +167,14 @@ function RequestCard({ request }: { request: HelpRequestWithProblem }) {
               <MessageSquare size={13} strokeWidth={2} />
               {responseCount > 0 ? `${responseCount} response${responseCount !== 1 ? 's' : ''}` : 'Add beta'}
             </button>
+            {p?.image_url && (
+              <button
+                onClick={() => setHoldOpen(true)}
+                className="text-xs font-medium text-sage-700 hover:text-sage-900 flex items-center gap-1"
+              >
+                <Sparkles size={13} strokeWidth={2} /> Highlight holds
+              </button>
+            )}
             {request.bounty > 0 && (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
                 request.bounty_awarded ? 'bg-gray-100 text-gray-400' : 'bg-amber-100 text-amber-700'
@@ -185,6 +195,7 @@ function RequestCard({ request }: { request: HelpRequestWithProblem }) {
       </div>
 
       {expanded && <Responses request={request} isAsker={isAsker} />}
+      {holdOpen && p && <HoldHighlightViewer problem={p} isOwner={p.user_id === user?.id} onClose={() => setHoldOpen(false)} />}
     </div>
   )
 }

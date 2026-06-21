@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { Pencil, Trash2, Play } from 'lucide-react'
+import { Pencil, Trash2, Play, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession, useUpdateSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
@@ -32,6 +32,8 @@ import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { CallForHelp } from '../components/CallForHelp'
 import { GymProblemMatcher } from '../components/GymProblemMatcher'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
+import { useAuth } from '../providers/AuthProvider'
+import { HoldHighlightViewer } from '../components/HoldHighlightViewer'
 
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
   return (
@@ -105,7 +107,7 @@ export function SessionDetailPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (!session) return <div className="p-4 text-red-600">Session not found.</div>
 
-  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[] }) => {
+  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'hold_highlight'> & { tagIds?: string[] }) => {
     addProblem.mutate(
       { ...values, session_id: id! },
       {
@@ -285,6 +287,7 @@ export function SessionDetailPage() {
                   <ProblemCommentThread problemId={problem.id} />
                 )}
                 <CallForHelp problem={problem} />
+                <ProblemHighlightButton problem={problem} />
                 <GymProblemMatcher problem={problem} />
                 </div>
                 </div>
@@ -548,7 +551,7 @@ function EditProblemSheet({
   sessionId?: string
   gradeSystem: 'font' | 'v_scale'
   onClose: () => void
-  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'>, tagIds: string[]) => void
+  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'hold_highlight'>, tagIds: string[]) => void
   isSaving: boolean
 }) {
   const { data: currentTags, isLoading: tagsLoading } = useProblemTags(problem.id)
@@ -890,6 +893,29 @@ function ChallengeAttemptForm({
         {isSubmitting ? 'Saving...' : 'Log Attempt'}
       </button>
     </form>
+  )
+}
+
+function ProblemHighlightButton({ problem }: { problem: Problem }) {
+  const { user } = useAuth()
+  const [holdOpen, setHoldOpen] = useState(false)
+  if (!problem.image_url) return null
+  return (
+    <>
+      <button
+        onClick={() => setHoldOpen(true)}
+        className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-sage-700 hover:text-sage-900"
+      >
+        <Sparkles size={13} strokeWidth={2} /> Highlight holds
+      </button>
+      {holdOpen && (
+        <HoldHighlightViewer
+          problem={problem}
+          isOwner={problem.user_id === user?.id}
+          onClose={() => setHoldOpen(false)}
+        />
+      )}
+    </>
   )
 }
 
