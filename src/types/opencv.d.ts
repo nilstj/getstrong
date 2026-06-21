@@ -39,6 +39,5 @@ export interface OpenCV {
 
 declare global {
   // OpenCV.js attaches itself to window as `cv`.
-  // eslint-disable-next-line no-var
   var cv: OpenCV
 }
