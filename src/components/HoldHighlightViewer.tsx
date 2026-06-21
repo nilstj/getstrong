@@ -12,7 +12,7 @@ const MAX_DIM = 1024
 
 export function HoldHighlightViewer({
   problem, isOwner, onClose,
-}: { problem: Problem; isOwner: boolean; onClose: () => void }) {
+}: { problem: Pick<Problem, 'id' | 'image_url' | 'hold_highlight' | 'user_id' | 'session_id'>; isOwner: boolean; onClose: () => void }) {
   const srcCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'))
   const outCanvasRef = useRef<HTMLCanvasElement>(null)
   const cvRef = useRef<OpenCV | null>(null)
