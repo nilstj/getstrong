@@ -105,7 +105,7 @@ export function SessionDetailPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (!session) return <div className="p-4 text-red-600">Session not found.</div>
 
-  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[] }) => {
+  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'hold_highlight'> & { tagIds?: string[] }) => {
     addProblem.mutate(
       { ...values, session_id: id! },
       {
@@ -548,7 +548,7 @@ function EditProblemSheet({
   sessionId?: string
   gradeSystem: 'font' | 'v_scale'
   onClose: () => void
-  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'>, tagIds: string[]) => void
+  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'hold_highlight'>, tagIds: string[]) => void
   isSaving: boolean
 }) {
   const { data: currentTags, isLoading: tagsLoading } = useProblemTags(problem.id)
