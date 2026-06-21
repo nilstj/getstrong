@@ -24,7 +24,7 @@ export function HoldHighlightViewer({
   // Latest sample, readable from the OpenCV load callback without restarting
   // its effect — so a hold tapped before OpenCV finishes loading isn't dropped.
   const sampleRef = useRef(sample)
-  sampleRef.current = sample
+  useEffect(() => { sampleRef.current = sample }, [sample])
 
   // Render: outlines when cv + sample are ready, else the plain photo.
   const render = useCallback((s: HoldHighlight | null) => {
