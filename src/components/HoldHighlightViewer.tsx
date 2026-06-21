@@ -21,6 +21,11 @@ export function HoldHighlightViewer({
   const [cvFailed, setCvFailed] = useState(false)
   const update = useUpdateHoldHighlight()
 
+  // Latest sample, readable from the OpenCV load callback without restarting
+  // its effect — so a hold tapped before OpenCV finishes loading isn't dropped.
+  const sampleRef = useRef(sample)
+  sampleRef.current = sample
+
   // Render: outlines when cv + sample are ready, else the plain photo.
   const render = useCallback((s: HoldHighlight | null) => {
     const out = outCanvasRef.current
@@ -54,7 +59,7 @@ export function HoldHighlightViewer({
       srcC.getContext('2d')?.drawImage(img, 0, 0, srcC.width, srcC.height)
       render(null) // show photo immediately
       loadOpenCv()
-        .then(cv => { if (cancelled) return; cvRef.current = cv; setReady(true); render(sample) })
+        .then(cv => { if (cancelled) return; cvRef.current = cv; setReady(true); render(sampleRef.current) })
         .catch(() => { if (cancelled) return; setCvFailed(true); toast.error("Couldn't load hold detection") })
     }
     img.onerror = () => { if (!cancelled) toast.error('Could not load image') }
