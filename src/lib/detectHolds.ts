@@ -13,6 +13,9 @@ function rangeMask(cv: OpenCV, hsv: CvMat, lower: number[], upper: number[]): Cv
   try {
     cv.inRange(hsv, lo, hi, out)
     return out
+  } catch (e) {
+    out.delete() // not yet returned to the caller — free it here
+    throw e
   } finally {
     lo.delete()
     hi.delete()
