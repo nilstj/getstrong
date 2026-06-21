@@ -58,9 +58,13 @@ export function drawHoldOutlines(
 
     const minArea = src.rows * src.cols * MIN_AREA_RATIO
     for (let i = 0; i < contours.size(); i++) {
-      const c = contours.get(i)
-      if (cv.contourArea(c) >= minArea) {
-        cv.drawContours(src, contours, i, OUTLINE_RGBA, 3)
+      const c = contours.get(i) // MatVector.get returns a new Mat the caller owns
+      try {
+        if (cv.contourArea(c) >= minArea) {
+          cv.drawContours(src, contours, i, OUTLINE_RGBA, 3)
+        }
+      } finally {
+        c.delete()
       }
     }
     cv.imshow(outCanvas, src)
