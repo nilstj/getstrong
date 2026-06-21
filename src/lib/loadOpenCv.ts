@@ -1,6 +1,7 @@
 import type { OpenCV } from '../types/opencv'
 
-const OPENCV_URL = 'https://docs.opencv.org/4.10.0/opencv.js'
+// 4.10.0 is NOT hosted on docs.opencv.org (404); 4.9.0 is the latest that is.
+const OPENCV_URL = 'https://docs.opencv.org/4.9.0/opencv.js'
 let promise: Promise<OpenCV> | null = null
 
 export function loadOpenCv(): Promise<OpenCV> {
