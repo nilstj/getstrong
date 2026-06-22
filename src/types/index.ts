@@ -44,7 +44,6 @@ export interface Problem {
   image_url: string | null
   crag: string | null
   notes: string | null
-  hold_highlight: HoldHighlight | null
   created_at: string
   gym_problem_id: string | null
 }
@@ -334,11 +333,4 @@ export interface BoulderSummary {
   expires_at: string
   crewCount: number
   claimed: boolean
-}
-
-export interface HoldHighlight {
-  h: number   // 0-360
-  s: number   // 0-100
-  v: number   // 0-100
-  tol: number // hue tolerance
 }
