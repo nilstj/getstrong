@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LifeBuoy, Users, Globe, Trophy, Sparkles } from 'lucide-react'
+import { LifeBuoy, Users, Globe, Trophy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from './BottomSheet'
 import {
@@ -10,20 +10,16 @@ import {
 } from '../hooks/useHelp'
 import { useMyBountyBudget } from '../hooks/useBountyBudget'
 import { BOUNTY_BUDGET } from '../utils/bounty'
-import { useAuth } from '../providers/AuthProvider'
-import { HoldHighlightViewer } from './HoldHighlightViewer'
 import type { HelpVisibility, Problem } from '../types'
 
 export function CallForHelp({ problem }: { problem: Problem }) {
   const hasMedia = !!(problem.image_url || problem.beta_video_url)
   const { data: existing } = useProblemHelpRequest(problem.id)
   const [open, setOpen] = useState(false)
-  const [holdOpen, setHoldOpen] = useState(false)
   const [visibility, setVisibility] = useState<HelpVisibility>('friends')
   const [message, setMessage] = useState('')
   const [bounty, setBounty] = useState(0)
   const { data: budget } = useMyBountyBudget()
-  const { user } = useAuth()
   const canBounty = !!problem.gym_problem_id
   const maxBounty = Math.min(50, budget?.remaining ?? BOUNTY_BUDGET)
 
@@ -49,14 +45,6 @@ export function CallForHelp({ problem }: { problem: Problem }) {
         >
           · resolve
         </button>
-        {problem.image_url && (
-          <button onClick={() => setHoldOpen(true)} className="ml-1 inline-flex items-center gap-1 text-xs font-medium text-sage-700 hover:text-sage-900">
-            <Sparkles size={13} strokeWidth={2} /> Highlight holds
-          </button>
-        )}
-        {holdOpen && (
-          <HoldHighlightViewer problem={problem} isOwner={problem.user_id === user?.id} onClose={() => setHoldOpen(false)} />
-        )}
       </div>
     )
   }
@@ -86,14 +74,6 @@ export function CallForHelp({ problem }: { problem: Problem }) {
       >
         <LifeBuoy size={13} strokeWidth={2} /> Ask for beta
       </button>
-      {problem.image_url && (
-        <button onClick={() => setHoldOpen(true)} className="mt-1.5 ml-3 inline-flex items-center gap-1 text-xs font-medium text-sage-700 hover:text-sage-900">
-          <Sparkles size={13} strokeWidth={2} /> Highlight holds
-        </button>
-      )}
-      {holdOpen && (
-        <HoldHighlightViewer problem={problem} isOwner={problem.user_id === user?.id} onClose={() => setHoldOpen(false)} />
-      )}
       </div>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title="Ask for beta">

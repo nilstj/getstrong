@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
-import type { HelpRequest, HelpResponse, HelpVisibility, HoldHighlight } from '../types'
+import type { HelpRequest, HelpResponse, HelpVisibility } from '../types'
 
 // A help request joined with the problem it's about (for the Help feed cards).
 export interface HelpRequestWithProblem extends HelpRequest {
@@ -14,9 +14,6 @@ export interface HelpRequestWithProblem extends HelpRequest {
     grade_value_vscale: string | null
     color: string | null
     board: string | null
-    user_id: string
-    session_id: string
-    hold_highlight: HoldHighlight | null
     sessions: { location: string } | null
   } | null
   help_responses: { count: number }[]
@@ -31,7 +28,7 @@ export function useHelpRequests() {
       const { data, error } = await supabase
         .from('help_requests')
         .select(
-          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, user_id, session_id, hold_highlight, sessions(location)), help_responses(count)',
+          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, sessions(location)), help_responses(count)',
         )
         .eq('resolved', false)
         .order('created_at', { ascending: false })
@@ -51,7 +48,7 @@ export function useResolvedHelpRequests() {
       const { data, error } = await supabase
         .from('help_requests')
         .select(
-          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, user_id, session_id, hold_highlight, sessions(location)), help_responses(count)',
+          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, sessions(location)), help_responses(count)',
         )
         .eq('resolved', true)
         .order('created_at', { ascending: false })
