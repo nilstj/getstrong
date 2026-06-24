@@ -17,3 +17,7 @@ returns table (name text, uses bigint) as $$
   group by g.name
   order by uses desc, g.name asc;
 $$ language sql stable security definer;
+
+-- Explicit grant so the typeahead works regardless of project-wide default
+-- execute grants (the app calls this as the authenticated role).
+grant execute on function public.gym_suggestions() to authenticated, anon;
