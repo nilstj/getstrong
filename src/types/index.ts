@@ -334,3 +334,8 @@ export interface BoulderSummary {
   crewCount: number
   claimed: boolean
 }
+
+export interface GymSuggestion {
+  name: string
+  uses: number
+}

@@ -8,6 +8,7 @@ export interface Profile {
   avatar_url: string | null
   is_admin: boolean
   grade_preference: 'font' | 'v_scale'
+  default_gym: string | null
   on_wall_at: string | null
   on_wall_label: string | null
   created_at: string
@@ -35,7 +36,7 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   return useMutation({
-    mutationFn: async (values: Partial<Pick<Profile, 'username' | 'avatar_url' | 'grade_preference'>>) => {
+    mutationFn: async (values: Partial<Pick<Profile, 'username' | 'avatar_url' | 'grade_preference' | 'default_gym'>>) => {
       const { data, error } = await supabase
         .from('profiles')
         .update(values)

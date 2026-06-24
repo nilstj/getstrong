@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { LogOut, Shield } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -13,6 +13,7 @@ import {
   useAcceptFollowRequest, useDeclineFollowRequest,
 } from '../hooks/useFollows'
 import toast from 'react-hot-toast'
+import { GymInput } from '../components/GymInput'
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -32,7 +33,11 @@ export function ProfilePage() {
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [defaultGym, setDefaultGym] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setDefaultGym(profile?.default_gym ?? '') }, [profile?.default_gym])
 
   const { data: searchResults = [] } = useSearchUsers(searchQuery)
 
@@ -159,6 +164,21 @@ export function ProfilePage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="w-full">
+          <p className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Default Gym</p>
+          <GymInput
+            value={defaultGym}
+            onChange={setDefaultGym}
+            placeholder="Your home gym"
+            onCommit={() => {
+              const trimmed = defaultGym.trim()
+              if (trimmed !== (profile?.default_gym ?? '')) {
+                updateProfile.mutate({ default_gym: trimmed === '' ? null : trimmed })
+              }
+            }}
+          />
         </div>
       </div>
 

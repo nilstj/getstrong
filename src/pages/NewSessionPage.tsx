@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useCreateSession } from '../hooks/useSessions'
+import { useProfile } from '../hooks/useProfile'
+import { GymInput } from '../components/GymInput'
 import { INTENSITY_OPTIONS } from '../types'
 import type { SessionIntensity } from '../types'
 
@@ -18,7 +20,7 @@ export function NewSessionPage() {
   const navigate = useNavigate()
   const createSession = useCreateSession()
   const [intensity, setIntensity] = useState<SessionIntensity | null>(null)
-  const { register, handleSubmit } = useForm<FormValues>({
+  const { register, handleSubmit, control, setValue, getValues } = useForm<FormValues>({
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       location: '',
@@ -27,6 +29,13 @@ export function NewSessionPage() {
       notes: '',
     },
   })
+  const { data: profile } = useProfile()
+
+  useEffect(() => {
+    if (profile?.default_gym && !getValues('location')) {
+      setValue('location', profile.default_gym)
+    }
+  }, [profile?.default_gym, getValues, setValue])
 
   const onSubmit = (values: FormValues) => {
     createSession.mutate(
@@ -59,11 +68,17 @@ export function NewSessionPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-          <input
-            {...register('location', { required: true })}
-            type="text"
-            placeholder="Gym name, Kilter Board, crag..."
-            className="w-full border rounded-lg px-3 py-2.5"
+          <Controller
+            name="location"
+            control={control}
+            rules={{ required: true }}
+            render={({ field }) => (
+              <GymInput
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Gym name, Kilter Board, crag..."
+              />
+            )}
           />
         </div>
         <div>
