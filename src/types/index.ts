@@ -339,3 +339,11 @@ export interface GymSuggestion {
   name: string
   uses: number
 }
+
+export interface ProblemPrefill {
+  name: string | null
+  color: string | null
+  grade_value: string | null
+  image_url: string | null
+  gym: string | null
+}
