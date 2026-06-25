@@ -24,7 +24,7 @@ type FormValues = {
 }
 
 interface ProblemFormProps {
-  onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[] }) => void
+  onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[]; makePublic?: boolean }) => void
   isSubmitting: boolean
   initialGradeSystem?: 'font' | 'v_scale'
   existing?: Problem
@@ -42,6 +42,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const { data: tagDefinitions = [] } = useProblemTagDefinitions()
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(existingTagIds ?? []))
   const [isOutdoor, setIsOutdoor] = useState<boolean>(!!(existing?.crag))
+  const [visibilityPublic, setVisibilityPublic] = useState<boolean>(!!existing?.gym_problem_id)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(existing?.image_url ?? prefill?.image_url ?? null)
   const [isUploading, setIsUploading] = useState(false)
@@ -128,6 +129,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       image_url,
       beta_video_url: values.beta_video_url || null,
       notes: values.notes || null,
+      ...(!isOutdoor && !prefill ? { makePublic: visibilityPublic } : {}),
     })
   }
 
@@ -178,6 +180,34 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       {/* Indoor-only fields */}
       {!isOutdoor && (
         <>
+          {!prefill && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>
+              <div className="flex rounded-lg overflow-hidden border text-sm">
+                <button
+                  type="button"
+                  onClick={() => setVisibilityPublic(false)}
+                  className={`flex-1 py-2 font-medium transition-colors ${
+                    !visibilityPublic ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
+                  }`}
+                >
+                  🔒 Private
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibilityPublic(true)}
+                  className={`flex-1 py-2 font-medium transition-colors ${
+                    visibilityPublic ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
+                  }`}
+                >
+                  🌐 Public
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Public boulders appear under "From gym" so others can log them, compare beta, and earn points.
+              </p>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Training Board (optional)</label>
             <div className="flex flex-wrap gap-2">
