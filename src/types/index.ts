@@ -272,6 +272,7 @@ export interface GymProblem {
   community_grade: string | null
   name: string | null
   image_url: string | null
+  beta_video_url: string | null
   created_by: string | null
   set_at: string
   expires_at: string
@@ -345,5 +346,6 @@ export interface ProblemPrefill {
   color: string | null
   grade_value: string | null
   image_url: string | null
+  beta_video_url: string | null
   gym: string | null
 }
