@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { Camera, X } from 'lucide-react'
-import type { Problem, ProblemTagDefinition } from '../types'
+import type { Problem, ProblemPrefill, ProblemTagDefinition } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
 import { useProblemTagDefinitions } from '../hooks/useProblemTags'
 import { supabase } from '../lib/supabase'
@@ -31,9 +31,11 @@ interface ProblemFormProps {
   existingTagIds?: string[]
   /** Pre-fills the Gym field for a new indoor problem (e.g. from the session location). */
   defaultGym?: string
+  /** Pre-fills a NEW problem's fields from a shared boulder (distinct from `existing`/edit mode). */
+  prefill?: ProblemPrefill
 }
 
-export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font', existing, existingTagIds, defaultGym }: ProblemFormProps) {
+export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font', existing, existingTagIds, defaultGym, prefill }: ProblemFormProps) {
   const { user } = useAuth()
   const grades = initialGradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
   const scaleLabel = initialGradeSystem === 'v_scale' ? 'V-Scale' : 'Font'
@@ -41,7 +43,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(existingTagIds ?? []))
   const [isOutdoor, setIsOutdoor] = useState<boolean>(!!(existing?.crag))
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(existing?.image_url ?? null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(existing?.image_url ?? prefill?.image_url ?? null)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -75,14 +77,14 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
 
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
-      name: existing?.name ?? '',
-      grade_value: existing?.grade_value ?? '',
-      color: existing?.color ?? '',
+      name: existing?.name ?? prefill?.name ?? '',
+      grade_value: existing?.grade_value ?? prefill?.grade_value ?? '',
+      color: existing?.color ?? prefill?.color ?? '',
       attempts: existing?.attempts ?? 1,
       sent: existing?.sent ?? false,
       board: existing?.board ?? '',
       board_angle: existing?.board_angle ?? '',
-      gym: existing?.gym ?? defaultGym ?? '',
+      gym: existing?.gym ?? prefill?.gym ?? defaultGym ?? '',
       crag: existing?.crag ?? '',
       beta_video_url: existing?.beta_video_url ?? '',
       notes: existing?.notes ?? '',
@@ -93,7 +95,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const board = watch('board')
 
   const submit = async (values: FormValues) => {
-    let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? null) : null
+    let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? prefill?.image_url ?? null) : null
 
     if (selectedFile && user) {
       setIsUploading(true)
