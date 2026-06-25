@@ -585,9 +585,30 @@ export function SessionDetailPage() {
           sessionId={id!}
           gradeSystem={myProfile?.grade_preference ?? 'font'}
           onClose={() => setEditingProblem(null)}
-          onSave={(values, tagIds) => updateProblem.mutate(
+          onSave={(values, tagIds, makePublic) => updateProblem.mutate(
             { id: editingProblem.id, sessionId: id!, tagIds, ...values },
-            { onSuccess: () => { setEditingProblem(null); toast.success('Problem updated') }, onError: () => toast.error('Failed to update') },
+            {
+              onSuccess: () => {
+                const isLinked = !!editingProblem.gym_problem_id
+                if (makePublic && !isLinked) {
+                  // Private → Public: pick/create a boulder for the just-saved problem.
+                  setLinkProblem({ ...editingProblem, ...values })
+                  setEditingProblem(null)
+                } else if (!makePublic && isLinked) {
+                  // Public → Private: unclaim (the boulder stays for others).
+                  claimGymProblem.mutate(
+                    { problemId: editingProblem.id, gymProblemId: null },
+                    { onError: () => toast.error('Could not make private') },
+                  )
+                  setEditingProblem(null)
+                  toast.success('Made private')
+                } else {
+                  setEditingProblem(null)
+                  toast.success('Problem updated')
+                }
+              },
+              onError: () => toast.error('Failed to update'),
+            },
           )}
           isSaving={updateProblem.isPending}
         />
@@ -640,7 +661,7 @@ function EditProblemSheet({
   sessionId?: string
   gradeSystem: 'font' | 'v_scale'
   onClose: () => void
-  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'>, tagIds: string[]) => void
+  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'>, tagIds: string[], makePublic?: boolean) => void
   isSaving: boolean
 }) {
   const { data: currentTags, isLoading: tagsLoading } = useProblemTags(problem.id)
@@ -655,9 +676,8 @@ function EditProblemSheet({
         existingTagIds={currentTags.map(t => t.id)}
         initialGradeSystem={gradeSystem}
         onSubmit={(payload) => {
-          const { tagIds = [], ...vals } = payload
-          delete vals.makePublic
-          onSave(vals, tagIds)
+          const { tagIds = [], makePublic, ...vals } = payload
+          onSave(vals, tagIds, makePublic)
         }}
         isSubmitting={isSaving}
       />
