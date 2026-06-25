@@ -3,6 +3,26 @@ import { supabase } from '../lib/supabase'
 import { gymProblemMatches, isActiveBoulder } from '../utils/gymProblems'
 import type { GymProblem, GymProblemMatchCriteria } from '../types'
 
+// Active boulders for the given gym, newest first.
+export function useGymBoulders(gym: string) {
+  const g = gym.trim()
+  return useQuery({
+    queryKey: ['gym_boulders', g.toLowerCase()],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('gym_problems')
+        .select('*')
+        .eq('status', 'active')
+        .ilike('gym', g)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      const now = new Date()
+      return (data as GymProblem[]).filter(gp => isActiveBoulder(gp, now))
+    },
+    enabled: g.length > 0,
+  })
+}
+
 // Active shared boulders in the same gym that match the given color.
 export function useMatchingGymProblems(criteria: GymProblemMatchCriteria) {
   const gym = criteria.gym?.trim() ?? ''
