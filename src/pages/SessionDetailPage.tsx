@@ -30,7 +30,7 @@ import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate }
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { CallForHelp } from '../components/CallForHelp'
-import { GymProblemMatcher } from '../components/GymProblemMatcher'
+import { BoulderLinkSheet } from '../components/BoulderLinkSheet'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
 import { GymBoulderPicker } from '../components/GymBoulderPicker'
 import { boulderToPrefill } from '../utils/boulderPrefill'
@@ -80,6 +80,7 @@ export function SessionDetailPage() {
   const problemIds = problems.map(p => p.id)
   const { data: commentCounts = {} } = useProblemCommentCounts(problemIds)
   const [openCommentProblemId, setOpenCommentProblemId] = useState<string | null>(null)
+  const [linkProblem, setLinkProblem] = useState<Problem | null>(null)
   const { data: exercises = [] } = useSessionExercises(id!)
   const addProblem = useAddProblem()
   const updateProblem = useUpdateProblem()
@@ -112,11 +113,18 @@ export function SessionDetailPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (!session) return <div className="p-4 text-red-600">Session not found.</div>
 
-  const handleAddProblem = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[] }) => {
+  const handleAddProblem = ({ makePublic, ...values }: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[]; makePublic?: boolean }) => {
     addProblem.mutate(
       { ...values, session_id: id! },
       {
-        onSuccess: () => { setSheetOpen(false); setProblemMode('new'); setPickedBoulder(null); toast.success('Problem added') },
+        onSuccess: (created) => {
+          setSheetOpen(false); setProblemMode('new'); setPickedBoulder(null)
+          if (makePublic) {
+            setLinkProblem(created)
+          } else {
+            toast.success('Problem added')
+          }
+        },
         onError: () => toast.error('Failed to save. Try again.'),
       },
     )
@@ -313,7 +321,14 @@ export function SessionDetailPage() {
                   <ProblemCommentThread problemId={problem.id} />
                 )}
                 <CallForHelp problem={problem} />
-                <GymProblemMatcher problem={problem} />
+                {problem.gym_problem_id && (
+                  <Link
+                    to={`/gym-problems/${problem.gym_problem_id}`}
+                    className="inline-flex items-center gap-1 mt-1.5 text-xs text-sage-700 font-medium hover:underline"
+                  >
+                    🌐 On a shared boulder · View the crew
+                  </Link>
+                )}
                 </div>
                 </div>
               </div>
@@ -605,6 +620,14 @@ export function SessionDetailPage() {
           isSaving={updateChallengeAttempt.isPending}
         />
       )}
+      {linkProblem && (
+        <BoulderLinkSheet
+          problem={linkProblem}
+          open
+          onClose={() => setLinkProblem(null)}
+          onDone={() => { setLinkProblem(null); toast.success('Published to the gym') }}
+        />
+      )}
       {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     </div>
   )
@@ -631,7 +654,11 @@ function EditProblemSheet({
         existing={problem}
         existingTagIds={currentTags.map(t => t.id)}
         initialGradeSystem={gradeSystem}
-        onSubmit={({ tagIds = [], ...vals }) => onSave(vals, tagIds)}
+        onSubmit={(payload) => {
+          const { tagIds = [], ...vals } = payload
+          delete vals.makePublic
+          onSave(vals, tagIds)
+        }}
         isSubmitting={isSaving}
       />
       )}
