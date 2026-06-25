@@ -7,6 +7,7 @@ export function boulderToPrefill(gp: GymProblem): ProblemPrefill {
     color: gp.color,
     grade_value: gp.community_grade,
     image_url: gp.image_url,
+    beta_video_url: gp.beta_video_url,
     gym: gp.gym,
   }
 }
