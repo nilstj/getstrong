@@ -598,10 +598,12 @@ export function SessionDetailPage() {
                   // Public → Private: unclaim (the boulder stays for others).
                   claimGymProblem.mutate(
                     { problemId: editingProblem.id, gymProblemId: null },
-                    { onError: () => toast.error('Could not make private') },
+                    {
+                      onSuccess: () => toast.success('Made private'),
+                      onError: () => toast.error('Could not make private'),
+                    },
                   )
                   setEditingProblem(null)
-                  toast.success('Made private')
                 } else {
                   setEditingProblem(null)
                   toast.success('Problem updated')
