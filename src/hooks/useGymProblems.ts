@@ -53,6 +53,7 @@ export function useCreateGymProblem() {
       wall_angle: string | null
       name: string | null
       image_url: string | null
+      beta_video_url: string | null
     }) => {
       const { data, error } = await supabase.rpc('create_gym_problem', {
         p_gym: values.gym,
@@ -60,6 +61,7 @@ export function useCreateGymProblem() {
         p_wall_angle: values.wall_angle,
         p_name: values.name,
         p_image_url: values.image_url,
+        p_beta_video_url: values.beta_video_url,
       })
       if (error) throw error
       return data as GymProblem

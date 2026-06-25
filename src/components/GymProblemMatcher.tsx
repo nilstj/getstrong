@@ -54,6 +54,7 @@ export function GymProblemMatcher({ problem }: { problem: Problem }) {
         wall_angle: null,
         name: problem.name,
         image_url: problem.image_url,
+        beta_video_url: problem.beta_video_url,
       },
       {
         onSuccess: gp => join(gp.id),

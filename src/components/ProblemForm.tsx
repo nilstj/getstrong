@@ -86,7 +86,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       board_angle: existing?.board_angle ?? '',
       gym: existing?.gym ?? prefill?.gym ?? defaultGym ?? '',
       crag: existing?.crag ?? '',
-      beta_video_url: existing?.beta_video_url ?? '',
+      beta_video_url: existing?.beta_video_url ?? prefill?.beta_video_url ?? '',
       notes: existing?.notes ?? '',
     },
   })
