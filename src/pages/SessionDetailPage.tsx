@@ -116,7 +116,7 @@ export function SessionDetailPage() {
     addProblem.mutate(
       { ...values, session_id: id! },
       {
-        onSuccess: () => { setSheetOpen(false); toast.success('Problem added') },
+        onSuccess: () => { setSheetOpen(false); setProblemMode('new'); setPickedBoulder(null); toast.success('Problem added') },
         onError: () => toast.error('Failed to save. Try again.'),
       },
     )
@@ -128,9 +128,14 @@ export function SessionDetailPage() {
       {
         onSuccess: (created) => {
           if (pickedBoulder) {
-            claimGymProblem.mutate({ problemId: created.id, gymProblemId: pickedBoulder.id })
+            claimGymProblem.mutate(
+              { problemId: created.id, gymProblemId: pickedBoulder.id },
+              { onError: () => toast.error('Problem added, but linking to the boulder failed') },
+            )
           }
           setSheetOpen(false)
+          setProblemMode('new')
+          setPickedBoulder(null)
           toast.success('Problem added')
         },
         onError: () => toast.error('Failed to save. Try again.'),
