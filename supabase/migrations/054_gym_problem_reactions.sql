@@ -12,8 +12,10 @@ alter table gym_problem_reactions enable row level security;
 
 create index if not exists gym_problem_reactions_gp_idx on gym_problem_reactions (gym_problem_id);
 
+drop policy if exists "gym_problem_reactions viewable by authenticated users" on gym_problem_reactions;
 create policy "gym_problem_reactions viewable by authenticated users"
   on gym_problem_reactions for select using (auth.role() = 'authenticated');
+drop policy if exists "users manage own gym_problem_reactions" on gym_problem_reactions;
 create policy "users manage own gym_problem_reactions"
   on gym_problem_reactions for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);

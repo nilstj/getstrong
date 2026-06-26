@@ -19,8 +19,10 @@ alter table boulder_beta enable row level security;
 
 create index if not exists boulder_beta_gp_idx on boulder_beta (gym_problem_id, created_at desc);
 
+drop policy if exists "boulder_beta viewable by authenticated users" on boulder_beta;
 create policy "boulder_beta viewable by authenticated users"
   on boulder_beta for select using (auth.role() = 'authenticated');
+drop policy if exists "users manage own boulder_beta" on boulder_beta;
 create policy "users manage own boulder_beta"
   on boulder_beta for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);

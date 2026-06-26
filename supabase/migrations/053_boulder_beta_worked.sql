@@ -11,8 +11,10 @@ create table if not exists boulder_beta_worked (
 );
 alter table boulder_beta_worked enable row level security;
 
+drop policy if exists "boulder_beta_worked viewable by authenticated users" on boulder_beta_worked;
 create policy "boulder_beta_worked viewable by authenticated users"
   on boulder_beta_worked for select using (auth.role() = 'authenticated');
+drop policy if exists "users manage own worked marks" on boulder_beta_worked;
 create policy "users manage own worked marks"
   on boulder_beta_worked for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
