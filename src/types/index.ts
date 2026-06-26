@@ -349,3 +349,41 @@ export interface ProblemPrefill {
   beta_video_url: string | null
   gym: string | null
 }
+
+export interface BoulderBeta {
+  id: string
+  gym_problem_id: string
+  user_id: string
+  body: string | null
+  video_url: string | null
+  created_at: string
+  worked_count: number
+  worked_by_me: boolean
+}
+
+export interface BoulderReaction {
+  id: string
+  gym_problem_id: string
+  user_id: string
+  emoji: string
+  created_at: string
+}
+
+export type FeedEventType = 'boulder_new' | 'send' | 'beta_added' | 'beta_worked'
+
+export interface FeedEvent {
+  event_type: FeedEventType
+  event_at: string
+  actor_id: string
+  gym_problem_id: string
+  boulder_name: string | null
+  boulder_color: string | null
+  boulder_grade: string | null
+  boulder_image_url: string | null
+  gym: string | null
+  beta_id: string | null
+  beta_snippet: string | null
+  beta_video_url: string | null
+}
+
+export type CrewTitle = 'flash' | 'grinder' | 'first_send' | 'sandbagger'
