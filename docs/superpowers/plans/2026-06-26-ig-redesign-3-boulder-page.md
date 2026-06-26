@@ -1,3 +1,129 @@
+# IG Redesign — Plan 3: Boulder Page
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Reskin the crew page (`/gym-problems/:id`) into the Instagram-style boulder page where learning + digs happen — a ranked **Beta** thread with "✓ worked for N", the **Crew** with playful titles, and a **Banter** dig panel.
+
+**Architecture:** One page rewrite (`CrewPage`) on top of a small hook-prep task. The page composes Plan 2 primitives (`Chip`/`HoldDot`, `BetaCard`, `CrewTitleBadge`) and Plan 1 hooks (`useBoulderBetas`, `useAddBoulderBeta`, `useMark/UnmarkBetaWorked`, `useGymProblemReactions` + add/remove) and the pure helper `crewTitles`. Existing crew/leaderboard/strip behavior is preserved inside the Crew tab.
+
+**Tech Stack:** React 18 + TS + Vite + Tailwind, `@tanstack/react-query`, `react-hot-toast`, `lucide-react`. Spec: `docs/superpowers/specs/2026-06-26-ig-redesign-foundation-and-hero-screens-design.md`.
+
+## Global Constraints
+
+- Preserve existing behavior: strip ("This got stripped"), the per-gym monthly leaderboard, crew member states. Don't regress them — they move into the **Crew** tab.
+- Use Plan 1 hooks/types and Plan 2 primitives; don't reimplement them.
+- **Banter = emoji digs** (the `gym_problem_reactions` built in Plan 1). **Text banter (a boulder comment thread) is OUT OF SCOPE** — the data model has no boulder-comments table; it's a deferred follow-on (note it, don't fake it).
+- "helped N climbers" teaching-credit on a beta author is deferred to the Profile sub-project (BetaCard's `helpedLabel` is left unset here).
+- ESLint baseline **17**, introduce **0 new**. `noUnusedLocals`/`noUnusedParameters` ON; `@typescript-eslint/no-unused-vars` has no `^_` ignore (the `(_, v) =>` positional form is the only allowed unused placeholder). Remove any import that becomes unused during the rewrite (e.g. `Trophy` stays only if the leaderboard keeps it).
+- Verification gate per task: `npx tsc -b` clean + `npm run lint` ≤17 + `npm run build` succeeds. No new unit tests (page/hook wiring is build-verified; `crewTitles`/`betaSort` are already tested).
+- **Release gate:** this page calls the Plan 1 RPCs/tables — migrations 052–055 must be applied before it deploys (the branch can merge ahead of the apply; it must not go live first).
+
+---
+
+### Task 1: Hook prep — expose crew problem rows + enrich beta authors
+
+`crewTitles` needs the raw per-problem rows (user_id/sent/attempts/created_at), and `BetaCard` needs an author name/avatar. Extend the two hooks to provide them.
+
+**Files:**
+- Modify: `src/hooks/useCrew.ts` (return the rows it already builds)
+- Modify: `src/hooks/useBoulderBeta.ts` (attach author profile to each beta)
+
+**Interfaces:**
+- Produces: `useCrew(id)` returns `{ members: CrewMember[]; summary: CrewSummary; problems: CrewProblemRow[] }` (adds `problems`).
+- Produces: `useBoulderBetas(gymProblemId)` returns `(BoulderBeta & { authorName: string | null; authorAvatarUrl: string | null })[]`, still sorted by `betaSort`.
+
+- [ ] **Step 1: Return the rows from `useCrew`**
+
+In `src/hooks/useCrew.ts`, the query already builds `const rows: CrewProblemRow[] = problems.map(...)`. Change the final `return { members, summary: summarizeCrew(members) }` to also return the rows:
+
+```ts
+      return { members, summary: summarizeCrew(members), problems: rows }
+```
+
+(If the `queryFn` has an explicit return type annotation like `Promise<{ members: CrewMember[]; summary: CrewSummary }>`, extend it to include `problems: CrewProblemRow[]`. `CrewProblemRow` is already imported in this file.)
+
+- [ ] **Step 2: Enrich `useBoulderBetas` with author profiles**
+
+In `src/hooks/useBoulderBeta.ts`, after building the `rows: BoulderBeta[]` (before the `return rows.sort(betaSort)`), fetch the authors' profiles and attach them. Replace the `queryFn`'s return type and tail so it reads:
+
+```ts
+    queryFn: async (): Promise<(BoulderBeta & { authorName: string | null; authorAvatarUrl: string | null })[]> => {
+      const { data: { user } } = await supabase.auth.getUser()
+      const [betasRes, workedRes] = await Promise.all([
+        supabase
+          .from('boulder_beta')
+          .select('id, gym_problem_id, user_id, body, video_url, created_at, boulder_beta_worked(count)')
+          .eq('gym_problem_id', gymProblemId),
+        supabase
+          .from('boulder_beta_worked')
+          .select('beta_id')
+          .eq('user_id', user?.id ?? ''),
+      ])
+      if (betasRes.error) throw betasRes.error
+      const mine = new Set((workedRes.data ?? []).map(r => r.beta_id as string))
+      const base = (betasRes.data ?? []).map((r): BoulderBeta => ({
+        id: r.id as string,
+        gym_problem_id: r.gym_problem_id as string,
+        user_id: r.user_id as string,
+        body: r.body as string | null,
+        video_url: r.video_url as string | null,
+        created_at: r.created_at as string,
+        worked_count: ((r.boulder_beta_worked as { count: number }[] | null)?.[0]?.count) ?? 0,
+        worked_by_me: mine.has(r.id as string),
+      }))
+      const authorIds = Array.from(new Set(base.map(b => b.user_id)))
+      const profileById = new Map<string, { username: string | null; avatar_url: string | null }>()
+      if (authorIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .in('id', authorIds)
+        for (const p of profs ?? []) {
+          profileById.set(p.id as string, { username: p.username as string | null, avatar_url: p.avatar_url as string | null })
+        }
+      }
+      const rows = base.map(b => ({
+        ...b,
+        authorName: profileById.get(b.user_id)?.username ?? null,
+        authorAvatarUrl: profileById.get(b.user_id)?.avatar_url ?? null,
+      }))
+      return rows.sort(betaSort)
+    },
+```
+
+(This replaces the previous body of `useBoulderBetas`'s `queryFn`. The other hooks in the file are unchanged. `betaSort` accepts `BoulderBeta`; the enriched objects are assignable.)
+
+- [ ] **Step 3: Verify**
+
+Run: `npx tsc -b && npm run lint && npm run build`
+Expected: tsc clean; lint ≤17; build succeeds.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/hooks/useCrew.ts src/hooks/useBoulderBeta.ts
+git commit -m "feat: useCrew returns problem rows; useBoulderBetas enriches author profile
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+### Task 2: Rewrite `CrewPage` into the tabbed boulder page
+
+Replace the whole page with the hero + **Beta / Crew / Banter** tabs. Beta is the default tab.
+
+**Files:**
+- Modify (full rewrite): `src/pages/CrewPage.tsx`
+
+**Interfaces:**
+- Consumes: `useGymProblem`, `useCrew` (now with `problems`), `useGymLeaderboard`, `useStripGymProblem`, `useBoulderBetas`/`useAddBoulderBeta`/`useMarkBetaWorked`/`useUnmarkBetaWorked`, `useGymProblemReactions`/`useAddGymProblemReaction`/`useRemoveGymProblemReaction`, `crewTitles`, `daysUntil`, `cycleMonth`, `useAuth`; primitives `Chip`/`HoldDot`, `BetaCard`, `CrewTitleBadge`.
+
+- [ ] **Step 1: Replace the file**
+
+Replace the entire contents of `src/pages/CrewPage.tsx` with:
+
+```tsx
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Users, Trophy, Play, Send } from 'lucide-react'
@@ -290,3 +416,43 @@ export function CrewPage() {
     </div>
   )
 }
+```
+
+- [ ] **Step 2: Verify**
+
+Run: `npx tsc -b && npm run lint && npm run build`
+Expected: tsc clean (no unused imports); lint ≤17; build succeeds.
+
+- [ ] **Step 3: Manual sanity (note in report)**
+
+Read the diff and confirm: Beta tab is default; composer posts; BetaCard list renders with the top card highlighted when it has worked marks; Crew tab preserves members/strip/leaderboard and adds title badges; Banter tab toggles emoji digs. (No runtime harness; this is a code-level check.)
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/pages/CrewPage.tsx
+git commit -m "feat: boulder page — Beta thread (worked-for) / Crew (titles) / Banter (digs)
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+## Self-Review
+
+**1. Spec coverage:**
+- Hero: photo/video + name + grade chip + colour + gym + send-rate → Task 2 hero ✓
+- Beta tab: ranked thread (sorted in hook), `best` top card, composer, worked-for toggle → Task 2 ✓
+- Crew tab: members + playful titles (CrewTitleBadge via crewTitles) + leaderboard + strip preserved → Task 2 ✓
+- Banter tab: emoji digs via gym_problem_reactions → Task 2 ✓; text banter explicitly deferred (Global Constraints) ✓
+- Author display on beta → Task 1 enrichment ✓
+- Worked-for credits author once → handled in the Plan 1 RPC; UI just calls mark/unmark ✓
+
+**2. Placeholder scan:** No TBD/TODO; full file provided. "Text banter coming soon" is a real user-facing empty-state line, not a code placeholder.
+
+**3. Type consistency:** `useCrew` now returns `problems: CrewProblemRow[]`, consumed by `crewTitles` (which needs user_id/sent/attempts/created_at — all on CrewProblemRow). `useBoulderBetas` returns `BoulderBeta & { authorName, authorAvatarUrl }`, consumed by `BetaCard` (`authorName`/`authorAvatarUrl`/`beta`/`best`/`onToggleWorked`). Reaction mutations take `{ gymProblemId, emoji }`; beta mutations `{ betaId, gymProblemId }` / `{ gymProblemId, body, videoUrl }` — matching Plan 1 hook signatures.
+
+**4. Lint safety:** No `_`-prefixed/discarded bindings. The rewrite drops no longer-needed nothing (all imported icons — ArrowLeft, Users, Trophy, Play, Send — are used; `Chip`/`HoldDot`/`BetaCard`/`CrewTitleBadge` all used). `summary?.total === 1` guards pluralization.
+
+## Open questions for implementation
+- **Back link target** — hero back arrow points to `/dashboard`; if the user came from the feed (Plan 4) that's still a reasonable home. Could switch to `navigate(-1)` later; not needed now.

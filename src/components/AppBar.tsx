@@ -15,7 +15,7 @@ import type { Notification } from '../types'
 import { BADGES } from '../types'
 import toast from 'react-hot-toast'
 
-const TOP_LEVEL_PATHS = ['/dashboard', '/sessions', '/challenges', '/profile']
+const TOP_LEVEL_PATHS = ['/dashboard', '/sessions', '/crews', '/challenges', '/profile']
 
 function isTopLevel(pathname: string) {
   return TOP_LEVEL_PATHS.some(p => pathname === p || pathname === p + '/')

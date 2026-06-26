@@ -16,6 +16,7 @@ import { AnalysisPage } from './pages/AnalysisPage'
 import { HelpPage } from './pages/HelpPage'
 import { AdminPage } from './pages/AdminPage'
 import { CrewPage } from './pages/CrewPage'
+import { CrewsPage } from './pages/CrewsPage'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/crews" element={<CrewsPage />} />
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/sessions/new" element={<NewSessionPage />} />
               <Route path="/sessions/:id" element={<SessionDetailPage />} />
