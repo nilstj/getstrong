@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFriendsFeed } from '../hooks/useFriendsFeed'
+import { useFollowing } from '../hooks/useFollows'
 import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { StoryRing } from '../components/StoryRing'
@@ -12,7 +13,11 @@ export function DashboardPage() {
   // Stories = your active crews first, then nearby boulders to discover; each
   // opens its own crew page rather than the generic /crews index.
   const stories = [...(boulders?.yours ?? []), ...(boulders?.discover ?? [])].slice(0, 12)
-  const { data: sessions = [], isLoading } = useFriendsFeed()
+  // useFriendsFeed stays disabled until follows resolve, so fold the follows
+  // load into the spinner — otherwise the empty state flashes on every mount.
+  const { isLoading: followLoading } = useFollowing()
+  const { data: sessions = [], isLoading: feedLoading, isError } = useFriendsFeed()
+  const loading = followLoading || feedLoading
   const [lightbox, setLightbox] = useState<string | null>(null)
 
   return (
@@ -26,8 +31,10 @@ export function DashboardPage() {
       )}
 
       <div className="px-4 py-4 space-y-3">
-        {isLoading ? (
+        {loading ? (
           <p className="py-10 text-center text-sm text-gray-400">Loading your friends' sessions…</p>
+        ) : isError ? (
+          <p className="py-10 text-center text-sm text-gray-500">Couldn't load the feed. Pull to refresh or try again later.</p>
         ) : sessions.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-gray-500">No friend activity yet.</p>

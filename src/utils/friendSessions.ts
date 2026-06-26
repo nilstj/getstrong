@@ -51,12 +51,15 @@ export function summarizeFriendSessions(rows: FriendProblemRow[]): FriendSession
       if (r.sent) sendCount++
       if (r.image_url) photos.push(r.image_url)
       const idx = r.grade_value_font ? fontGradeToIndex(r.grade_value_font) : -1
-      if (idx > topIdx) { topIdx = idx; topGrade = r.grade_value ?? r.grade_value_font }
+      // Display the canonical Font grade so cards from V-scale and Font friends
+      // stay on one comparable scale (ranking is already on the Font index).
+      if (idx > topIdx) { topIdx = idx; topGrade = r.grade_value_font ?? r.grade_value }
     }
     out.push({
       sessionId,
       userId: group[0].user_id,
-      gym: group[0].gym ?? null,
+      // group[0] is the newest problem and may lack a gym; use the first set one.
+      gym: group.find(r => r.gym)?.gym ?? null,
       date,
       problemCount: group.length,
       sendCount,

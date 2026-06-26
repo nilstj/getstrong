@@ -14,7 +14,7 @@ export function FriendSessionCard({
   onPhoto: (url: string) => void
 }) {
   const photos = session.photos.slice(0, 4)
-  const extra = session.photos.length - photos.length
+  const extra = Math.max(0, session.photos.length - 4)
 
   return (
     <article className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -41,7 +41,7 @@ export function FriendSessionCard({
       {photos.length > 0 && (
         <div className={`grid gap-0.5 ${photos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
           {photos.map((url, i) => (
-            <button key={url + i} type="button" onClick={() => onPhoto(url)}
+            <button key={url} type="button" onClick={() => onPhoto(url)}
               className="relative block aspect-square overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage-500">
               <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" />
               {i === photos.length - 1 && extra > 0 && (
