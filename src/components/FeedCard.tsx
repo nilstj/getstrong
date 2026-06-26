@@ -31,7 +31,7 @@ export function FeedCard({
           style={actorAvatarUrl ? { backgroundImage: `url(${actorAvatarUrl})` } : undefined} />
         <div className="min-w-0 text-sm leading-tight">
           <span className="font-semibold">{actorName}</span>{' '}
-          <span className="text-gray-500">{VERB[event.event_type]}</span>{' '}
+          <span className="text-gray-500">{VERB[event.event_type] ?? 'posted on'}</span>{' '}
           <span className="font-semibold">{title}</span>
           <div className="text-[11px] text-gray-400">
             {[event.boulder_grade, event.gym].filter(Boolean).join(' · ')}
@@ -39,15 +39,21 @@ export function FeedCard({
         </div>
       </div>
 
-      <button type="button" onClick={onOpen}
-        className="block w-full relative aspect-[4/3] bg-gradient-to-br from-sage-700 to-sage-900 focus:outline-none">
+      <button type="button" onClick={onOpen} aria-label={`Open ${title}`}
+        className="block w-full relative aspect-[4/3] bg-gradient-to-br from-sage-700 to-sage-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage-500">
         {event.boulder_image_url && (
           <img src={event.boulder_image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
         )}
-        {event.beta_video_url && !event.boulder_image_url && (
-          <span className="absolute inset-0 grid place-items-center">
-            <Play size={40} className="text-white/90" fill="currentColor" />
-          </span>
+        {event.beta_video_url && (
+          event.boulder_image_url ? (
+            <span className="absolute right-2.5 top-2.5 grid place-items-center w-7 h-7 rounded-full bg-black/55">
+              <Play size={14} className="text-white" fill="currentColor" />
+            </span>
+          ) : (
+            <span className="absolute inset-0 grid place-items-center">
+              <Play size={40} className="text-white/90" fill="currentColor" />
+            </span>
+          )
         )}
         <span className="absolute left-2.5 bottom-2.5 flex items-center gap-2">
           {event.boulder_grade && <Chip label={event.boulder_grade} variant="grade" />}
@@ -57,7 +63,7 @@ export function FeedCard({
 
       <div className="px-3.5 pt-2.5 pb-1">{children}</div>
 
-      {event.beta_snippet && (
+      {event.beta_snippet && (event.event_type === 'beta_added' || event.event_type === 'beta_worked') && (
         <p className="px-3.5 pb-3 text-sm text-gray-700 leading-snug">
           <span className="font-medium">"{event.beta_snippet}"</span>
         </p>
