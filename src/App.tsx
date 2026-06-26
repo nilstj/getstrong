@@ -17,6 +17,7 @@ import { HelpPage } from './pages/HelpPage'
 import { AdminPage } from './pages/AdminPage'
 import { CrewPage } from './pages/CrewPage'
 import { CrewsPage } from './pages/CrewsPage'
+import { FriendSessionPage } from './pages/FriendSessionPage'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
               <Route path="/sessions/new" element={<NewSessionPage />} />
               <Route path="/sessions/:id" element={<SessionDetailPage />} />
               <Route path="/sessions/:id/edit" element={<EditSessionPage />} />
+              <Route path="/friends/sessions/:sessionId" element={<FriendSessionPage />} />
               <Route path="/challenges" element={<ChallengesPage />} />
               <Route path="/analysis" element={<AnalysisPage />} />
               <Route path="/help" element={<HelpPage />} />
