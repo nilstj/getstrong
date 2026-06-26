@@ -18,7 +18,7 @@ export function DashboardPage() {
       {stories.length > 0 && (
         <div className="flex gap-3 overflow-x-auto px-4 py-3 border-b border-gray-100">
           {stories.map(b => (
-            <StoryRing key={b.id} label={b.title} onClick={() => navigate(`/gym-problems/${b.id}`)} />
+            <StoryRing key={b.id} label={b.title} imageUrl={b.image_url} onClick={() => navigate(`/gym-problems/${b.id}`)} />
           ))}
         </div>
       )}

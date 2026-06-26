@@ -57,6 +57,7 @@ export function useDiscoverBoulders() {
         title: boulderTitle(b),
         gym: b.gym,
         color: b.color,
+        image_url: b.image_url,
         expires_at: b.expires_at,
         crewCount: counts[b.id] ?? 0,
         claimed: myClaimedIds.has(b.id),
