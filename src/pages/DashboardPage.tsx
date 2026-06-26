@@ -1,21 +1,24 @@
 import { useNavigate } from 'react-router-dom'
 import { useCrewFeed } from '../hooks/useCrewFeed'
-import { useMySessionLocations } from '../hooks/useSessions'
+import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
 import { FeedCard } from '../components/FeedCard'
 import { StoryRing } from '../components/StoryRing'
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const { data: gyms = [] } = useMySessionLocations()
+  const { data: boulders } = useDiscoverBoulders()
+  // Stories = your active crews first, then nearby boulders to discover; each
+  // opens its own crew page rather than the generic /crews index.
+  const stories = [...(boulders?.yours ?? []), ...(boulders?.discover ?? [])].slice(0, 12)
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useCrewFeed()
   const events = data?.pages.flat() ?? []
 
   return (
     <div className="pb-32 lg:max-w-2xl lg:mx-auto">
-      {gyms.length > 0 && (
+      {stories.length > 0 && (
         <div className="flex gap-3 overflow-x-auto px-4 py-3 border-b border-gray-100">
-          {gyms.slice(0, 12).map(g => (
-            <StoryRing key={g} label={g} onClick={() => navigate('/crews')} />
+          {stories.map(b => (
+            <StoryRing key={b.id} label={b.title} onClick={() => navigate(`/gym-problems/${b.id}`)} />
           ))}
         </div>
       )}
