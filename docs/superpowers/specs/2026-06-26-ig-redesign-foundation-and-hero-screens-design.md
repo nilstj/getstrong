@@ -22,7 +22,7 @@ The visual reference is the approved mockup (Direction A feed + the "beta is the
 - **Dig = a real action, not a buried comment.** Extend reactions to shared boulders (`gym_problem_reactions`, mirroring `problem_reactions`) with a quick emoji bar surfaced as `+ dig`.
 - **Crew titles are derived, not stored.** *Flash 👑, Grinder 🪨 (most attempts before a send), First send, Sandbagger* are computed from the `problems` already linked to a boulder. No schema.
 - **Feed source = follows + crews.** Aggregate recent events (new boulder, send, beta added, beta worked, dig) via one SECURITY DEFINER RPC. No client-side fan-out.
-- **Shell: 5 mobile tabs + stories; web sidebar.** Home · Explore · ＋ · Crews · Profile. Sessions, Analysis, and Help move into a secondary menu (sidebar on web, "＋"/Profile overflow on mobile) — they are not part of the social loop.
+- **Shell: 5 mobile tabs + stories; web sidebar.** **Home · Sessions · ＋ · Crews · Profile** (decided 2026-06-26 — Sessions stays a tab as it's core to a training app). **Explore folds into Home** (the explore grid is reachable from Home rather than its own tab). **Analysis and Help move under Profile.** On web, the left sidebar shows all of these expanded.
 - **Migrations are applied manually in the Supabase dashboard** (per project workflow); every deploy gates on the migration being applied first.
 
 ## Scope
