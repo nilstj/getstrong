@@ -8,7 +8,7 @@ export function useBoulderBetas(gymProblemId: string) {
   return useQuery({
     queryKey: ['boulder_beta', gymProblemId],
     enabled: !!gymProblemId,
-    queryFn: async (): Promise<BoulderBeta[]> => {
+    queryFn: async (): Promise<(BoulderBeta & { authorName: string | null; authorAvatarUrl: string | null })[]> => {
       const { data: { user } } = await supabase.auth.getUser()
       const [betasRes, workedRes] = await Promise.all([
         supabase
@@ -22,7 +22,7 @@ export function useBoulderBetas(gymProblemId: string) {
       ])
       if (betasRes.error) throw betasRes.error
       const mine = new Set((workedRes.data ?? []).map(r => r.beta_id as string))
-      const rows = (betasRes.data ?? []).map((r): BoulderBeta => ({
+      const base = (betasRes.data ?? []).map((r): BoulderBeta => ({
         id: r.id as string,
         gym_problem_id: r.gym_problem_id as string,
         user_id: r.user_id as string,
@@ -31,6 +31,22 @@ export function useBoulderBetas(gymProblemId: string) {
         created_at: r.created_at as string,
         worked_count: ((r.boulder_beta_worked as { count: number }[] | null)?.[0]?.count) ?? 0,
         worked_by_me: mine.has(r.id as string),
+      }))
+      const authorIds = Array.from(new Set(base.map(b => b.user_id)))
+      const profileById = new Map<string, { username: string | null; avatar_url: string | null }>()
+      if (authorIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .in('id', authorIds)
+        for (const p of profs ?? []) {
+          profileById.set(p.id as string, { username: p.username as string | null, avatar_url: p.avatar_url as string | null })
+        }
+      }
+      const rows = base.map(b => ({
+        ...b,
+        authorName: profileById.get(b.user_id)?.username ?? null,
+        authorAvatarUrl: profileById.get(b.user_id)?.avatar_url ?? null,
       }))
       return rows.sort(betaSort)
     },

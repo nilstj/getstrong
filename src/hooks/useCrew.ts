@@ -22,7 +22,7 @@ export function useGymProblem(id: string) {
 export function useCrew(gymProblemId: string) {
   return useQuery({
     queryKey: ['crew', gymProblemId],
-    queryFn: async (): Promise<{ members: CrewMember[]; summary: CrewSummary }> => {
+    queryFn: async (): Promise<{ members: CrewMember[]; summary: CrewSummary; problems: CrewProblemRow[] }> => {
       const { data: probs, error } = await supabase
         .from('problems')
         .select('user_id, sent, attempts, created_at')
@@ -53,7 +53,7 @@ export function useCrew(gymProblemId: string) {
       }))
 
       const members = buildCrew(rows)
-      return { members, summary: summarizeCrew(members) }
+      return { members, summary: summarizeCrew(members), problems: rows }
     },
     enabled: !!gymProblemId,
   })
