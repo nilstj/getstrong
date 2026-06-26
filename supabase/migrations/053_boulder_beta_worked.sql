@@ -27,7 +27,6 @@ declare
   v_author  uuid;
   v_gpid    uuid;
   v_gym     text;
-  v_first   boolean := false;
 begin
   if v_user_id is null then
     raise exception 'Not authenticated';

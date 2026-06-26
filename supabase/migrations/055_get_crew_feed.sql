@@ -71,6 +71,6 @@ begin
   ) feed
   where feed.event_at < v_before
   order by feed.event_at desc
-  limit greatest(1, least(p_limit, 50));
+  limit greatest(1, least(coalesce(p_limit, 20), 50));
 end;
 $$ language plpgsql security definer;
