@@ -1,11 +1,9 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFriendsFeed } from '../hooks/useFriendsFeed'
 import { useFollowing } from '../hooks/useFollows'
 import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { StoryRing } from '../components/StoryRing'
-import { ImageLightbox } from '../components/ImageLightbox'
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -18,7 +16,6 @@ export function DashboardPage() {
   const { isLoading: followLoading } = useFollowing()
   const { data: sessions = [], isLoading: feedLoading, isError } = useFriendsFeed()
   const loading = followLoading || feedLoading
-  const [lightbox, setLightbox] = useState<string | null>(null)
 
   return (
     <div className="pb-32 lg:max-w-2xl lg:mx-auto">
@@ -44,12 +41,10 @@ export function DashboardPage() {
           </div>
         ) : (
           sessions.map(s => (
-            <FriendSessionCard key={s.sessionId} session={s} onPhoto={setLightbox} />
+            <FriendSessionCard key={s.sessionId} session={s} to={`/friends/sessions/${s.sessionId}`} />
           ))
         )}
       </div>
-
-      {lightbox && <ImageLightbox url={lightbox} onClose={() => setLightbox(null)} />}
     </div>
   )
 }
