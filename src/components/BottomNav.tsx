@@ -1,11 +1,9 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Plus, Trophy, BarChart2, User, LifeBuoy } from 'lucide-react'
-import { useReceivedChallenges } from '../hooks/useChallenges'
+import { Home, CalendarDays, Plus, Users, User } from 'lucide-react'
 import { useReceivedFollowRequests } from '../hooks/useFollows'
 
 export function BottomNav() {
   const navigate = useNavigate()
-  const { data: received = [] } = useReceivedChallenges()
   const { data: followRequests = [] } = useReceivedFollowRequests()
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -14,11 +12,11 @@ export function BottomNav() {
     }`
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 flex pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 flex pb-safe lg:hidden">
       <NavLink to="/dashboard" className={linkClass}>
         {({ isActive }) => (
           <>
-            <LayoutDashboard size={22} strokeWidth={isActive ? 2.5 : 1.75} />
+            <Home size={22} strokeWidth={isActive ? 2.5 : 1.75} />
             <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Home</span>
           </>
         )}
@@ -42,34 +40,11 @@ export function BottomNav() {
         </div>
       </button>
 
-      <NavLink to="/challenges" className={linkClass}>
+      <NavLink to="/crews" className={linkClass}>
         {({ isActive }) => (
           <>
-            <div className="relative">
-              <Trophy size={22} strokeWidth={isActive ? 2.5 : 1.75} />
-              {received.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-              )}
-            </div>
-            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Challenges</span>
-          </>
-        )}
-      </NavLink>
-
-      <NavLink to="/help" className={linkClass}>
-        {({ isActive }) => (
-          <>
-            <LifeBuoy size={22} strokeWidth={isActive ? 2.5 : 1.75} />
-            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Help</span>
-          </>
-        )}
-      </NavLink>
-
-      <NavLink to="/analysis" className={linkClass}>
-        {({ isActive }) => (
-          <>
-            <BarChart2 size={22} strokeWidth={isActive ? 2.5 : 1.75} />
-            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Analysis</span>
+            <Users size={22} strokeWidth={isActive ? 2.5 : 1.75} />
+            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Crews</span>
           </>
         )}
       </NavLink>
