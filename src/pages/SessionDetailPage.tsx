@@ -36,17 +36,7 @@ import { GymBoulderPicker } from '../components/GymBoulderPicker'
 import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useClaimGymProblem } from '../hooks/useGymProblems'
 import type { GymProblem } from '../types'
-
-function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
-      onClick={onClose}
-    >
-      <img src={url} alt="" className="max-w-full max-h-full object-contain rounded-lg" onClick={e => e.stopPropagation()} />
-    </div>
-  )
-}
+import { ImageLightbox } from '../components/ImageLightbox'
 
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
