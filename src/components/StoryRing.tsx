@@ -25,7 +25,7 @@ export function StoryRing({
         <span className="block w-full h-full rounded-full border-2 border-white bg-sage-100 bg-cover bg-center"
           style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined} />
       </span>
-      <span className="text-[10px] text-gray-600 truncate max-w-[60px]">{label}</span>
+      <span className="text-[10px] leading-tight text-gray-600 text-center line-clamp-2 max-w-[64px]">{label}</span>
     </button>
   )
 }

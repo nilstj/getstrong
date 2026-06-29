@@ -331,6 +331,7 @@ export interface BoulderSummary {
   title: string
   gym: string
   color: string | null
+  community_grade: string | null
   image_url: string | null
   set_at: string
   isBoard: boolean

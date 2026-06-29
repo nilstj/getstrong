@@ -28,7 +28,12 @@ export function DashboardPage() {
           <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Latest Gym Problems</h2>
           <div className="flex gap-3 overflow-x-auto -mx-1 px-1">
             {stories.map(b => (
-              <StoryRing key={b.id} label={b.title} imageUrl={b.image_url} onClick={() => navigate(`/gym-problems/${b.id}`)} />
+              <StoryRing
+                key={b.id}
+                label={b.community_grade ? `${b.title} (${b.community_grade})` : b.title}
+                imageUrl={b.image_url}
+                onClick={() => navigate(`/gym-problems/${b.id}`)}
+              />
             ))}
           </div>
         </div>
