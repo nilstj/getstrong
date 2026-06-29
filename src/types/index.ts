@@ -332,6 +332,8 @@ export interface BoulderSummary {
   gym: string
   color: string | null
   image_url: string | null
+  set_at: string
+  isBoard: boolean
   expires_at: string
   crewCount: number
   claimed: boolean
