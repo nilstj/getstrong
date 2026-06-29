@@ -21,6 +21,7 @@ import { daysUntil } from '../utils/gymProblems'
 import { cycleMonth } from '../utils/leaderboard'
 import { crewTitles } from '../utils/crewTitles'
 import { boulderToPrefill } from '../utils/boulderPrefill'
+import { todayDateString } from '../utils/dates'
 import { useAuth } from '../providers/AuthProvider'
 import { Chip, HoldDot } from '../components/Chip'
 import { BetaCard } from '../components/BetaCard'
@@ -135,7 +136,7 @@ export function CrewPage() {
 
   const startNewSession = () => {
     createSession.mutate(
-      { date: new Date().toISOString().slice(0, 10), location: boulder.gym, duration_minutes: null, intensity: null, goal: null, notes: null },
+      { date: todayDateString(), location: boulder.gym, duration_minutes: null, intensity: null, goal: null, notes: null },
       {
         onSuccess: (s) => logBoulderInto(s.id),
         onError: () => toast.error('Could not start a session'),
