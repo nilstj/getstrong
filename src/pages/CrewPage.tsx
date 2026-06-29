@@ -20,6 +20,7 @@ import {
 import { daysUntil } from '../utils/gymProblems'
 import { cycleMonth } from '../utils/leaderboard'
 import { crewTitles } from '../utils/crewTitles'
+import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useAuth } from '../providers/AuthProvider'
 import { Chip, HoldDot } from '../components/Chip'
 import { BetaCard } from '../components/BetaCard'
@@ -105,22 +106,16 @@ export function CrewPage() {
 
   // Log this shared boulder into one of the caller's sessions (and claim it).
   const logBoulderInto = (sessionId: string) => {
-    if (!boulder) return
     addProblem.mutate(
       {
         session_id: sessionId,
-        name: boulder.name,
+        ...boulderToPrefill(boulder),
         grade_system: 'font',
-        grade_value: boulder.community_grade,
-        color: boulder.color,
         attempts: 1,
         sent: false,
         board: null,
         board_angle: null,
-        gym: boulder.gym,
         crag: null,
-        image_url: boulder.image_url,
-        beta_video_url: boulder.beta_video_url,
         notes: null,
       },
       {
@@ -139,7 +134,6 @@ export function CrewPage() {
   }
 
   const startNewSession = () => {
-    if (!boulder) return
     createSession.mutate(
       { date: new Date().toISOString().slice(0, 10), location: boulder.gym, duration_minutes: null, intensity: null, goal: null, notes: null },
       {
@@ -148,7 +142,7 @@ export function CrewPage() {
       },
     )
   }
-  const addBusy = addProblem.isPending || createSession.isPending
+  const addBusy = addProblem.isPending || createSession.isPending || claim.isPending
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'beta', label: `Beta ${betas.length || ''}`.trim() },
@@ -187,13 +181,15 @@ export function CrewPage() {
         </div>
       </div>
 
-      {/* Add to a session */}
-      <div className="px-4 py-3">
-        <button type="button" onClick={() => setAddOpen(true)}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white hover:bg-sage-800">
-          <Plus size={16} strokeWidth={2.5} /> Add to a session
-        </button>
-      </div>
+      {/* Add to a session (only for active, non-expired boulders) */}
+      {boulder.status === 'active' && left >= 0 && (
+        <div className="px-4 py-3">
+          <button type="button" onClick={() => setAddOpen(true)}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white hover:bg-sage-800">
+            <Plus size={16} strokeWidth={2.5} /> Add to a session
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
