@@ -1,10 +1,13 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Users, Trophy, Play, Send } from 'lucide-react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Users, Trophy, Play, Send, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useGymProblem, useCrew } from '../hooks/useCrew'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
-import { useStripGymProblem } from '../hooks/useGymProblems'
+import { useStripGymProblem, useClaimGymProblem } from '../hooks/useGymProblems'
+import { useSessions, useCreateSession } from '../hooks/useSessions'
+import { useAddProblem } from '../hooks/useProblems'
+import { BottomSheet } from '../components/BottomSheet'
 import {
   useBoulderBetas,
   useAddBoulderBeta,
@@ -35,6 +38,7 @@ type Tab = 'beta' | 'crew' | 'banter'
 export function CrewPage() {
   const { id = '' } = useParams<{ id: string }>()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { data: boulder, isLoading: loadingBoulder } = useGymProblem(id)
   const { data: crew, isLoading: loadingCrew } = useCrew(id)
   const month = cycleMonth(new Date())
@@ -47,10 +51,15 @@ export function CrewPage() {
   const unmarkWorked = useUnmarkBetaWorked()
   const addReaction = useAddGymProblemReaction()
   const removeReaction = useRemoveGymProblemReaction()
+  const { data: sessions = [] } = useSessions()
+  const createSession = useCreateSession()
+  const addProblem = useAddProblem()
+  const claim = useClaimGymProblem()
 
   const [tab, setTab] = useState<Tab>('beta')
   const [draft, setDraft] = useState('')
   const [draftVideo, setDraftVideo] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
 
   if (loadingBoulder || loadingCrew) {
     return <div className="p-5 text-sm text-gray-400">Loading boulder…</div>
@@ -94,6 +103,53 @@ export function CrewPage() {
     else markWorked.mutate(v, { onError: () => toast.error('Could not update') })
   }
 
+  // Log this shared boulder into one of the caller's sessions (and claim it).
+  const logBoulderInto = (sessionId: string) => {
+    if (!boulder) return
+    addProblem.mutate(
+      {
+        session_id: sessionId,
+        name: boulder.name,
+        grade_system: 'font',
+        grade_value: boulder.community_grade,
+        color: boulder.color,
+        attempts: 1,
+        sent: false,
+        board: null,
+        board_angle: null,
+        gym: boulder.gym,
+        crag: null,
+        image_url: boulder.image_url,
+        beta_video_url: boulder.beta_video_url,
+        notes: null,
+      },
+      {
+        onSuccess: (created) => {
+          claim.mutate(
+            { problemId: created.id, gymProblemId: boulder.id },
+            { onError: () => toast.error('Added, but linking to the boulder failed') },
+          )
+          setAddOpen(false)
+          toast.success('Added to your session')
+          navigate(`/sessions/${sessionId}`)
+        },
+        onError: () => toast.error('Could not add to session'),
+      },
+    )
+  }
+
+  const startNewSession = () => {
+    if (!boulder) return
+    createSession.mutate(
+      { date: new Date().toISOString().slice(0, 10), location: boulder.gym, duration_minutes: null, intensity: null, goal: null, notes: null },
+      {
+        onSuccess: (s) => logBoulderInto(s.id),
+        onError: () => toast.error('Could not start a session'),
+      },
+    )
+  }
+  const addBusy = addProblem.isPending || createSession.isPending
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'beta', label: `Beta ${betas.length || ''}`.trim() },
     { key: 'crew', label: `Crew ${summary?.total ?? 0}` },
@@ -129,6 +185,14 @@ export function CrewPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Add to a session */}
+      <div className="px-4 py-3">
+        <button type="button" onClick={() => setAddOpen(true)}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white hover:bg-sage-800">
+          <Plus size={16} strokeWidth={2.5} /> Add to a session
+        </button>
       </div>
 
       {/* Tabs */}
@@ -287,6 +351,29 @@ export function CrewPage() {
           </div>
         )}
       </div>
+
+      <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title="Add to a session">
+        <button type="button" onClick={startNewSession} disabled={addBusy}
+          className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-sage-300 py-3 text-sm font-semibold text-sage-700 hover:bg-sage-50 disabled:opacity-50">
+          <Plus size={16} strokeWidth={2.5} /> Start a new session{boulder.gym ? ` at ${boulder.gym}` : ''}
+        </button>
+
+        <p className="my-3 text-center text-xs text-gray-400">or add to an existing session</p>
+
+        {sessions.length === 0 ? (
+          <p className="py-4 text-center text-sm text-gray-400">No sessions yet.</p>
+        ) : (
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {sessions.slice(0, 12).map(s => (
+              <button key={s.id} type="button" onClick={() => logBoulderInto(s.id)} disabled={addBusy}
+                className="w-full flex items-center justify-between gap-3 p-3 border rounded-xl text-left hover:bg-gray-50 disabled:opacity-50">
+                <span className="text-sm font-medium text-gray-800 truncate">{s.location}</span>
+                <span className="text-xs text-gray-400 flex-shrink-0">{s.date}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </BottomSheet>
     </div>
   )
 }
