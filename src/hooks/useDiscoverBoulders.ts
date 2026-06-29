@@ -61,6 +61,7 @@ export function useDiscoverBoulders() {
         title: boulderTitle(b),
         gym: b.gym,
         color: b.color,
+        community_grade: b.community_grade,
         image_url: b.image_url,
         set_at: b.set_at,
         isBoard: boardBoulderIds.has(b.id),
