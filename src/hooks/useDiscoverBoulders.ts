@@ -43,13 +43,17 @@ export function useDiscoverBoulders() {
       const activeList = list.filter(b => isActiveBoulder(b, now))
       if (activeList.length === 0) return { yours: [], discover: [] }
 
-      // 3. Crew counts (distinct users per boulder).
+      // 3. Crew counts (distinct users per boulder) + flag board climbs.
+      // gym_problems don't store a board, so a boulder is a "board problem" when
+      // its linked problems carry one (Kilterboard/Moonboard/TB2).
       const ids = activeList.map(b => b.id)
       const { data: probs, error: e3 } = await supabase
-        .from('problems').select('gym_problem_id, user_id').in('gym_problem_id', ids)
+        .from('problems').select('gym_problem_id, user_id, board').in('gym_problem_id', ids)
       if (e3) throw e3
-      const counts = countMembersByBoulder(
-        (probs ?? []) as { gym_problem_id: string | null; user_id: string }[],
+      const probRows = (probs ?? []) as { gym_problem_id: string | null; user_id: string; board: string | null }[]
+      const counts = countMembersByBoulder(probRows)
+      const boardBoulderIds = new Set(
+        probRows.filter(p => p.board && p.gym_problem_id).map(p => p.gym_problem_id as string),
       )
 
       const summaries: BoulderSummary[] = activeList.map(b => ({
@@ -58,6 +62,8 @@ export function useDiscoverBoulders() {
         gym: b.gym,
         color: b.color,
         image_url: b.image_url,
+        set_at: b.set_at,
+        isBoard: boardBoulderIds.has(b.id),
         expires_at: b.expires_at,
         crewCount: counts[b.id] ?? 0,
         claimed: myClaimedIds.has(b.id),
