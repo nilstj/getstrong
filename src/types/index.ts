@@ -271,12 +271,29 @@ export interface GymProblem {
   color: string | null
   community_grade: string | null
   name: string | null
+  setter: string | null
   image_url: string | null
   beta_video_url: string | null
   created_by: string | null
   set_at: string
   expires_at: string
   status: 'active' | 'archived'
+  created_at: string
+}
+
+export interface BoulderReview {
+  gym_problem_id: string
+  user_id: string
+  stars: number
+  review: string | null
+  created_at: string
+}
+
+export interface BoulderComment {
+  id: string
+  gym_problem_id: string
+  user_id: string
+  body: string
   created_at: string
 }
 

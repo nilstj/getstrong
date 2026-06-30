@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, Trophy, Play, Send, Plus } from 'lucide-react'
+import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useGymProblem, useCrew } from '../hooks/useCrew'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
@@ -17,6 +17,14 @@ import {
   useAddGymProblemReaction,
   useRemoveGymProblemReaction,
 } from '../hooks/useBoulderBeta'
+import {
+  useSetBoulderSetter,
+  useBoulderReviews,
+  useUpsertBoulderReview,
+  useBoulderComments,
+  useAddBoulderComment,
+  useDeleteBoulderComment,
+} from '../hooks/useBoulderExtras'
 import { daysUntil } from '../utils/gymProblems'
 import { cycleMonth } from '../utils/leaderboard'
 import { crewTitles } from '../utils/crewTitles'
@@ -26,6 +34,8 @@ import { useAuth } from '../providers/AuthProvider'
 import { Chip, HoldDot } from '../components/Chip'
 import { BetaCard } from '../components/BetaCard'
 import { CrewTitleBadge } from '../components/CrewTitleBadge'
+import { StarRating } from '../components/StarRating'
+import { ImageLightbox } from '../components/ImageLightbox'
 import type { CrewState } from '../types'
 
 const STATE_LABEL: Record<CrewState, string> = { projecting: 'Projecting', sent: 'Sent', flashed: 'Flashed' }
@@ -35,7 +45,7 @@ const STATE_CLASS: Record<CrewState, string> = {
   flashed: 'bg-amber-100 text-amber-700',
 }
 const DIG_EMOJIS = ['🔥', '💪', '😂', '🐒', '🪨']
-type Tab = 'beta' | 'crew' | 'banter'
+type Tab = 'sendtrain' | 'beta' | 'setter'
 
 export function CrewPage() {
   const { id = '' } = useParams<{ id: string }>()
@@ -47,21 +57,34 @@ export function CrewPage() {
   const { data: leaderboard = [] } = useGymLeaderboard(boulder?.gym ?? '', month)
   const { data: betas = [] } = useBoulderBetas(id)
   const { data: reactions = [] } = useGymProblemReactions(id)
+  const { data: reviewsData } = useBoulderReviews(id)
+  const { data: comments = [] } = useBoulderComments(id)
   const strip = useStripGymProblem()
   const addBeta = useAddBoulderBeta()
   const markWorked = useMarkBetaWorked()
   const unmarkWorked = useUnmarkBetaWorked()
   const addReaction = useAddGymProblemReaction()
   const removeReaction = useRemoveGymProblemReaction()
+  const setSetter = useSetBoulderSetter()
+  const upsertReview = useUpsertBoulderReview()
+  const addComment = useAddBoulderComment()
+  const deleteComment = useDeleteBoulderComment()
   const { data: sessions = [] } = useSessions()
   const createSession = useCreateSession()
   const addProblem = useAddProblem()
   const claim = useClaimGymProblem()
 
-  const [tab, setTab] = useState<Tab>('beta')
+  const [tab, setTab] = useState<Tab>('sendtrain')
   const [draft, setDraft] = useState('')
   const [draftVideo, setDraftVideo] = useState('')
+  const [comment, setComment] = useState('')
   const [addOpen, setAddOpen] = useState(false)
+  const [lightbox, setLightbox] = useState<string | null>(null)
+  const [editingSetter, setEditingSetter] = useState(false)
+  const [setterDraft, setSetterDraft] = useState('')
+  const [editingReview, setEditingReview] = useState(false)
+  const [reviewStars, setReviewStars] = useState(0)
+  const [reviewText, setReviewText] = useState('')
 
   if (loadingBoulder || loadingCrew) {
     return <div className="p-5 text-sm text-gray-400">Loading boulder…</div>
@@ -76,7 +99,9 @@ export function CrewPage() {
   const titles = crewTitles(crew?.problems ?? [])
   const title = boulder.name || `${boulder.color ?? ''} ${boulder.wall_angle ?? ''}`.trim() || 'Shared boulder'
 
-  // Dig tallies from gym_problem_reactions
+  const myReview = reviewsData?.myReview ?? null
+  const otherReviews = (reviewsData?.reviews ?? []).filter(r => r.user_id !== user?.id)
+
   const digTally = DIG_EMOJIS.map(emoji => {
     const rs = reactions.filter(r => r.emoji === emoji)
     return { emoji, count: rs.length, mine: rs.some(r => r.user_id === user?.id) }
@@ -103,6 +128,32 @@ export function CrewPage() {
     const v = { betaId, gymProblemId: id }
     if (workedByMe) unmarkWorked.mutate(v, { onError: () => toast.error('Could not update') })
     else markWorked.mutate(v, { onError: () => toast.error('Could not update') })
+  }
+
+  const submitComment = () => {
+    const body = comment.trim()
+    if (!body) return
+    addComment.mutate(
+      { gymProblemId: id, body },
+      { onSuccess: () => setComment(''), onError: () => toast.error('Could not post comment') },
+    )
+  }
+
+  const editSetter = () => { setSetterDraft(boulder.setter ?? ''); setEditingSetter(true) }
+  const saveSetter = () => {
+    setSetter.mutate(
+      { gymProblemId: id, setter: setterDraft },
+      { onSuccess: () => { setEditingSetter(false); toast.success('Setter updated') }, onError: () => toast.error('Could not save setter') },
+    )
+  }
+
+  const editReview = () => { setReviewStars(myReview?.stars ?? 0); setReviewText(myReview?.review ?? ''); setEditingReview(true) }
+  const saveReview = () => {
+    if (reviewStars < 1) { toast.error('Pick a star rating first'); return }
+    upsertReview.mutate(
+      { gymProblemId: id, stars: reviewStars, review: reviewText.trim() || null },
+      { onSuccess: () => { setEditingReview(false); toast.success('Review saved') }, onError: () => toast.error('Could not save review') },
+    )
   }
 
   // Log this shared boulder into one of the caller's sessions (and claim it).
@@ -146,38 +197,44 @@ export function CrewPage() {
   const addBusy = addProblem.isPending || createSession.isPending || claim.isPending
 
   const TABS: { key: Tab; label: string }[] = [
+    { key: 'sendtrain', label: `Sendtrain ${summary?.total ?? 0}` },
     { key: 'beta', label: `Beta ${betas.length || ''}`.trim() },
-    { key: 'crew', label: `Crew ${summary?.total ?? 0}` },
-    { key: 'banter', label: `Banter ${reactions.length || ''}`.trim() },
+    { key: 'setter', label: 'Setter' },
   ]
 
   return (
     <div className="pb-32 lg:max-w-2xl lg:mx-auto">
       {/* Hero */}
-      <div className="relative">
-        <div className="relative aspect-[16/10] max-h-80 w-full bg-gradient-to-br from-sage-700 to-sage-900">
-          {boulder.image_url && (
+      <div className="relative aspect-[16/10] max-h-80 w-full bg-gradient-to-br from-sage-700 to-sage-900">
+        {boulder.image_url ? (
+          <button type="button" onClick={() => setLightbox(boulder.image_url!)} aria-label="View photo"
+            className="absolute inset-0 w-full h-full focus:outline-none">
             <img src={boulder.image_url} alt={title} className="absolute inset-0 w-full h-full object-cover" />
-          )}
-          {boulder.beta_video_url && !boulder.image_url && (
-            <span className="absolute inset-0 grid place-items-center">
-              <Play size={48} className="text-white/90" fill="currentColor" />
+          </button>
+        ) : boulder.beta_video_url ? (
+          <span className="absolute inset-0 grid place-items-center">
+            <Play size={48} className="text-white/90" fill="currentColor" />
+          </span>
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent pointer-events-none" />
+        <Link to="/dashboard" aria-label="Back"
+          className="absolute left-3 top-3 z-10 grid place-items-center w-9 h-9 rounded-full bg-black/35 text-white">
+          <ArrowLeft size={18} />
+        </Link>
+        {boulder.beta_video_url && (
+          <a href={boulder.beta_video_url} target="_blank" rel="noopener noreferrer"
+            className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
+            <Play size={13} fill="currentColor" /> Watch video
+          </a>
+        )}
+        <div className="absolute left-4 bottom-3 right-4 text-white pointer-events-none">
+          <h1 className="text-lg font-bold tracking-tight">{title}</h1>
+          <div className="mt-1 flex items-center gap-2 text-xs">
+            {boulder.community_grade && <Chip label={boulder.community_grade} variant="grade" />}
+            {boulder.color && <HoldDot color={boulder.color} />}
+            <span className="opacity-90">
+              {[boulder.gym, summary ? `${summary.sent}/${summary.total} sent` : null].filter(Boolean).join(' · ')}
             </span>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
-          <Link to="/dashboard" aria-label="Back"
-            className="absolute left-3 top-3 z-10 grid place-items-center w-9 h-9 rounded-full bg-black/35 text-white">
-            <ArrowLeft size={18} />
-          </Link>
-          <div className="absolute left-4 bottom-3 right-4 text-white">
-            <h1 className="text-lg font-bold tracking-tight">{title}</h1>
-            <div className="mt-1 flex items-center gap-2 text-xs">
-              {boulder.community_grade && <Chip label={boulder.community_grade} variant="grade" />}
-              {boulder.color && <HoldDot color={boulder.color} />}
-              <span className="opacity-90">
-                {[boulder.gym, summary ? `${summary.sent}/${summary.total} sent` : null].filter(Boolean).join(' · ')}
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -205,51 +262,8 @@ export function CrewPage() {
       </div>
 
       <div className="px-4 pt-4">
-        {/* BETA */}
-        {tab === 'beta' && (
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-2">
-              <textarea
-                value={draft}
-                onChange={e => setDraft(e.target.value)}
-                placeholder="Share beta or call someone out…"
-                rows={2}
-                className="w-full resize-none text-sm focus:outline-none placeholder:text-gray-400"
-              />
-              <input
-                value={draftVideo}
-                onChange={e => setDraftVideo(e.target.value)}
-                placeholder="Beta video link (optional)"
-                className="w-full text-xs text-gray-600 border-t border-gray-100 pt-2 focus:outline-none placeholder:text-gray-400"
-              />
-              <div className="flex justify-end">
-                <button type="button" onClick={submitBeta}
-                  disabled={addBeta.isPending || (!draft.trim() && !draftVideo.trim())}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-sage-700 px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-40">
-                  <Send size={14} /> Post
-                </button>
-              </div>
-            </div>
-
-            {betas.length === 0 ? (
-              <p className="py-8 text-center text-sm text-gray-400">Be the first to crack it — share your beta.</p>
-            ) : (
-              betas.map((b, i) => (
-                <BetaCard
-                  key={b.id}
-                  beta={b}
-                  authorName={b.authorName ?? 'Someone'}
-                  authorAvatarUrl={b.authorAvatarUrl}
-                  best={i === 0 && b.worked_count > 0}
-                  onToggleWorked={() => toggleWorked(b.id, b.worked_by_me)}
-                />
-              ))
-            )}
-          </div>
-        )}
-
-        {/* CREW */}
-        {tab === 'crew' && (
+        {/* SENDTRAIN (the crew) */}
+        {tab === 'sendtrain' && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <span className="inline-flex items-center gap-1 font-semibold text-gray-700">
@@ -329,11 +343,49 @@ export function CrewPage() {
           </div>
         )}
 
-        {/* BANTER */}
-        {tab === 'banter' && (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-500">Pile on — react to this boulder.</p>
-            <div className="flex flex-wrap gap-2">
+        {/* BETA (beta thread + comments + reactions) */}
+        {tab === 'beta' && (
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-2">
+              <textarea
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                placeholder="Share beta — how does the move go?"
+                rows={2}
+                className="w-full resize-none text-sm focus:outline-none placeholder:text-gray-400"
+              />
+              <input
+                value={draftVideo}
+                onChange={e => setDraftVideo(e.target.value)}
+                placeholder="Beta video link (optional)"
+                className="w-full text-xs text-gray-600 border-t border-gray-100 pt-2 focus:outline-none placeholder:text-gray-400"
+              />
+              <div className="flex justify-end">
+                <button type="button" onClick={submitBeta}
+                  disabled={addBeta.isPending || (!draft.trim() && !draftVideo.trim())}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-sage-700 px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-40">
+                  <Send size={14} /> Post beta
+                </button>
+              </div>
+            </div>
+
+            {betas.length === 0 ? (
+              <p className="py-6 text-center text-sm text-gray-400">Be the first to crack it — share your beta.</p>
+            ) : (
+              betas.map((b, i) => (
+                <BetaCard
+                  key={b.id}
+                  beta={b}
+                  authorName={b.authorName ?? 'Someone'}
+                  authorAvatarUrl={b.authorAvatarUrl}
+                  best={i === 0 && b.worked_count > 0}
+                  onToggleWorked={() => toggleWorked(b.id, b.worked_by_me)}
+                />
+              ))
+            )}
+
+            {/* Reactions */}
+            <div className="flex flex-wrap gap-2 pt-1">
               {digTally.map(d => (
                 <button key={d.emoji} type="button" onClick={() => toggleDig(d.emoji, d.mine)}
                   className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -344,7 +396,121 @@ export function CrewPage() {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-gray-400">Text banter is coming soon — for now, let the emojis do the talking.</p>
+
+            {/* Comments */}
+            <div className="pt-2 space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">Discussion</h3>
+              {comments.map(c => (
+                <div key={c.id} className="flex items-start gap-2.5">
+                  <span className="w-7 h-7 rounded-full bg-cover bg-center bg-sage-100 flex-shrink-0 mt-0.5"
+                    style={c.authorAvatarUrl ? { backgroundImage: `url(${c.authorAvatarUrl})` } : undefined} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm"><span className="font-semibold">{c.authorName ?? 'Someone'}</span> <span className="text-gray-700">{c.body}</span></p>
+                  </div>
+                  {c.user_id === user?.id && (
+                    <button type="button" aria-label="Delete comment"
+                      onClick={() => deleteComment.mutate({ commentId: c.id, gymProblemId: id })}
+                      className="text-gray-300 hover:text-red-500 mt-0.5">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') submitComment() }}
+                  placeholder="Add a comment…"
+                  className="flex-1 rounded-full bg-gray-100 px-3.5 py-2 text-sm focus:outline-none placeholder:text-gray-400"
+                />
+                <button type="button" onClick={submitComment} disabled={addComment.isPending || !comment.trim()}
+                  className="text-sage-700 disabled:opacity-40" aria-label="Post comment">
+                  <Send size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SETTER (setter name + star reviews) */}
+        {tab === 'setter' && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1.5">Setter</h3>
+              {editingSetter ? (
+                <div className="flex items-center gap-2">
+                  <input autoFocus value={setterDraft} onChange={e => setSetterDraft(e.target.value)}
+                    placeholder="Who set it?"
+                    className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500" />
+                  <button type="button" onClick={saveSetter} disabled={setSetter.isPending}
+                    className="rounded-lg bg-sage-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Save</button>
+                  <button type="button" onClick={() => setEditingSetter(false)} className="px-2 py-2 text-sm text-gray-500">Cancel</button>
+                </div>
+              ) : (
+                <button type="button" onClick={editSetter}
+                  className="inline-flex items-center gap-2 text-sm text-gray-800 hover:text-sage-700">
+                  <span className="font-medium">{boulder.setter || 'Add the setter'}</span>
+                  <Pencil size={14} className="text-gray-400" />
+                </button>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1.5">Rating</h3>
+              <div className="flex items-center gap-2">
+                <StarRating value={reviewsData?.average ?? 0} size={22} />
+                <span className="text-sm font-semibold text-gray-800">{reviewsData?.average ? reviewsData.average.toFixed(1) : '—'}</span>
+                <span className="text-xs text-gray-400">({reviewsData?.count ?? 0})</span>
+              </div>
+
+              {/* Your review */}
+              <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-3">
+                {myReview && !editingReview ? (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <StarRating value={myReview.stars} />
+                      <button type="button" onClick={editReview} className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-sage-700">
+                        <Pencil size={12} /> Edit
+                      </button>
+                    </div>
+                    {myReview.review && <p className="mt-1.5 text-sm text-gray-700">{myReview.review}</p>}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Your rating</span>
+                      <StarRating value={reviewStars} onChange={setReviewStars} size={24} />
+                    </div>
+                    <textarea value={reviewText} onChange={e => setReviewText(e.target.value)} rows={2}
+                      placeholder="Add a review (optional)…"
+                      className="w-full resize-none text-sm border-t border-gray-100 pt-2 focus:outline-none placeholder:text-gray-400" />
+                    <div className="flex justify-end gap-2">
+                      {myReview && <button type="button" onClick={() => setEditingReview(false)} className="px-2 py-1.5 text-sm text-gray-500">Cancel</button>}
+                      <button type="button" onClick={saveReview} disabled={upsertReview.isPending}
+                        className="rounded-full bg-sage-700 px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-50">Save review</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Other reviews */}
+              <div className="mt-3 space-y-3">
+                {otherReviews.map(r => (
+                  <div key={r.user_id} className="flex items-start gap-2.5">
+                    <span className="w-7 h-7 rounded-full bg-cover bg-center bg-sage-100 flex-shrink-0 mt-0.5"
+                      style={r.authorAvatarUrl ? { backgroundImage: `url(${r.authorAvatarUrl})` } : undefined} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">{r.authorName ?? 'Someone'}</span>
+                        <StarRating value={r.stars} size={13} />
+                      </div>
+                      {r.review && <p className="text-sm text-gray-700">{r.review}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -371,6 +537,8 @@ export function CrewPage() {
           </div>
         )}
       </BottomSheet>
+
+      {lightbox && <ImageLightbox url={lightbox} onClose={() => setLightbox(null)} />}
     </div>
   )
 }
