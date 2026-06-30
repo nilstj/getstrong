@@ -39,6 +39,8 @@ import { ImageLightbox } from '../components/ImageLightbox'
 import type { CrewState } from '../types'
 
 const STATE_LABEL: Record<CrewState, string> = { projecting: 'Projecting', sent: 'Sent', flashed: 'Flashed' }
+// Sendtrain theme: flashers ride the speed train, senders chug in on the coal train.
+const STATE_ICON: Record<CrewState, string> = { projecting: '', sent: '🚂', flashed: '🚄' }
 const STATE_CLASS: Record<CrewState, string> = {
   projecting: 'bg-gray-100 text-gray-600',
   sent: 'bg-sage-100 text-sage-700',
@@ -296,7 +298,7 @@ export function CrewPage() {
                       </span>
                     </div>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATE_CLASS[m.state]}`}>
-                      {STATE_LABEL[m.state]}
+                      {STATE_ICON[m.state] && <span aria-hidden>{STATE_ICON[m.state]} </span>}{STATE_LABEL[m.state]}
                     </span>
                   </div>
                 ))
