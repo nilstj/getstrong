@@ -38,6 +38,7 @@ import { useClaimGymProblem } from '../hooks/useGymProblems'
 import type { GymProblem } from '../types'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { BoardThumb } from '../components/BoardThumb'
+import { GymThumb } from '../components/GymThumb'
 
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
@@ -237,6 +238,8 @@ export function SessionDetailPage() {
                   </button>
                 ) : problem.board ? (
                   <BoardThumb board={problem.board} angle={problem.board_angle} className="flex-shrink-0 w-16 h-16 rounded-xl" />
+                ) : problem.gym ? (
+                  <GymThumb gym={problem.gym} compact className="flex-shrink-0 w-16 h-16 rounded-xl" />
                 ) : problem.beta_video_url ? (
                   <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
                     className="flex-shrink-0 w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
