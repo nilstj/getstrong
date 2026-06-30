@@ -9,6 +9,7 @@ import { useProfile } from '../hooks/useProfile'
 import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow } from '../utils/friendSessions'
 import { Chip, HoldDot } from '../components/Chip'
 import { BoardThumb } from '../components/BoardThumb'
+import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
 import type { Problem, Exercise } from '../types'
 
@@ -87,6 +88,8 @@ export function FriendSessionPage() {
                 </button>
               ) : p.board ? (
                 <BoardThumb board={p.board} angle={p.board_angle} className="w-16 h-16 rounded-xl flex-shrink-0" />
+              ) : p.gym ? (
+                <GymThumb gym={p.gym} compact className="w-16 h-16 rounded-xl flex-shrink-0" />
               ) : p.beta_video_url ? (
                 <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
                   className="w-16 h-16 rounded-xl bg-gray-800 grid place-items-center flex-shrink-0">
