@@ -1,9 +1,10 @@
 // Default thumbnail for a board climb (Kilterboard / Moonboard / TB2) that has
 // no uploaded photo. A board-tinted tile with a hold-dot grid motif.
+// On-palette (sage / khaki) tints, kept distinct per board.
 const BOARD_STYLE: Record<string, { bg: string; label: string }> = {
-  Kilterboard: { bg: 'from-orange-500 to-orange-700', label: 'Kilter' },
-  Moonboard: { bg: 'from-blue-500 to-blue-800', label: 'Moon' },
-  TB2: { bg: 'from-fuchsia-500 to-purple-700', label: 'TB2' },
+  Kilterboard: { bg: 'from-sage-600 to-sage-800', label: 'Kilter' },
+  Moonboard: { bg: 'from-khaki-600 to-khaki-800', label: 'Moon' },
+  TB2: { bg: 'from-sage-800 to-khaki-800', label: 'TB2' },
 }
 
 export function BoardThumb({
@@ -15,7 +16,7 @@ export function BoardThumb({
   angle?: number | null
   className?: string
 }) {
-  const style = BOARD_STYLE[board] ?? { bg: 'from-gray-500 to-gray-700', label: board }
+  const style = BOARD_STYLE[board] ?? { bg: 'from-sage-700 to-sage-900', label: board }
   return (
     <div className={`relative overflow-hidden grid place-items-center bg-gradient-to-br ${style.bg} text-white ${className}`}>
       <div className="absolute inset-0 opacity-25"
