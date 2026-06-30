@@ -16,6 +16,9 @@ begin
   update gym_problems
      set setter = nullif(trim(coalesce(p_setter, '')), '')
    where id = p_gym_problem_id;
+  if not found then
+    raise exception 'boulder not found';
+  end if;
 end;
 $$ language plpgsql security definer;
 
