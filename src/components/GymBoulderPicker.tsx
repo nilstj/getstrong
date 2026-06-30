@@ -1,5 +1,6 @@
 import { Play } from 'lucide-react'
 import { useGymBoulders } from '../hooks/useGymProblems'
+import { GymThumb } from './GymThumb'
 import type { GymProblem } from '../types'
 
 export function GymBoulderPicker({
@@ -7,7 +8,6 @@ export function GymBoulderPicker({
 }: { gym: string; onPick: (gp: GymProblem) => void }) {
   const trimmed = gym.trim()
   const { data: boulders = [], isLoading } = useGymBoulders(trimmed)
-  const media = boulders.filter(b => b.image_url || b.beta_video_url)
 
   if (!trimmed) {
     return <p className="text-sm text-gray-400 text-center py-8">Set a gym on this session (Location) to browse its boulders.</p>
@@ -15,13 +15,13 @@ export function GymBoulderPicker({
   if (isLoading) {
     return <p className="text-sm text-gray-400 text-center py-8">Loading boulders…</p>
   }
-  if (media.length === 0) {
-    return <p className="text-sm text-gray-400 text-center py-8">No shared boulders with photos or videos at {trimmed} yet — log a new one.</p>
+  if (boulders.length === 0) {
+    return <p className="text-sm text-gray-400 text-center py-8">No shared boulders at {trimmed} yet — log a new one.</p>
   }
 
   return (
     <div className="grid grid-cols-3 gap-0.5">
-      {media.map(b => (
+      {boulders.map(b => (
         <button
           key={b.id}
           type="button"
@@ -31,10 +31,12 @@ export function GymBoulderPicker({
         >
           {b.image_url ? (
             <img src={b.image_url} alt={b.name ?? b.color ?? 'boulder'} className="w-full h-full object-cover" />
-          ) : (
+          ) : b.beta_video_url ? (
             <div className="w-full h-full flex items-center justify-center">
               <Play className="w-7 h-7 text-white fill-white" />
             </div>
+          ) : (
+            <GymThumb gym={b.gym} className="w-full h-full" />
           )}
 
           {b.image_url && b.beta_video_url && (
