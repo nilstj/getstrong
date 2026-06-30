@@ -26,12 +26,17 @@ export function FriendSessionCard({ session, to }: { session: FriendSession; to:
         {session.topGrade && <Chip label={`up to ${session.topGrade}`} variant="grade" />}
       </div>
 
-      <div className="px-3.5 pb-2.5 flex items-center gap-2 text-sm text-gray-600">
-        <span className="font-semibold text-gray-800">
-          {session.problemCount} {session.problemCount === 1 ? 'problem' : 'problems'}
-        </span>
-        <span className="text-gray-300">·</span>
-        <span>{session.sendCount} sent</span>
+      <div className="px-3.5 pb-2.5 flex items-center flex-wrap gap-x-2 gap-y-0.5 text-sm text-gray-600">
+        {[
+          session.problemCount > 0 ? `${session.problemCount} ${session.problemCount === 1 ? 'problem' : 'problems'} · ${session.sendCount} sent` : null,
+          session.exerciseCount > 0 ? `${session.exerciseCount} ${session.exerciseCount === 1 ? 'exercise' : 'exercises'}` : null,
+          session.challengeCount > 0 ? `${session.challengeCount} ${session.challengeCount === 1 ? 'challenge' : 'challenges'}` : null,
+        ].filter(Boolean).map((part, i) => (
+          <span key={i} className="inline-flex items-center gap-2">
+            {i > 0 && <span className="text-gray-300">·</span>}
+            <span className={i === 0 && session.problemCount > 0 ? 'font-semibold text-gray-800' : ''}>{part}</span>
+          </span>
+        ))}
       </div>
 
       {photos.length > 0 && (

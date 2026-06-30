@@ -2,17 +2,18 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useFollowing } from './useFollows'
-import { summarizeFriendSessions, type FriendProblemRow, type FriendSessionSummary } from '../utils/friendSessions'
+import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow, type FriendSessionSummary } from '../utils/friendSessions'
 
 export type FriendSession = FriendSessionSummary & {
   authorName: string | null
   authorAvatarUrl: string | null
 }
 
-// Pull from the most recent N problems across everyone you follow, then group
-// them into per-session summaries. Problems are world-readable (migration 015);
-// the sessions table is not, so the summary is derived entirely from problems.
-const PROBLEM_SCAN = 300
+// Pull the most recent N problems, exercises, and challenge attempts across
+// everyone you follow, then group them into per-session summaries. All three
+// are world-readable (migrations 015 / 003); the sessions table is not, so the
+// summary is derived entirely from these child rows.
+const SCAN = 300
 
 export function useFriendsFeed() {
   const { data: following = [] } = useFollowing()
@@ -22,25 +23,41 @@ export function useFriendsFeed() {
     queryKey: ['friends_feed', followingIds.slice().sort().join(',')],
     enabled: followingIds.length > 0,
     queryFn: async (): Promise<FriendSession[]> => {
-      const [{ data, error }, { data: profs }] = await Promise.all([
+      const [problemsRes, exercisesRes, challengesRes, { data: profs }] = await Promise.all([
         supabase
           .from('problems')
           .select('user_id, session_id, gym, grade_value, grade_value_font, sent, image_url, created_at')
           .in('user_id', followingIds)
           .order('created_at', { ascending: false })
-          .limit(PROBLEM_SCAN),
+          .limit(SCAN),
+        supabase
+          .from('exercises')
+          .select('user_id, session_id, created_at')
+          .in('user_id', followingIds)
+          .order('created_at', { ascending: false })
+          .limit(SCAN),
+        supabase
+          .from('challenge_attempts')
+          .select('user_id, session_id, created_at')
+          .in('user_id', followingIds)
+          .order('created_at', { ascending: false })
+          .limit(SCAN),
         supabase
           .from('profiles')
           .select('id, username, avatar_url')
           .in('id', followingIds),
       ])
-      if (error) throw error
+      if (problemsRes.error) throw problemsRes.error
 
       const profileById = new Map(
         (profs ?? []).map(p => [p.id as string, { username: p.username as string | null, avatar_url: p.avatar_url as string | null }])
       )
 
-      return summarizeFriendSessions((data ?? []) as FriendProblemRow[]).map(s => ({
+      return summarizeFriendSessions({
+        problems: (problemsRes.data ?? []) as FriendProblemRow[],
+        exercises: (exercisesRes.data ?? []) as FriendActivityRow[],
+        challenges: (challengesRes.data ?? []) as FriendActivityRow[],
+      }).map(s => ({
         ...s,
         authorName: profileById.get(s.userId)?.username ?? null,
         authorAvatarUrl: profileById.get(s.userId)?.avatar_url ?? null,

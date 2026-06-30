@@ -13,9 +13,12 @@ const row = (over: Partial<FriendProblemRow>): FriendProblemRow => ({
   ...over,
 })
 
+// Convenience: most tests only exercise the problems path.
+const fromProblems = (problems: FriendProblemRow[]) => summarizeFriendSessions({ problems })
+
 describe('summarizeFriendSessions', () => {
   it('groups problems by session and counts sends', () => {
-    const out = summarizeFriendSessions([
+    const out = fromProblems([
       row({ session_id: 's1', sent: true }),
       row({ session_id: 's1', sent: false }),
       row({ session_id: 's2', sent: true }),
@@ -27,7 +30,7 @@ describe('summarizeFriendSessions', () => {
   })
 
   it('collects only problems that have a photo', () => {
-    const out = summarizeFriendSessions([
+    const out = fromProblems([
       row({ image_url: 'a.jpg' }),
       row({ image_url: null }),
       row({ image_url: 'b.jpg' }),
@@ -36,7 +39,7 @@ describe('summarizeFriendSessions', () => {
   })
 
   it('picks the hardest grade as topGrade (Font ranking)', () => {
-    const out = summarizeFriendSessions([
+    const out = fromProblems([
       row({ grade_value: '6A', grade_value_font: '6A' }),
       row({ grade_value: '7B', grade_value_font: '7B' }),
       row({ grade_value: '6C', grade_value_font: '6C' }),
@@ -45,7 +48,7 @@ describe('summarizeFriendSessions', () => {
   })
 
   it('displays topGrade on the Font scale even when logged in V-scale', () => {
-    const out = summarizeFriendSessions([
+    const out = fromProblems([
       row({ grade_value: '7B', grade_value_font: '7B' }),
       row({ grade_value: 'V9', grade_value_font: '7C+' }),
     ])
@@ -53,31 +56,57 @@ describe('summarizeFriendSessions', () => {
   })
 
   it('takes gym from the first problem that has one (newest may be null)', () => {
-    const out = summarizeFriendSessions([
+    const out = fromProblems([
       row({ created_at: '2026-01-01T12:00:00Z', gym: null }),
       row({ created_at: '2026-01-01T10:00:00Z', gym: 'Boulders Oslo' }),
     ])
     expect(out[0].gym).toBe('Boulders Oslo')
   })
 
-  it('uses the latest problem time as the session date', () => {
-    const out = summarizeFriendSessions([
-      row({ created_at: '2026-01-01T10:00:00Z' }),
-      row({ created_at: '2026-01-01T12:30:00Z' }),
-    ])
-    expect(out[0].date).toBe('2026-01-01T12:30:00Z')
+  it('uses the latest activity time as the session date', () => {
+    const out = summarizeFriendSessions({
+      problems: [row({ created_at: '2026-01-01T10:00:00Z' })],
+      exercises: [{ user_id: 'u1', session_id: 's1', created_at: '2026-01-01T13:00:00Z' }],
+    })
+    expect(out[0].date).toBe('2026-01-01T13:00:00Z')
+  })
+
+  it('counts exercises and challenges per session', () => {
+    const out = summarizeFriendSessions({
+      problems: [row({ session_id: 's1' })],
+      exercises: [
+        { user_id: 'u1', session_id: 's1', created_at: '2026-01-01T10:00:00Z' },
+        { user_id: 'u1', session_id: 's1', created_at: '2026-01-01T10:05:00Z' },
+      ],
+      challenges: [{ user_id: 'u1', session_id: 's1', created_at: '2026-01-01T10:10:00Z' }],
+    })
+    expect(out[0].exerciseCount).toBe(2)
+    expect(out[0].challengeCount).toBe(1)
+  })
+
+  it('includes sessions that have only exercises or challenges (no problems)', () => {
+    const out = summarizeFriendSessions({
+      problems: [],
+      exercises: [{ user_id: 'u1', session_id: 'gym-strength', created_at: '2026-01-02T10:00:00Z' }],
+      challenges: [{ user_id: 'u1', session_id: 'challenge-day', created_at: '2026-01-01T10:00:00Z' }],
+    })
+    expect(out.map(s => s.sessionId)).toEqual(['gym-strength', 'challenge-day'])
+    const ex = out.find(s => s.sessionId === 'gym-strength')!
+    expect(ex.problemCount).toBe(0)
+    expect(ex.exerciseCount).toBe(1)
+    expect(ex.gym).toBeNull()
   })
 
   it('sorts sessions newest first', () => {
-    const out = summarizeFriendSessions([
+    const out = fromProblems([
       row({ session_id: 'old', created_at: '2026-01-01T10:00:00Z' }),
       row({ session_id: 'new', created_at: '2026-02-01T10:00:00Z' }),
     ])
     expect(out.map(s => s.sessionId)).toEqual(['new', 'old'])
   })
 
-  it('ignores problems with no session_id and empty input', () => {
-    expect(summarizeFriendSessions([row({ session_id: '' })])).toEqual([])
-    expect(summarizeFriendSessions([])).toEqual([])
+  it('ignores rows with no session_id and empty input', () => {
+    expect(fromProblems([row({ session_id: '' })])).toEqual([])
+    expect(summarizeFriendSessions({ problems: [] })).toEqual([])
   })
 })
