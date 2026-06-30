@@ -197,8 +197,8 @@ export function CrewPage() {
   const addBusy = addProblem.isPending || createSession.isPending || claim.isPending
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'sendtrain', label: `Sendtrain ${summary?.total ?? 0}` },
-    { key: 'beta', label: `Beta ${betas.length || ''}`.trim() },
+    { key: 'sendtrain', label: 'Sendtrain' },
+    { key: 'beta', label: 'Beta' },
     { key: 'setter', label: 'Setter' },
   ]
 
