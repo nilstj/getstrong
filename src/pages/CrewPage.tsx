@@ -35,6 +35,7 @@ import { Chip, HoldDot } from '../components/Chip'
 import { BetaCard } from '../components/BetaCard'
 import { CrewTitleBadge } from '../components/CrewTitleBadge'
 import { StarRating } from '../components/StarRating'
+import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
 import type { CrewState } from '../types'
 
@@ -213,11 +214,14 @@ export function CrewPage() {
             className="absolute inset-0 w-full h-full focus:outline-none">
             <img src={boulder.image_url} alt={title} className="absolute inset-0 w-full h-full object-cover" />
           </button>
-        ) : boulder.beta_video_url ? (
-          <span className="absolute inset-0 grid place-items-center">
-            <Play size={48} className="text-white/90" fill="currentColor" />
+        ) : (
+          <GymThumb gym={boulder.gym} className="absolute inset-0 w-full h-full" />
+        )}
+        {boulder.beta_video_url && !boulder.image_url && (
+          <span className="absolute inset-0 grid place-items-center pointer-events-none">
+            <Play size={48} className="text-white drop-shadow" fill="currentColor" />
           </span>
-        ) : null}
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent pointer-events-none" />
         <Link to="/dashboard" aria-label="Back"
           className="absolute left-3 top-3 z-10 grid place-items-center w-9 h-9 rounded-full bg-black/35 text-white">

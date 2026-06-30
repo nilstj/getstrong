@@ -1,11 +1,15 @@
+import { GymThumb } from './GymThumb'
+
 export function StoryRing({
   label,
   imageUrl,
+  fallbackGym,
   active = true,
   onClick,
 }: {
   label: string
   imageUrl?: string | null
+  fallbackGym?: string | null
   active?: boolean
   onClick?: () => void
 }) {
@@ -22,8 +26,16 @@ export function StoryRing({
             : 'bg-gray-300'
         }`}
       >
-        <span className="block w-full h-full rounded-full border-2 border-white bg-sage-100 bg-cover bg-center"
-          style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined} />
+        {imageUrl ? (
+          <span className="block w-full h-full rounded-full border-2 border-white bg-cover bg-center"
+            style={{ backgroundImage: `url(${imageUrl})` }} />
+        ) : fallbackGym ? (
+          <span className="block w-full h-full rounded-full border-2 border-white overflow-hidden">
+            <GymThumb gym={fallbackGym} compact className="w-full h-full" />
+          </span>
+        ) : (
+          <span className="block w-full h-full rounded-full border-2 border-white bg-sage-100" />
+        )}
       </span>
       <span className="text-[10px] leading-tight text-gray-600 text-center line-clamp-2 max-w-[64px]">{label}</span>
     </button>
