@@ -1,14 +1,16 @@
 // Default image for a shared boulder with no uploaded photo: a tile tinted by a
 // stable colour derived from the gym name, showing the gym (or its initials).
+// On-palette (sage / khaki) gradients; varied by light/dark and green/tan mix so
+// gyms still read as distinct while staying in the app's colour scheme.
 const GYM_GRADIENTS = [
-  'from-emerald-500 to-teal-700',
-  'from-sky-500 to-indigo-700',
-  'from-rose-500 to-pink-700',
-  'from-amber-500 to-orange-700',
-  'from-violet-500 to-purple-700',
-  'from-lime-500 to-green-700',
-  'from-cyan-500 to-blue-700',
-  'from-fuchsia-500 to-rose-700',
+  'from-sage-600 to-sage-800',
+  'from-khaki-600 to-khaki-800',
+  'from-sage-700 to-khaki-700',
+  'from-khaki-700 to-sage-800',
+  'from-sage-700 to-sage-900',
+  'from-khaki-700 to-khaki-900',
+  'from-sage-600 to-khaki-800',
+  'from-khaki-600 to-sage-900',
 ]
 
 function gymIndex(s: string): number {
