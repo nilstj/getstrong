@@ -37,6 +37,7 @@ import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useClaimGymProblem } from '../hooks/useGymProblems'
 import type { GymProblem } from '../types'
 import { ImageLightbox } from '../components/ImageLightbox'
+import { BoardThumb } from '../components/BoardThumb'
 
 type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
 
@@ -234,6 +235,8 @@ export function SessionDetailPage() {
                   <button type="button" onClick={() => setLightboxUrl(problem.image_url!)} className="flex-shrink-0">
                     <img src={problem.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
                   </button>
+                ) : problem.board ? (
+                  <BoardThumb board={problem.board} angle={problem.board_angle} className="flex-shrink-0 w-16 h-16 rounded-xl" />
                 ) : problem.beta_video_url ? (
                   <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
                     className="flex-shrink-0 w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
