@@ -87,6 +87,11 @@ export function FriendSessionPage() {
                 )}
                 {p.color && <HoldDot color={p.color} />}
                 <SendBadge p={p} />
+                {p.board && (
+                  <span className="inline-flex items-center rounded-md bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                    {p.board}{p.board_angle != null ? ` ${p.board_angle}°` : ''}
+                  </span>
+                )}
               </div>
               {p.name && <p className="text-sm font-medium text-gray-800 mt-1 truncate">{p.name}</p>}
               {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
