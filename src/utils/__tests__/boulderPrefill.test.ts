@@ -4,7 +4,7 @@ import type { GymProblem } from '../../types'
 
 const boulder: GymProblem = {
   id: 'gp1', gym: 'Boulders Oslo', wall_angle: 'overhang', color: 'Blue',
-  community_grade: '6B', name: 'The Prow', image_url: 'https://x/p.jpg',
+  community_grade: '6B', name: 'The Prow', setter: 'Anna K.', image_url: 'https://x/p.jpg',
   beta_video_url: 'https://insta/v', created_by: 'u1', set_at: '2026-06-01',
   expires_at: '2026-07-01', status: 'active', created_at: '2026-06-01T00:00:00Z',
 }
