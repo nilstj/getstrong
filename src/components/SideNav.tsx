@@ -4,7 +4,7 @@ import { Home, CalendarDays, Users, User, BarChart2, LifeBuoy, Trophy, Plus } fr
 const ITEMS = [
   { to: '/dashboard', label: 'Home', Icon: Home },
   { to: '/sessions', label: 'Sessions', Icon: CalendarDays },
-  { to: '/crews', label: 'Crews', Icon: Users },
+  { to: '/crews', label: 'Sendtrains', Icon: Users },
   { to: '/challenges', label: 'Challenges', Icon: Trophy },
   { to: '/analysis', label: 'Analysis', Icon: BarChart2 },
   { to: '/help', label: 'Help', Icon: LifeBuoy },

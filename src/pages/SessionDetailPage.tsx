@@ -322,7 +322,7 @@ export function SessionDetailPage() {
                     to={`/gym-problems/${problem.gym_problem_id}`}
                     className="inline-flex items-center gap-1 mt-1.5 text-xs text-sage-700 font-medium hover:underline"
                   >
-                    🌐 On a shared boulder · View the crew
+                    🌐 On a shared boulder · View the sendtrain
                   </Link>
                 )}
                 </div>
