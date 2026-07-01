@@ -23,6 +23,9 @@ function BoulderRow({ b, archived = false }: { b: BoulderSummary; archived?: boo
         </p>
         <p className="text-xs text-gray-400 truncate">{b.gym}</p>
       </div>
+      {b.helpWanted && (
+        <span title="Help wanted" aria-label="Help wanted" className="text-sm leading-none flex-shrink-0">🆘</span>
+      )}
       <span className="inline-flex items-center gap-1 text-xs text-gray-500">
         <Users size={12} strokeWidth={2} /> {b.crewCount}
       </span>
