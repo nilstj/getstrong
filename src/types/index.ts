@@ -352,6 +352,7 @@ export interface BoulderSummary {
   image_url: string | null
   set_at: string
   isBoard: boolean
+  helpWanted: boolean
   expires_at: string
   crewCount: number
   claimed: boolean

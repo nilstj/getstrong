@@ -33,6 +33,7 @@ export function DashboardPage() {
                 label={b.community_grade ? `${b.title} (${b.community_grade})` : b.title}
                 imageUrl={b.image_url}
                 fallbackGym={b.gym}
+                helpWanted={b.helpWanted}
                 onClick={() => navigate(`/gym-problems/${b.id}`)}
               />
             ))}
