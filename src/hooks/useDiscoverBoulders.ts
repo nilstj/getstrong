@@ -67,6 +67,13 @@ export function useDiscoverBoulders() {
         else gradesByBoulder.set(p.gym_problem_id, [p.grade_value_font])
       }
 
+      // Open "help wanted" requests per boulder. Non-fatal: if the table isn't
+      // there yet (migration 057 unapplied), degrade to no help indicators
+      // rather than breaking the whole discover/home strip.
+      const { data: helpRows } = await supabase
+        .from('gym_problem_help').select('gym_problem_id').in('gym_problem_id', ids).is('resolved_at', null)
+      const helpWantedIds = new Set((helpRows ?? []).map(h => h.gym_problem_id as string))
+
       const summaries: BoulderSummary[] = list.map(b => ({
         id: b.id,
         title: boulderTitle(b),
@@ -76,6 +83,7 @@ export function useDiscoverBoulders() {
         image_url: b.image_url,
         set_at: b.set_at,
         isBoard: boardBoulderIds.has(b.id),
+        helpWanted: helpWantedIds.has(b.id),
         expires_at: b.expires_at,
         crewCount: counts[b.id] ?? 0,
         claimed: myClaimedIds.has(b.id),

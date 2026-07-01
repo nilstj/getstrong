@@ -77,7 +77,12 @@ export function useMarkBetaWorked() {
       const { error } = await supabase.rpc('mark_beta_worked', { p_beta_id: v.betaId })
       if (error) throw error
     },
-    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] }),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] })
+      // A worked-mark clears the marker's help request (resolved by a DB trigger).
+      qc.invalidateQueries({ queryKey: ['boulder_help', v.gymProblemId] })
+      qc.invalidateQueries({ queryKey: ['discover_boulders'] })
+    },
   })
 }
 

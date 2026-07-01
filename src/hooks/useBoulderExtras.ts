@@ -118,6 +118,39 @@ export function useAddBoulderComment() {
   })
 }
 
+// ── Beta help ("help wanted") ────────────────────────────────────────────────
+export function useBoulderHelp(gymProblemId: string) {
+  return useQuery({
+    queryKey: ['boulder_help', gymProblemId],
+    enabled: !!gymProblemId,
+    queryFn: async (): Promise<{ open: boolean; mineOpen: boolean }> => {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data, error } = await supabase
+        .from('gym_problem_help')
+        .select('user_id')
+        .eq('gym_problem_id', gymProblemId)
+        .is('resolved_at', null)
+      if (error) throw error
+      const rows = (data ?? []) as { user_id: string }[]
+      return { open: rows.length > 0, mineOpen: rows.some(r => r.user_id === user?.id) }
+    },
+  })
+}
+
+export function useRequestBetaHelp() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { gymProblemId: string }) => {
+      const { error } = await supabase.rpc('request_beta_help', { p_gym_problem_id: v.gymProblemId })
+      if (error) throw error
+    },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['boulder_help', v.gymProblemId] })
+      qc.invalidateQueries({ queryKey: ['discover_boulders'] })
+    },
+  })
+}
+
 export function useDeleteBoulderComment() {
   const qc = useQueryClient()
   return useMutation({

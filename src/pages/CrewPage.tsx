@@ -24,6 +24,8 @@ import {
   useBoulderComments,
   useAddBoulderComment,
   useDeleteBoulderComment,
+  useBoulderHelp,
+  useRequestBetaHelp,
 } from '../hooks/useBoulderExtras'
 import { daysUntil } from '../utils/gymProblems'
 import { cycleMonth } from '../utils/leaderboard'
@@ -62,6 +64,8 @@ export function CrewPage() {
   const { data: reactions = [] } = useGymProblemReactions(id)
   const { data: reviewsData } = useBoulderReviews(id)
   const { data: comments = [] } = useBoulderComments(id)
+  const { data: help } = useBoulderHelp(id)
+  const requestHelp = useRequestBetaHelp()
   const strip = useStripGymProblem()
   const addBeta = useAddBoulderBeta()
   const markWorked = useMarkBetaWorked()
@@ -238,6 +242,9 @@ export function CrewPage() {
           <div className="mt-1 flex items-center gap-2 text-xs">
             {boulder.community_grade && <Chip label={boulder.community_grade} variant="grade" />}
             {boulder.color && <HoldDot color={boulder.color} />}
+            {help?.open && (
+              <span className="inline-flex items-center rounded-md bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950">🆘 Help wanted</span>
+            )}
             <span className="opacity-90">
               {[boulder.gym, summary ? `${summary.sent}/${summary.total} sent` : null].filter(Boolean).join(' · ')}
             </span>
@@ -352,6 +359,21 @@ export function CrewPage() {
         {/* BETA (beta thread + comments + reactions) */}
         {tab === 'beta' && (
           <div className="space-y-3">
+            {help?.mineOpen ? (
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                🆘 You asked for beta help — this clears once you mark a beta that worked for you.
+              </div>
+            ) : (
+              <button type="button"
+                onClick={() => requestHelp.mutate({ gymProblemId: id }, {
+                  onSuccess: () => toast.success('Asked for beta help'),
+                  onError: () => toast.error('Could not ask for help'),
+                })}
+                disabled={requestHelp.isPending}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50">
+                🆘 Ask for beta help
+              </button>
+            )}
             <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-2">
               <textarea
                 value={draft}
