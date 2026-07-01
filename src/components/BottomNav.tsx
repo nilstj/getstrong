@@ -44,7 +44,7 @@ export function BottomNav() {
         {({ isActive }) => (
           <>
             <Users size={22} strokeWidth={isActive ? 2.5 : 1.75} />
-            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Crews</span>
+            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Sendtrains</span>
           </>
         )}
       </NavLink>

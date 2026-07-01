@@ -10,7 +10,7 @@ export function useDiscoverBoulders() {
   const { user } = useAuth()
   return useQuery({
     queryKey: ['discover_boulders', user?.id],
-    queryFn: async (): Promise<{ yours: BoulderSummary[]; discover: BoulderSummary[] }> => {
+    queryFn: async (): Promise<{ yours: BoulderSummary[]; discover: BoulderSummary[]; archived: BoulderSummary[] }> => {
       // 1. My gyms + the boulders I've already claimed onto.
       const { data: mine, error: e1 } = await supabase
         .from('problems')
@@ -22,9 +22,10 @@ export function useDiscoverBoulders() {
       const myClaimedIds = new Set(
         myRows.map(r => r.gym_problem_id).filter((id): id is string => !!id),
       )
-      if (myGyms.length === 0 && myClaimedIds.size === 0) return { yours: [], discover: [] }
+      if (myGyms.length === 0 && myClaimedIds.size === 0) return { yours: [], discover: [], archived: [] }
 
-      // 2. Candidate boulders: active ones in my gyms, plus any I'm claimed onto.
+      // 2. Candidates: active boulders in my gyms, plus every boulder I've claimed
+      //    onto (any status, so archived ones I was on surface in the history).
       const boulders = new Map<string, GymProblem>()
       if (myGyms.length > 0) {
         const { data, error } = await supabase
@@ -35,19 +36,19 @@ export function useDiscoverBoulders() {
       const claimedIds = Array.from(myClaimedIds)
       if (claimedIds.length > 0) {
         const { data, error } = await supabase
-          .from('gym_problems').select('*').eq('status', 'active').in('id', claimedIds)
+          .from('gym_problems').select('*').in('id', claimedIds)
         if (error) throw error
         for (const b of (data ?? []) as GymProblem[]) boulders.set(b.id, b)
       }
       const list = Array.from(boulders.values())
+      if (list.length === 0) return { yours: [], discover: [], archived: [] }
       const now = new Date()
-      const activeList = list.filter(b => isActiveBoulder(b, now))
-      if (activeList.length === 0) return { yours: [], discover: [] }
+      const activeIds = new Set(list.filter(b => isActiveBoulder(b, now)).map(b => b.id))
 
       // 3. Crew counts (distinct users per boulder) + flag board climbs.
       // gym_problems don't store a board, so a boulder is a "board problem" when
       // its linked problems carry one (Kilterboard/Moonboard/TB2).
-      const ids = activeList.map(b => b.id)
+      const ids = list.map(b => b.id)
       const { data: probs, error: e3 } = await supabase
         .from('problems').select('gym_problem_id, user_id, board, grade_value_font').in('gym_problem_id', ids)
       if (e3) throw e3
@@ -66,7 +67,7 @@ export function useDiscoverBoulders() {
         else gradesByBoulder.set(p.gym_problem_id, [p.grade_value_font])
       }
 
-      const summaries: BoulderSummary[] = activeList.map(b => ({
+      const summaries: BoulderSummary[] = list.map(b => ({
         id: b.id,
         title: boulderTitle(b),
         gym: b.gym,
@@ -80,15 +81,20 @@ export function useDiscoverBoulders() {
         claimed: myClaimedIds.has(b.id),
       }))
 
-      const yours = summaries
+      const active = summaries.filter(s => activeIds.has(s.id))
+      const yours = active
         .filter(s => s.claimed)
         .sort((a, b) => (a.expires_at < b.expires_at ? -1 : a.expires_at > b.expires_at ? 1 : 0))
-      const discover = summaries
+      const discover = active
         .filter(s => !s.claimed)
         .sort((a, b) => b.crewCount - a.crewCount)
         .slice(0, 5)
+      // Your history: boulders you were on that are no longer active, newest gone first.
+      const archived = summaries
+        .filter(s => s.claimed && !activeIds.has(s.id))
+        .sort((a, b) => (a.expires_at < b.expires_at ? 1 : a.expires_at > b.expires_at ? -1 : 0))
 
-      return { yours, discover }
+      return { yours, discover, archived }
     },
     enabled: !!user,
   })
