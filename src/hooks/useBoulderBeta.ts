@@ -33,10 +33,11 @@ export interface BetaThread {
 }
 
 export interface PersonLite { user_id: string; name: string | null; avatarUrl: string | null }
+export interface AskingPerson extends PersonLite { note: string | null; videoUrl: string | null }
 
 export interface BoulderBetaThreadResult {
   threads: BetaThread[]
-  asking: PersonLite[]
+  asking: AskingPerson[]
   worked: PersonLite[]
 }
 
@@ -73,7 +74,7 @@ export function useBoulderBetaThread(gymProblemId: string) {
           .eq('gym_problem_id', gymProblemId),
         supabase
           .from('gym_problem_help')
-          .select('user_id')
+          .select('user_id, note, video_url')
           .eq('gym_problem_id', gymProblemId)
           .is('resolved_at', null),
       ])
@@ -105,12 +106,12 @@ export function useBoulderBetaThread(gymProblemId: string) {
         commentRx = (data ?? []) as typeof commentRx
       }
 
-      const askingIds = (helpRes.data ?? []).map(h => h.user_id as string)
+      const helpRows = (helpRes.data ?? []) as { user_id: string; note: string | null; video_url: string | null }[]
       const workedUserIds = Array.from(new Set(worked.map(w => w.user_id)))
       const allIds = Array.from(new Set([
         ...betas.map(b => b.user_id),
         ...comments.map(c => c.user_id),
-        ...askingIds,
+        ...helpRows.map(h => h.user_id),
         ...workedUserIds,
       ]))
       const profileById = new Map<string, { username: string | null; avatar_url: string | null }>()
@@ -163,7 +164,8 @@ export function useBoulderBetaThread(gymProblemId: string) {
       // Top beta first: most "worked for me", then most recent.
       threads.sort((a, b) => b.worked_count - a.worked_count || (a.created_at < b.created_at ? 1 : -1))
 
-      return { threads, asking: askingIds.map(person), worked: workedUserIds.map(person) }
+      const asking: AskingPerson[] = helpRows.map(h => ({ ...person(h.user_id), note: h.note, videoUrl: h.video_url }))
+      return { threads, asking, worked: workedUserIds.map(person) }
     },
   })
 }

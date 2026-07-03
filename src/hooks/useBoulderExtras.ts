@@ -140,8 +140,12 @@ export function useBoulderHelp(gymProblemId: string) {
 export function useRequestBetaHelp() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { gymProblemId: string }) => {
-      const { error } = await supabase.rpc('request_beta_help', { p_gym_problem_id: v.gymProblemId })
+    mutationFn: async (v: { gymProblemId: string; note: string | null; videoUrl: string | null }) => {
+      const { error } = await supabase.rpc('request_beta_help', {
+        p_gym_problem_id: v.gymProblemId,
+        p_note: v.note,
+        p_video_url: v.videoUrl,
+      })
       if (error) throw error
     },
     onSuccess: (_, v) => {
