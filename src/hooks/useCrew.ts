@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { buildCrew, summarizeCrew } from '../utils/crew'
+import { consensusGrade } from '../utils/consensusGrade'
 import type { GymProblem, CrewMember, CrewSummary, CrewProblemRow } from '../types'
 
 export function useGymProblem(id: string) {
@@ -22,13 +23,13 @@ export function useGymProblem(id: string) {
 export function useCrew(gymProblemId: string) {
   return useQuery({
     queryKey: ['crew', gymProblemId],
-    queryFn: async (): Promise<{ members: CrewMember[]; summary: CrewSummary; problems: CrewProblemRow[] }> => {
+    queryFn: async (): Promise<{ members: CrewMember[]; summary: CrewSummary; problems: CrewProblemRow[]; communityGrade: string | null }> => {
       const { data: probs, error } = await supabase
         .from('problems')
-        .select('user_id, sent, attempts, created_at')
+        .select('user_id, sent, attempts, created_at, grade_value_font')
         .eq('gym_problem_id', gymProblemId)
       if (error) throw error
-      const problems = (probs ?? []) as { user_id: string; sent: boolean; attempts: number; created_at: string }[]
+      const problems = (probs ?? []) as { user_id: string; sent: boolean; attempts: number; created_at: string; grade_value_font: string | null }[]
 
       const userIds = Array.from(new Set(problems.map(p => p.user_id)))
       const profileById = new Map<string, { username: string | null; avatar_url: string | null }>()
@@ -53,7 +54,10 @@ export function useCrew(gymProblemId: string) {
       }))
 
       const members = buildCrew(rows)
-      return { members, summary: summarizeCrew(members), problems: rows }
+      // gym_problems.community_grade is never populated, so derive it from the
+      // linked problems' Font-normalized grades (matches the discover feed).
+      const communityGrade = consensusGrade(problems.map(p => p.grade_value_font))
+      return { members, summary: summarizeCrew(members), problems: rows, communityGrade }
     },
     enabled: !!gymProblemId,
   })

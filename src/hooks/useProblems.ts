@@ -33,7 +33,28 @@ export function useUpdateProblem() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, sessionId, tagIds, ...values }: Partial<Omit<Problem, 'user_id' | 'created_at'>> & { id: string; sessionId: string; tagIds?: string[] }) => {
-      const { error } = await supabase.from('problems').update(values).eq('id', id)
+      // Recompute the normalized grade fields when the grade is edited (the edit
+      // form always sends grade_system). Without this, grade_value_font stays
+      // stale/null and boulder consensus grades never reflect the change.
+      const patch: Partial<Omit<Problem, 'user_id' | 'created_at'>> = { ...values }
+      if (values.grade_system !== undefined) {
+        let font: string | null = null
+        let vscale: string | null = null
+        if (values.grade_value && values.grade_system !== 'color') {
+          const { data: mappings } = await supabase.from('grade_mappings').select('*')
+          const m = mappings ?? []
+          if (values.grade_system === 'font') {
+            font = values.grade_value
+            vscale = fontToVScale(values.grade_value, m)
+          } else {
+            vscale = values.grade_value
+            font = vScaleToFont(values.grade_value, m)
+          }
+        }
+        patch.grade_value_font = font
+        patch.grade_value_vscale = vscale
+      }
+      const { error } = await supabase.from('problems').update(patch).eq('id', id)
       if (error) throw error
       if (tagIds !== undefined) {
         await supabase.from('problem_tag_assignments').delete().eq('problem_id', id)

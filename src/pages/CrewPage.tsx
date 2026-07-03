@@ -240,7 +240,9 @@ export function CrewPage() {
         <div className="absolute left-4 bottom-3 right-4 text-white pointer-events-none">
           <h1 className="text-lg font-bold tracking-tight">{title}</h1>
           <div className="mt-1 flex items-center gap-2 text-xs">
-            {boulder.community_grade && <Chip label={boulder.community_grade} variant="grade" />}
+            {(boulder.community_grade ?? crew?.communityGrade) && (
+              <Chip label={(boulder.community_grade ?? crew?.communityGrade)!} variant="grade" />
+            )}
             {boulder.color && <HoldDot color={boulder.color} />}
             {help?.open && (
               <span className="inline-flex items-center rounded-md bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950">🆘 Help wanted</span>
