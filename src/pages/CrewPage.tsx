@@ -98,6 +98,9 @@ export function CrewPage() {
   const [draftVideo, setDraftVideo] = useState('')
   const [draftSection, setDraftSection] = useState<BetaSection | null>(null)
   const [draftBody, setDraftBody] = useState<BetaBodyType | null>(null)
+  const [askOpen, setAskOpen] = useState(false)
+  const [askNote, setAskNote] = useState('')
+  const [askVideo, setAskVideo] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [editingSetter, setEditingSetter] = useState(false)
@@ -143,6 +146,16 @@ export function CrewPage() {
     const v = { betaId, gymProblemId: id }
     if (workedByMe) unmarkWorked.mutate(v, { onError: () => toast.error('Could not update') })
     else markWorked.mutate(v, { onError: () => toast.error('Could not update') })
+  }
+
+  const submitAsk = () => {
+    requestHelp.mutate(
+      { gymProblemId: id, note: askNote.trim() || null, videoUrl: askVideo.trim() || null },
+      {
+        onSuccess: () => { setAskOpen(false); setAskNote(''); setAskVideo(''); toast.success('Asked for beta help') },
+        onError: () => toast.error('Could not ask for help'),
+      },
+    )
   }
 
   const editSetter = () => { setSetterDraft(boulder.setter ?? ''); setEditingSetter(true) }
@@ -361,25 +374,57 @@ export function CrewPage() {
         {tab === 'beta' && (
           <div className="space-y-4">
             {/* Beta exchange overview */}
-            <div className="rounded-2xl bg-gray-50 p-3 space-y-2.5">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500 w-32 flex-shrink-0">🆘 Asking for beta</span>
-                {asking.length > 0 ? <PeopleRow people={asking} /> : <span className="text-xs text-gray-400">no one right now</span>}
+            <div className="rounded-2xl bg-gray-50 p-3 space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">🆘 Asking for beta</p>
+                {asking.length === 0 ? (
+                  <p className="text-xs text-gray-400">no one right now</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {asking.map(a => (
+                      <div key={a.user_id} className="flex items-start gap-2 text-sm">
+                        {a.avatarUrl
+                          ? <img src={a.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0 mt-0.5" />
+                          : <span className="w-6 h-6 rounded-full bg-sage-100 grid place-items-center text-[10px] font-semibold text-sage-700 flex-shrink-0 mt-0.5">{(a.name ?? '?').slice(0, 1).toUpperCase()}</span>}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-medium">{a.name ?? 'Someone'}</span>
+                          {a.note && <span className="text-gray-600"> — {a.note}</span>}
+                          {a.videoUrl && (
+                            <a href={a.videoUrl} target="_blank" rel="noopener noreferrer" className="ml-1 inline-flex items-center gap-0.5 text-sage-700 font-medium">
+                              <Play size={11} fill="currentColor" /> video
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500 w-32 flex-shrink-0">✅ Found working beta</span>
+                <span className="text-gray-500 flex-shrink-0">✅ Found working beta</span>
                 {workedPeople.length > 0 ? <PeopleRow people={workedPeople} /> : <span className="text-xs text-gray-400">not yet</span>}
               </div>
               {help?.mineOpen ? (
                 <p className="text-xs text-amber-700 font-medium">You’re asking for beta — mark a beta that worked to clear it.</p>
+              ) : askOpen ? (
+                <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5">
+                  <textarea value={askNote} onChange={e => setAskNote(e.target.value)} rows={2}
+                    placeholder="What's got you stuck? (optional)"
+                    className="w-full resize-none bg-transparent text-sm focus:outline-none placeholder:text-amber-700/50" />
+                  <input value={askVideo} onChange={e => setAskVideo(e.target.value)}
+                    placeholder="Video of your attempt (optional link)"
+                    className="w-full bg-transparent text-xs text-amber-900 focus:outline-none placeholder:text-amber-700/50" />
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => setAskOpen(false)} className="px-2 py-1.5 text-xs text-gray-500">Cancel</button>
+                    <button type="button" onClick={submitAsk} disabled={requestHelp.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
+                      🆘 Ask for beta
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <button type="button"
-                  onClick={() => requestHelp.mutate({ gymProblemId: id }, {
-                    onSuccess: () => toast.success('Asked for beta help'),
-                    onError: () => toast.error('Could not ask for help'),
-                  })}
-                  disabled={requestHelp.isPending}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50">
+                <button type="button" onClick={() => setAskOpen(true)}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50">
                   🆘 Ask for beta help
                 </button>
               )}
