@@ -410,7 +410,7 @@ export function CrewPage() {
                 <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5">
                   <textarea value={askNote} onChange={e => setAskNote(e.target.value)} rows={2}
                     placeholder="What's got you stuck? (optional)"
-                    className="w-full resize-none bg-transparent text-sm focus:outline-none placeholder:text-amber-700/50" />
+                    className="w-full resize-none bg-transparent text-sm text-amber-900 focus:outline-none placeholder:text-amber-700/50" />
                   <input value={askVideo} onChange={e => setAskVideo(e.target.value)}
                     placeholder="Video of your attempt (optional link)"
                     className="w-full bg-transparent text-xs text-amber-900 focus:outline-none placeholder:text-amber-700/50" />
