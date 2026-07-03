@@ -48,7 +48,7 @@ const STATE_CLASS: Record<CrewState, string> = {
   sent: 'bg-sage-100 text-sage-700',
   flashed: 'bg-amber-100 text-amber-700',
 }
-type Tab = 'beta' | 'sendtrain' | 'setter'
+type Tab = 'beta' | 'sendtrain'
 const SECTIONS: BetaSection[] = ['start', 'crux', 'top']
 const SECTION_LABEL: Record<BetaSection, string> = { start: 'Start', crux: 'Crux', top: 'Top-out' }
 const BODY_TYPES: BetaBodyType[] = ['tall', 'neutral', 'short']
@@ -105,9 +105,6 @@ export function CrewPage() {
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [editingSetter, setEditingSetter] = useState(false)
   const [setterDraft, setSetterDraft] = useState('')
-  const [editingReview, setEditingReview] = useState(false)
-  const [reviewStars, setReviewStars] = useState(0)
-  const [reviewText, setReviewText] = useState('')
 
   if (loadingBoulder || loadingCrew) {
     return <div className="p-5 text-sm text-gray-400">Loading boulder…</div>
@@ -123,7 +120,6 @@ export function CrewPage() {
   const title = boulder.name || `${boulder.color ?? ''} ${boulder.wall_angle ?? ''}`.trim() || 'Shared boulder'
 
   const myReview = reviewsData?.myReview ?? null
-  const otherReviews = (reviewsData?.reviews ?? []).filter(r => r.user_id !== user?.id)
 
   const threads = betaData?.threads ?? []
   const asking = betaData?.asking ?? []
@@ -166,13 +162,20 @@ export function CrewPage() {
     )
   }
 
-  const editReview = () => { setReviewStars(myReview?.stars ?? 0); setReviewText(myReview?.review ?? ''); setEditingReview(true) }
-  const saveReview = () => {
-    if (reviewStars < 1) { toast.error('Pick a star rating first'); return }
+  const rate = (stars: number) => {
     upsertReview.mutate(
-      { gymProblemId: id, stars: reviewStars, review: reviewText.trim() || null },
-      { onSuccess: () => { setEditingReview(false); toast.success('Review saved') }, onError: () => toast.error('Could not save review') },
+      { gymProblemId: id, stars, review: myReview?.review ?? null },
+      { onError: () => toast.error('Could not save rating') },
     )
+  }
+
+  const share = () => {
+    const url = window.location.href
+    if (navigator.share) {
+      navigator.share({ title, url }).catch(() => {})
+    } else {
+      navigator.clipboard?.writeText(url).then(() => toast.success('Link copied')).catch(() => {})
+    }
   }
 
   // Log this shared boulder into one of the caller's sessions (and claim it).
@@ -218,66 +221,107 @@ export function CrewPage() {
   const TABS: { key: Tab; label: string }[] = [
     { key: 'beta', label: 'Beta' },
     { key: 'sendtrain', label: 'Sendtrain' },
-    { key: 'setter', label: 'Setter' },
   ]
 
+  const displayGrade = boulder.community_grade ?? crew?.communityGrade ?? null
+
   return (
-    <div className="pb-32 lg:max-w-2xl lg:mx-auto">
-      {/* Hero */}
-      <div className="relative aspect-[16/10] max-h-80 w-full bg-gradient-to-br from-sage-700 to-sage-900">
-        {boulder.image_url ? (
-          <button type="button" onClick={() => setLightbox(boulder.image_url!)} aria-label="View photo"
-            className="absolute inset-0 w-full h-full focus:outline-none">
-            <img src={boulder.image_url} alt={title} className="absolute inset-0 w-full h-full object-cover" />
-          </button>
-        ) : (
-          <GymThumb gym={boulder.gym} className="absolute inset-0 w-full h-full" />
-        )}
-        {boulder.beta_video_url && !boulder.image_url && (
-          <span className="absolute inset-0 grid place-items-center pointer-events-none">
-            <Play size={48} className="text-white drop-shadow" fill="currentColor" />
-          </span>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent pointer-events-none" />
-        <Link to="/dashboard" aria-label="Back"
-          className="absolute left-3 top-3 z-10 grid place-items-center w-9 h-9 rounded-full bg-black/35 text-white">
-          <ArrowLeft size={18} />
-        </Link>
-        {boulder.beta_video_url && (
-          <a href={boulder.beta_video_url} target="_blank" rel="noopener noreferrer"
-            className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
-            <Play size={13} fill="currentColor" /> Watch video
-          </a>
-        )}
-        <div className="absolute left-4 bottom-3 right-4 text-white pointer-events-none">
-          <h1 className="text-lg font-bold tracking-tight">{title}</h1>
-          <div className="mt-1 flex items-center gap-2 text-xs">
-            {(boulder.community_grade ?? crew?.communityGrade) && (
-              <Chip label={(boulder.community_grade ?? crew?.communityGrade)!} variant="grade" />
+    <div className="pb-32">
+      <div className="lg:flex lg:items-start lg:gap-6 lg:max-w-5xl lg:mx-auto lg:px-4 lg:pt-4">
+        {/* Media (photo-first) */}
+        <div className="lg:w-[42%] lg:flex-none lg:sticky lg:top-4">
+          <div className="relative aspect-[4/5] max-h-[72vh] w-full overflow-hidden bg-gradient-to-br from-sage-700 to-sage-900 lg:rounded-2xl">
+            {boulder.image_url ? (
+              <button type="button" onClick={() => setLightbox(boulder.image_url!)} aria-label="View photo"
+                className="absolute inset-0 w-full h-full focus:outline-none">
+                <img src={boulder.image_url} alt={title} className="absolute inset-0 w-full h-full object-cover" />
+              </button>
+            ) : (
+              <GymThumb gym={boulder.gym} className="absolute inset-0 w-full h-full" />
             )}
-            {boulder.color && <HoldDot color={boulder.color} />}
-            {help?.open && (
-              <span className="inline-flex items-center rounded-md bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950">🆘 Help wanted</span>
+            {boulder.beta_video_url && !boulder.image_url && (
+              <span className="absolute inset-0 grid place-items-center pointer-events-none">
+                <Play size={48} className="text-white drop-shadow" fill="currentColor" />
+              </span>
             )}
-            <span className="opacity-90">
-              {[boulder.gym, summary ? `${summary.sent}/${summary.total} sent` : null].filter(Boolean).join(' · ')}
-            </span>
+            <Link to="/dashboard" aria-label="Back"
+              className="absolute left-3 top-3 z-10 grid place-items-center w-9 h-9 rounded-full bg-black/35 text-white">
+              <ArrowLeft size={18} />
+            </Link>
+            {boulder.beta_video_url && (
+              <a href={boulder.beta_video_url} target="_blank" rel="noopener noreferrer"
+                className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
+                <Play size={13} fill="currentColor" /> Watch video
+              </a>
+            )}
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
+            <div className="absolute left-3 bottom-3 flex items-center gap-2">
+              {displayGrade && <Chip label={displayGrade} variant="grade" />}
+              {boulder.color && <HoldDot color={boulder.color} />}
+              {help?.open && <span className="inline-flex items-center rounded-md bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950">🆘 Help wanted</span>}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Add to a session (only for active, non-expired boulders) */}
-      {boulder.status === 'active' && left >= 0 && (
-        <div className="px-4 py-3">
-          <button type="button" onClick={() => setAddOpen(true)}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white hover:bg-sage-800">
-            <Plus size={16} strokeWidth={2.5} /> Add to a session
-          </button>
-        </div>
-      )}
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Caption */}
+          <div className="px-4 lg:px-0 pt-3">
+            <h1 className="text-xl font-bold tracking-tight">{title}</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
+              {displayGrade && <span className="font-semibold text-gray-800">{displayGrade}</span>}
+              {boulder.color && <><span className="text-gray-300">·</span><span className="inline-flex items-center gap-1"><HoldDot color={boulder.color} size={11} /> {boulder.color}</span></>}
+              {boulder.gym && <><span className="text-gray-300">·</span><span>{boulder.gym}</span></>}
+              <span className="text-gray-300">·</span>
+              {editingSetter ? (
+                <span className="inline-flex items-center gap-1">
+                  <input autoFocus value={setterDraft} onChange={e => setSetterDraft(e.target.value)} placeholder="Who set it?"
+                    className="w-32 rounded-md border px-2 py-0.5 text-sm text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500" />
+                  <button type="button" onClick={saveSetter} disabled={setSetter.isPending} className="text-xs font-semibold text-sage-700">Save</button>
+                  <button type="button" onClick={() => setEditingSetter(false)} className="text-xs text-gray-400">Cancel</button>
+                </span>
+              ) : (
+                <button type="button" onClick={editSetter} className="inline-flex items-center gap-1 hover:text-sage-700">
+                  {boulder.setter ? <>set by <span className="font-medium text-gray-800">{boulder.setter}</span></> : <span className="font-medium text-sage-700">add setter</span>}
+                  <Pencil size={12} className="text-gray-400" />
+                </button>
+              )}
+            </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
+            {/* Rating — under the grade line */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <StarRating value={reviewsData?.average ?? 0} size={16} />
+              <span className="text-sm font-semibold text-gray-800">{reviewsData?.average ? reviewsData.average.toFixed(1) : '—'}</span>
+              <span className="text-xs text-gray-400">({reviewsData?.count ?? 0})</span>
+              <span className="text-gray-300">·</span>
+              <span className="text-xs text-gray-400">your rating</span>
+              <StarRating value={myReview?.stars ?? 0} onChange={rate} size={18} />
+            </div>
+
+            {/* Social proof */}
+            {summary && summary.total > 0 && (
+              <p className="mt-2 text-sm text-gray-600">
+                🚂 On it: {summary.total} {summary.total === 1 ? 'climber' : 'climbers'}{summary.sent > 0 ? ` · ${summary.sent} sent` : ''}
+              </p>
+            )}
+
+            {/* Actions */}
+            <div className="mt-3 flex items-center gap-2">
+              {boulder.status === 'active' && left >= 0 && (
+                <button type="button" onClick={() => setAddOpen(true)}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white hover:bg-sage-800">
+                  <Plus size={16} strokeWidth={2.5} /> Add to a session
+                </button>
+              )}
+              <button type="button" onClick={share}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">
+                ↗ Share
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 mt-3">
         {TABS.map(t => (
           <button key={t.key} type="button" onClick={() => setTab(t.key)}
             className={`flex-1 py-3 text-sm font-semibold transition-colors ${
@@ -489,86 +533,8 @@ export function CrewPage() {
           </div>
         )}
 
-        {/* SETTER (setter name + star reviews) */}
-        {tab === 'setter' && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1.5">Setter</h3>
-              {editingSetter ? (
-                <div className="flex items-center gap-2">
-                  <input autoFocus value={setterDraft} onChange={e => setSetterDraft(e.target.value)}
-                    placeholder="Who set it?"
-                    className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500" />
-                  <button type="button" onClick={saveSetter} disabled={setSetter.isPending}
-                    className="rounded-lg bg-sage-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Save</button>
-                  <button type="button" onClick={() => setEditingSetter(false)} className="px-2 py-2 text-sm text-gray-500">Cancel</button>
-                </div>
-              ) : (
-                <button type="button" onClick={editSetter}
-                  className="inline-flex items-center gap-2 text-sm text-gray-800 hover:text-sage-700">
-                  <span className="font-medium">{boulder.setter || 'Add the setter'}</span>
-                  <Pencil size={14} className="text-gray-400" />
-                </button>
-              )}
-            </div>
-
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1.5">Rating</h3>
-              <div className="flex items-center gap-2">
-                <StarRating value={reviewsData?.average ?? 0} size={22} />
-                <span className="text-sm font-semibold text-gray-800">{reviewsData?.average ? reviewsData.average.toFixed(1) : '—'}</span>
-                <span className="text-xs text-gray-400">({reviewsData?.count ?? 0})</span>
-              </div>
-
-              {/* Your review */}
-              <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-3">
-                {myReview && !editingReview ? (
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <StarRating value={myReview.stars} />
-                      <button type="button" onClick={editReview} className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-sage-700">
-                        <Pencil size={12} /> Edit
-                      </button>
-                    </div>
-                    {myReview.review && <p className="mt-1.5 text-sm text-gray-700">{myReview.review}</p>}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Your rating</span>
-                      <StarRating value={reviewStars} onChange={setReviewStars} size={24} />
-                    </div>
-                    <textarea value={reviewText} onChange={e => setReviewText(e.target.value)} rows={2}
-                      placeholder="Add a review (optional)…"
-                      className="w-full resize-none text-sm border-t border-gray-100 pt-2 focus:outline-none placeholder:text-gray-400" />
-                    <div className="flex justify-end gap-2">
-                      {myReview && <button type="button" onClick={() => setEditingReview(false)} className="px-2 py-1.5 text-sm text-gray-500">Cancel</button>}
-                      <button type="button" onClick={saveReview} disabled={upsertReview.isPending}
-                        className="rounded-full bg-sage-700 px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-50">Save review</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Other reviews */}
-              <div className="mt-3 space-y-3">
-                {otherReviews.map(r => (
-                  <div key={r.user_id} className="flex items-start gap-2.5">
-                    <span className="w-7 h-7 rounded-full bg-cover bg-center bg-sage-100 flex-shrink-0 mt-0.5"
-                      style={r.authorAvatarUrl ? { backgroundImage: `url(${r.authorAvatarUrl})` } : undefined} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold">{r.authorName ?? 'Someone'}</span>
-                        <StarRating value={r.stars} size={13} />
-                      </div>
-                      {r.review && <p className="text-sm text-gray-700">{r.review}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
+        </div>
       </div>
 
       <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title="Add to a session">
