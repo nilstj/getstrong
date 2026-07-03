@@ -250,8 +250,8 @@ export function CrewPage() {
             </Link>
             {boulder.beta_video_url && (
               <a href={boulder.beta_video_url} target="_blank" rel="noopener noreferrer"
-                className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
-                <Play size={13} fill="currentColor" /> Watch video
+                className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                <Play size={11} fill="currentColor" /> Video
               </a>
             )}
             <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
@@ -318,6 +318,24 @@ export function CrewPage() {
                 ↗ Share
               </button>
             </div>
+
+            {/* Only the person who set this boulder can retire it */}
+            {boulder.status === 'active' && left >= 0 && boulder.created_by === user?.id && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!confirm('Mark this boulder as stripped? It will be archived for everyone.')) return
+                  strip.mutate(boulder.id, {
+                    onSuccess: () => toast.success('Marked as stripped'),
+                    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
+                  })
+                }}
+                disabled={strip.isPending}
+                className="mt-3 text-xs text-gray-400 hover:text-red-600 underline disabled:opacity-50"
+              >
+                This got stripped
+              </button>
+            )}
           </div>
 
           {/* Tabs */}
@@ -373,22 +391,6 @@ export function CrewPage() {
                 ))
               )}
             </div>
-
-            {boulder.status === 'active' && left >= 0 && members.some(m => m.user_id === user?.id) && (
-              <button
-                onClick={() => {
-                  if (!confirm('Mark this boulder as stripped? It will be archived for everyone.')) return
-                  strip.mutate(boulder.id, {
-                    onSuccess: () => toast.success('Marked as stripped'),
-                    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
-                  })
-                }}
-                disabled={strip.isPending}
-                className="text-xs text-gray-400 hover:text-red-600 underline disabled:opacity-50"
-              >
-                This got stripped
-              </button>
-            )}
 
             {boulder.gym && leaderboard.length > 0 && (
               <div className="pt-2">
