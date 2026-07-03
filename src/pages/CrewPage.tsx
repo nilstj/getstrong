@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useGymProblem, useCrew } from '../hooks/useCrew'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
@@ -9,21 +9,20 @@ import { useSessions, useCreateSession } from '../hooks/useSessions'
 import { useAddProblem } from '../hooks/useProblems'
 import { BottomSheet } from '../components/BottomSheet'
 import {
-  useBoulderBetas,
+  useBoulderBetaThread,
   useAddBoulderBeta,
   useMarkBetaWorked,
   useUnmarkBetaWorked,
-  useGymProblemReactions,
-  useAddGymProblemReaction,
-  useRemoveGymProblemReaction,
+  useAddBetaComment,
+  useDeleteBetaComment,
+  useToggleBetaReaction,
+  useToggleBetaCommentReaction,
+  type PersonLite,
 } from '../hooks/useBoulderBeta'
 import {
   useSetBoulderSetter,
   useBoulderReviews,
   useUpsertBoulderReview,
-  useBoulderComments,
-  useAddBoulderComment,
-  useDeleteBoulderComment,
   useBoulderHelp,
   useRequestBetaHelp,
 } from '../hooks/useBoulderExtras'
@@ -34,12 +33,12 @@ import { boulderToPrefill } from '../utils/boulderPrefill'
 import { todayDateString } from '../utils/dates'
 import { useAuth } from '../providers/AuthProvider'
 import { Chip, HoldDot } from '../components/Chip'
-import { BetaCard } from '../components/BetaCard'
+import { BetaThreadCard } from '../components/BetaThreadCard'
 import { CrewTitleBadge } from '../components/CrewTitleBadge'
 import { StarRating } from '../components/StarRating'
 import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
-import type { CrewState } from '../types'
+import type { CrewState, BetaSection, BetaBodyType } from '../types'
 
 const STATE_LABEL: Record<CrewState, string> = { projecting: 'Projecting', sent: 'Sent', flashed: 'Flashed' }
 // Sendtrain theme: flashers ride the speed train, senders chug in on the coal train.
@@ -49,8 +48,23 @@ const STATE_CLASS: Record<CrewState, string> = {
   sent: 'bg-sage-100 text-sage-700',
   flashed: 'bg-amber-100 text-amber-700',
 }
-const DIG_EMOJIS = ['🔥', '💪', '😂', '🐒', '🪨']
-type Tab = 'sendtrain' | 'beta' | 'setter'
+type Tab = 'beta' | 'sendtrain' | 'setter'
+const SECTIONS: BetaSection[] = ['start', 'crux', 'top']
+const SECTION_LABEL: Record<BetaSection, string> = { start: 'Start', crux: 'Crux', top: 'Top-out' }
+const BODY_TYPES: BetaBodyType[] = ['tall', 'neutral', 'short']
+const BODY_LABEL: Record<BetaBodyType, string> = { tall: 'Tall', neutral: 'Any', short: 'Short' }
+
+function PeopleRow({ people }: { people: PersonLite[] }) {
+  return (
+    <div className="flex items-center -space-x-1.5">
+      {people.slice(0, 8).map(p => (
+        p.avatarUrl
+          ? <img key={p.user_id} src={p.avatarUrl} alt={p.name ?? ''} title={p.name ?? ''} className="w-6 h-6 rounded-full object-cover border-2 border-gray-50" />
+          : <span key={p.user_id} title={p.name ?? ''} className="w-6 h-6 rounded-full bg-sage-100 border-2 border-gray-50 grid place-items-center text-[10px] font-semibold text-sage-700">{(p.name ?? '?').slice(0, 1).toUpperCase()}</span>
+      ))}
+    </div>
+  )
+}
 
 export function CrewPage() {
   const { id = '' } = useParams<{ id: string }>()
@@ -60,31 +74,30 @@ export function CrewPage() {
   const { data: crew, isLoading: loadingCrew } = useCrew(id)
   const month = cycleMonth(new Date())
   const { data: leaderboard = [] } = useGymLeaderboard(boulder?.gym ?? '', month)
-  const { data: betas = [] } = useBoulderBetas(id)
-  const { data: reactions = [] } = useGymProblemReactions(id)
+  const { data: betaData } = useBoulderBetaThread(id)
   const { data: reviewsData } = useBoulderReviews(id)
-  const { data: comments = [] } = useBoulderComments(id)
   const { data: help } = useBoulderHelp(id)
   const requestHelp = useRequestBetaHelp()
   const strip = useStripGymProblem()
   const addBeta = useAddBoulderBeta()
   const markWorked = useMarkBetaWorked()
   const unmarkWorked = useUnmarkBetaWorked()
-  const addReaction = useAddGymProblemReaction()
-  const removeReaction = useRemoveGymProblemReaction()
+  const addBetaComment = useAddBetaComment()
+  const deleteBetaComment = useDeleteBetaComment()
+  const toggleBetaReaction = useToggleBetaReaction()
+  const toggleBetaCommentReaction = useToggleBetaCommentReaction()
   const setSetter = useSetBoulderSetter()
   const upsertReview = useUpsertBoulderReview()
-  const addComment = useAddBoulderComment()
-  const deleteComment = useDeleteBoulderComment()
   const { data: sessions = [] } = useSessions()
   const createSession = useCreateSession()
   const addProblem = useAddProblem()
   const claim = useClaimGymProblem()
 
-  const [tab, setTab] = useState<Tab>('sendtrain')
+  const [tab, setTab] = useState<Tab>('beta')
   const [draft, setDraft] = useState('')
   const [draftVideo, setDraftVideo] = useState('')
-  const [comment, setComment] = useState('')
+  const [draftSection, setDraftSection] = useState<BetaSection | null>(null)
+  const [draftBody, setDraftBody] = useState<BetaBodyType | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [editingSetter, setEditingSetter] = useState(false)
@@ -109,23 +122,18 @@ export function CrewPage() {
   const myReview = reviewsData?.myReview ?? null
   const otherReviews = (reviewsData?.reviews ?? []).filter(r => r.user_id !== user?.id)
 
-  const digTally = DIG_EMOJIS.map(emoji => {
-    const rs = reactions.filter(r => r.emoji === emoji)
-    return { emoji, count: rs.length, mine: rs.some(r => r.user_id === user?.id) }
-  })
-  const toggleDig = (emoji: string, mine: boolean) => {
-    if (mine) removeReaction.mutate({ gymProblemId: id, emoji })
-    else addReaction.mutate({ gymProblemId: id, emoji })
-  }
+  const threads = betaData?.threads ?? []
+  const asking = betaData?.asking ?? []
+  const workedPeople = betaData?.worked ?? []
 
   const submitBeta = () => {
     const body = draft.trim()
     const videoUrl = draftVideo.trim() || null
     if (!body && !videoUrl) return
     addBeta.mutate(
-      { gymProblemId: id, body: body || null, videoUrl },
+      { gymProblemId: id, body: body || null, videoUrl, section: draftSection, bodyType: draftBody },
       {
-        onSuccess: () => { setDraft(''); setDraftVideo(''); toast.success('Beta shared') },
+        onSuccess: () => { setDraft(''); setDraftVideo(''); setDraftSection(null); setDraftBody(null); toast.success('Beta shared') },
         onError: () => toast.error('Could not post beta'),
       },
     )
@@ -135,15 +143,6 @@ export function CrewPage() {
     const v = { betaId, gymProblemId: id }
     if (workedByMe) unmarkWorked.mutate(v, { onError: () => toast.error('Could not update') })
     else markWorked.mutate(v, { onError: () => toast.error('Could not update') })
-  }
-
-  const submitComment = () => {
-    const body = comment.trim()
-    if (!body) return
-    addComment.mutate(
-      { gymProblemId: id, body },
-      { onSuccess: () => setComment(''), onError: () => toast.error('Could not post comment') },
-    )
   }
 
   const editSetter = () => { setSetterDraft(boulder.setter ?? ''); setEditingSetter(true) }
@@ -204,8 +203,8 @@ export function CrewPage() {
   const addBusy = addProblem.isPending || createSession.isPending || claim.isPending
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'sendtrain', label: 'Sendtrain' },
     { key: 'beta', label: 'Beta' },
+    { key: 'sendtrain', label: 'Sendtrain' },
     { key: 'setter', label: 'Setter' },
   ]
 
@@ -360,22 +359,33 @@ export function CrewPage() {
 
         {/* BETA (beta thread + comments + reactions) */}
         {tab === 'beta' && (
-          <div className="space-y-3">
-            {help?.mineOpen ? (
-              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-                🆘 You asked for beta help — this clears once you mark a beta that worked for you.
+          <div className="space-y-4">
+            {/* Beta exchange overview */}
+            <div className="rounded-2xl bg-gray-50 p-3 space-y-2.5">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-500 w-32 flex-shrink-0">🆘 Asking for beta</span>
+                {asking.length > 0 ? <PeopleRow people={asking} /> : <span className="text-xs text-gray-400">no one right now</span>}
               </div>
-            ) : (
-              <button type="button"
-                onClick={() => requestHelp.mutate({ gymProblemId: id }, {
-                  onSuccess: () => toast.success('Asked for beta help'),
-                  onError: () => toast.error('Could not ask for help'),
-                })}
-                disabled={requestHelp.isPending}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50">
-                🆘 Ask for beta help
-              </button>
-            )}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-500 w-32 flex-shrink-0">✅ Found working beta</span>
+                {workedPeople.length > 0 ? <PeopleRow people={workedPeople} /> : <span className="text-xs text-gray-400">not yet</span>}
+              </div>
+              {help?.mineOpen ? (
+                <p className="text-xs text-amber-700 font-medium">You’re asking for beta — mark a beta that worked to clear it.</p>
+              ) : (
+                <button type="button"
+                  onClick={() => requestHelp.mutate({ gymProblemId: id }, {
+                    onSuccess: () => toast.success('Asked for beta help'),
+                    onError: () => toast.error('Could not ask for help'),
+                  })}
+                  disabled={requestHelp.isPending}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50">
+                  🆘 Ask for beta help
+                </button>
+              )}
+            </div>
+
+            {/* Share beta */}
             <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-2">
               <textarea
                 value={draft}
@@ -388,9 +398,24 @@ export function CrewPage() {
                 value={draftVideo}
                 onChange={e => setDraftVideo(e.target.value)}
                 placeholder="Beta video link (optional)"
-                className="w-full text-xs text-gray-600 border-t border-gray-100 pt-2 focus:outline-none placeholder:text-gray-400"
+                className="w-full text-xs text-gray-600 focus:outline-none placeholder:text-gray-400"
               />
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
+                <span className="text-[11px] text-gray-400">Section</span>
+                {SECTIONS.map(s => (
+                  <button key={s} type="button" onClick={() => setDraftSection(draftSection === s ? null : s)}
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${draftSection === s ? 'bg-sage-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                    {SECTION_LABEL[s]}
+                  </button>
+                ))}
+                <span className="text-[11px] text-gray-400 ml-2">For</span>
+                {BODY_TYPES.map(bt => (
+                  <button key={bt} type="button" onClick={() => setDraftBody(draftBody === bt ? null : bt)}
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${draftBody === bt ? 'bg-sage-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                    {BODY_LABEL[bt]}
+                  </button>
+                ))}
+                <span className="flex-1" />
                 <button type="button" onClick={submitBeta}
                   disabled={addBeta.isPending || (!draft.trim() && !draftVideo.trim())}
                   className="inline-flex items-center gap-1.5 rounded-full bg-sage-700 px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-40">
@@ -399,67 +424,23 @@ export function CrewPage() {
               </div>
             </div>
 
-            {betas.length === 0 ? (
+            {threads.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">Be the first to crack it — share your beta.</p>
             ) : (
-              betas.map((b, i) => (
-                <BetaCard
-                  key={b.id}
-                  beta={b}
-                  authorName={b.authorName ?? 'Someone'}
-                  authorAvatarUrl={b.authorAvatarUrl}
-                  best={i === 0 && b.worked_count > 0}
-                  onToggleWorked={() => toggleWorked(b.id, b.worked_by_me)}
+              threads.map((t, i) => (
+                <BetaThreadCard
+                  key={t.id}
+                  thread={t}
+                  best={i === 0 && t.worked_count > 0}
+                  currentUserId={user?.id}
+                  onToggleWorked={() => toggleWorked(t.id, t.worked_by_me)}
+                  onReactBeta={(emoji, mine) => toggleBetaReaction.mutate({ betaId: t.id, gymProblemId: id, emoji, mine })}
+                  onAddReply={(body) => addBetaComment.mutate({ betaId: t.id, gymProblemId: id, body }, { onError: () => toast.error('Could not reply') })}
+                  onDeleteReply={(commentId) => deleteBetaComment.mutate({ commentId, gymProblemId: id })}
+                  onReactReply={(commentId, emoji, mine) => toggleBetaCommentReaction.mutate({ commentId, gymProblemId: id, emoji, mine })}
                 />
               ))
             )}
-
-            {/* Reactions */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {digTally.map(d => (
-                <button key={d.emoji} type="button" onClick={() => toggleDig(d.emoji, d.mine)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-                    d.mine ? 'bg-sage-100 text-sage-800 ring-1 ring-sage-300' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                  <span className="text-base" aria-hidden>{d.emoji}</span>
-                  {d.count > 0 && <span>{d.count}</span>}
-                </button>
-              ))}
-            </div>
-
-            {/* Comments */}
-            <div className="pt-2 space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">Discussion</h3>
-              {comments.map(c => (
-                <div key={c.id} className="flex items-start gap-2.5">
-                  <span className="w-7 h-7 rounded-full bg-cover bg-center bg-sage-100 flex-shrink-0 mt-0.5"
-                    style={c.authorAvatarUrl ? { backgroundImage: `url(${c.authorAvatarUrl})` } : undefined} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm"><span className="font-semibold">{c.authorName ?? 'Someone'}</span> <span className="text-gray-700">{c.body}</span></p>
-                  </div>
-                  {c.user_id === user?.id && (
-                    <button type="button" aria-label="Delete comment"
-                      onClick={() => deleteComment.mutate({ commentId: c.id, gymProblemId: id })}
-                      className="text-gray-300 hover:text-red-500 mt-0.5">
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  value={comment}
-                  onChange={e => setComment(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') submitComment() }}
-                  placeholder="Add a comment…"
-                  className="flex-1 rounded-full bg-gray-100 px-3.5 py-2 text-sm focus:outline-none placeholder:text-gray-400"
-                />
-                <button type="button" onClick={submitComment} disabled={addComment.isPending || !comment.trim()}
-                  className="text-sage-700 disabled:opacity-40" aria-label="Post comment">
-                  <Send size={18} />
-                </button>
-              </div>
-            </div>
           </div>
         )}
 

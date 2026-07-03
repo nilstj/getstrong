@@ -372,12 +372,17 @@ export interface ProblemPrefill {
   gym: string | null
 }
 
+export type BetaSection = 'start' | 'crux' | 'top'
+export type BetaBodyType = 'tall' | 'short' | 'neutral'
+
 export interface BoulderBeta {
   id: string
   gym_problem_id: string
   user_id: string
   body: string | null
   video_url: string | null
+  section: BetaSection | null
+  body_type: BetaBodyType | null
   created_at: string
   worked_count: number
   worked_by_me: boolean

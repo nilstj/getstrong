@@ -3,7 +3,7 @@ import { betaSort } from './betaSort'
 import type { BoulderBeta } from '../types'
 
 const beta = (id: string, worked_count: number, created_at: string): BoulderBeta =>
-  ({ id, gym_problem_id: 'g', user_id: 'u', body: 'x', video_url: null, created_at, worked_count, worked_by_me: false })
+  ({ id, gym_problem_id: 'g', user_id: 'u', body: 'x', video_url: null, section: null, body_type: null, created_at, worked_count, worked_by_me: false })
 
 describe('betaSort', () => {
   it('ranks higher worked_count first', () => {
