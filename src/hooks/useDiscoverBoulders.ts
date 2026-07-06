@@ -93,9 +93,11 @@ export function useDiscoverBoulders() {
       const yours = active
         .filter(s => s.claimed)
         .sort((a, b) => (a.expires_at < b.expires_at ? -1 : a.expires_at > b.expires_at ? 1 : 0))
+      // Newest-first: a just-shared boulder (crew count 0) must survive the cap,
+      // otherwise it never reaches the "Latest" strip that re-sorts by set_at.
       const discover = active
         .filter(s => !s.claimed)
-        .sort((a, b) => b.crewCount - a.crewCount)
+        .sort((a, b) => (a.set_at < b.set_at ? 1 : a.set_at > b.set_at ? -1 : 0))
         .slice(0, 5)
       // Your history: boulders you were on that are no longer active, newest gone first.
       const archived = summaries
