@@ -42,6 +42,7 @@ export function DashboardPage() {
       )}
 
       <div className="px-4 py-4 space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">Friends feed</h2>
         {loading ? (
           <p className="py-10 text-center text-sm text-gray-400">Loading your friends' sessions…</p>
         ) : isError ? (
