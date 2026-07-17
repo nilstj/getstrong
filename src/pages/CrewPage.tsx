@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil } from 'lucide-react'
+import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+
+function formatJoined(iso: string): string {
+  try { return format(new Date(iso), 'd MMM yyyy') } catch { return '' }
+}
 import { useGymProblem, useCrew } from '../hooks/useCrew'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
 import { useStripGymProblem, useClaimGymProblem } from '../hooks/useGymProblems'
@@ -94,7 +99,7 @@ export function CrewPage() {
   const addProblem = useAddProblem()
   const claim = useClaimGymProblem()
 
-  const [tab, setTab] = useState<Tab>('beta')
+  const [tab, setTab] = useState<Tab>('sendtrain')
   const [draft, setDraft] = useState('')
   const [draftVideo, setDraftVideo] = useState('')
   const [draftSection, setDraftSection] = useState<BetaSection | null>(null)
@@ -121,6 +126,10 @@ export function CrewPage() {
   const title = boulder.name || `${boulder.color ?? ''} ${boulder.wall_angle ?? ''}`.trim() || 'Shared boulder'
 
   const myReview = reviewsData?.myReview ?? null
+  // Each climber's own quality rating, keyed by user, so the sendtrain list can
+  // show the stars they gave this boulder.
+  const starsByUser: Record<string, number> = {}
+  for (const r of reviewsData?.reviews ?? []) starsByUser[r.user_id] = r.stars
 
   const threads = betaData?.threads ?? []
   const asking = betaData?.asking ?? []
@@ -382,9 +391,15 @@ export function CrewPage() {
                         {(titles[m.user_id] ?? []).map(t => <CrewTitleBadge key={t} title={t} />)}
                       </span>
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATE_CLASS[m.state]}`}>
-                      {STATE_ICON[m.state] && <span aria-hidden>{STATE_ICON[m.state]} </span>}{STATE_LABEL[m.state]}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className="text-[11px] text-gray-400">{formatJoined(m.joined_at)}</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATE_CLASS[m.state]}`}>
+                        {STATE_ICON[m.state] && <span aria-hidden>{STATE_ICON[m.state]} </span>}{STATE_LABEL[m.state]}
+                      </span>
+                      {starsByUser[m.user_id] != null && (
+                        <StarRating value={starsByUser[m.user_id]} size={13} />
+                      )}
+                    </div>
                   </div>
                 ))
               )}
