@@ -30,24 +30,27 @@ describe('summarizeFriendSessions', () => {
     expect(out).toHaveLength(2)
   })
 
-  it('collects only problems that have a photo', () => {
+  it('collects only problems that have a photo, flagging which carry a video', () => {
     const out = fromProblems([
-      row({ image_url: 'a.jpg' }),
+      row({ image_url: 'a.jpg', beta_video_url: 'https://youtu.be/x' }),
       row({ image_url: null }),
       row({ image_url: 'b.jpg' }),
     ])
-    expect(out[0].photos).toEqual(['a.jpg', 'b.jpg'])
+    expect(out[0].photos).toEqual([
+      { url: 'a.jpg', hasVideo: true },
+      { url: 'b.jpg', hasVideo: false },
+    ])
   })
 
-  it('flags hasVideo when any problem in the session has a beta video', () => {
-    const withVideo = fromProblems([
-      row({ image_url: 'a.jpg', beta_video_url: null }),
-      row({ image_url: null, beta_video_url: 'https://youtu.be/x' }),
+  it('counts every problem that links a beta video, photo or not', () => {
+    const out = fromProblems([
+      row({ image_url: 'a.jpg', beta_video_url: 'https://youtu.be/x' }),
+      row({ image_url: null, beta_video_url: 'https://youtu.be/y' }),
+      row({ image_url: null, beta_video_url: null }),
     ])
-    expect(withVideo[0].hasVideo).toBe(true)
+    expect(out[0].videoCount).toBe(2)
 
-    const withoutVideo = fromProblems([row({ beta_video_url: null })])
-    expect(withoutVideo[0].hasVideo).toBe(false)
+    expect(fromProblems([row({ beta_video_url: null })])[0].videoCount).toBe(0)
   })
 
   it('picks the hardest grade as topGrade (Font ranking)', () => {

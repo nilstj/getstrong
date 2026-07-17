@@ -30,6 +30,7 @@ import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate }
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { VideoBadge } from '../components/VideoBadge'
+import { WatchVideoLink } from '../components/WatchVideoLink'
 import { CallForHelp } from '../components/CallForHelp'
 import { BoulderLinkSheet } from '../components/BoulderLinkSheet'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
@@ -294,6 +295,7 @@ export function SessionDetailPage() {
                   {problem.crag && <span className="text-xs text-gray-400">🌲 {problem.crag}</span>}
                 </div>
                 {problem.notes && <p className="text-gray-500 text-sm mt-0.5">{problem.notes}</p>}
+                {problem.beta_video_url && <WatchVideoLink href={problem.beta_video_url} className="mt-1" />}
                 {(problemTagsMap[problem.id] ?? []).length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {(problemTagsMap[problem.id] ?? []).map(tag => (

@@ -12,6 +12,7 @@ import { BoardThumb } from '../components/BoardThumb'
 import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { VideoBadge } from '../components/VideoBadge'
+import { WatchVideoLink } from '../components/WatchVideoLink'
 import type { Problem, Exercise } from '../types'
 
 function SendBadge({ p }: { p: Problem }) {
@@ -119,6 +120,7 @@ export function FriendSessionPage() {
                 </div>
                 {p.name && <p className="text-sm font-medium text-gray-800 mt-1 truncate">{p.name}</p>}
                 {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
+                {p.beta_video_url && <WatchVideoLink href={p.beta_video_url} className="mt-1" />}
               </div>
             </div>
           ))}

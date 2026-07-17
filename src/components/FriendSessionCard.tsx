@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
+import { Play } from 'lucide-react'
 import { Chip } from './Chip'
 import { VideoBadge } from './VideoBadge'
 import type { FriendSession } from '../hooks/useFriendsFeed'
@@ -11,6 +12,10 @@ function formatDate(iso: string): string {
 export function FriendSessionCard({ session, to }: { session: FriendSession; to: string }) {
   const photos = session.photos.slice(0, 4)
   const extra = Math.max(0, session.photos.length - 4)
+  // Videos we can't badge on a visible photo tile (problems with no photo, or
+  // photos past the 4 shown) get counted into a summary-line marker instead.
+  const badgedVideos = photos.filter(p => p.hasVideo).length
+  const unbadgedVideos = session.videoCount - badgedVideos
 
   return (
     <Link to={to}
@@ -38,14 +43,22 @@ export function FriendSessionCard({ session, to }: { session: FriendSession; to:
             <span className={i === 0 && session.problemCount > 0 ? 'font-semibold text-gray-800' : ''}>{part}</span>
           </span>
         ))}
+        {unbadgedVideos > 0 && (
+          <span className="inline-flex items-center gap-2">
+            <span className="text-gray-300">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Play size={12} fill="currentColor" /> {unbadgedVideos} video{unbadgedVideos === 1 ? '' : 's'}
+            </span>
+          </span>
+        )}
       </div>
 
       {photos.length > 0 && (
         <div className={`grid gap-0.5 ${photos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-          {photos.map((url, i) => (
-            <div key={url} className="relative aspect-square overflow-hidden">
-              <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" />
-              {i === 0 && session.hasVideo && <VideoBadge />}
+          {photos.map((photo, i) => (
+            <div key={photo.url} className="relative aspect-square overflow-hidden">
+              <img src={photo.url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              {photo.hasVideo && <VideoBadge />}
               {i === photos.length - 1 && extra > 0 && (
                 <span className="absolute inset-0 grid place-items-center bg-black/50 text-white text-lg font-bold">
                   +{extra}

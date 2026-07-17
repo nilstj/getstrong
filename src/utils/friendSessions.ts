@@ -33,9 +33,10 @@ export interface FriendSessionSummary {
   exerciseCount: number
   challengeCount: number
   topGrade: string | null
-  photos: string[]
-  /** True when any problem in the session links a beta video. */
-  hasVideo: boolean
+  /** Problems that have a photo, each flagged if that same problem links a video. */
+  photos: { url: string; hasVideo: boolean }[]
+  /** Count of problems in the session that link a beta video (photo or not). */
+  videoCount: number
 }
 
 interface Bucket {
@@ -89,12 +90,12 @@ export function summarizeFriendSessions(input: {
     let topGrade: string | null = null
     let topIdx = -1
     let sendCount = 0
-    let hasVideo = false
-    const photos: string[] = []
+    let videoCount = 0
+    const photos: { url: string; hasVideo: boolean }[] = []
     for (const r of b.problems) {
       if (r.sent) sendCount++
-      if (r.image_url) photos.push(r.image_url)
-      if (r.beta_video_url) hasVideo = true
+      if (r.beta_video_url) videoCount++
+      if (r.image_url) photos.push({ url: r.image_url, hasVideo: !!r.beta_video_url })
       const idx = r.grade_value_font ? fontGradeToIndex(r.grade_value_font) : -1
       if (idx > topIdx) { topIdx = idx; topGrade = r.grade_value_font ?? r.grade_value }
     }
@@ -109,7 +110,7 @@ export function summarizeFriendSessions(input: {
       challengeCount: b.challengeCount,
       topGrade,
       photos,
-      hasVideo,
+      videoCount,
     })
   }
 
