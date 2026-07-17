@@ -11,6 +11,7 @@ import { Chip, HoldDot } from '../components/Chip'
 import { BoardThumb } from '../components/BoardThumb'
 import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
+import { VideoBadge } from '../components/VideoBadge'
 import type { Problem, Exercise } from '../types'
 
 function SendBadge({ p }: { p: Problem }) {
@@ -43,7 +44,7 @@ export function FriendSessionPage() {
     problems: problems.map((p): FriendProblemRow => ({
       user_id: p.user_id, session_id: p.session_id, gym: p.gym,
       grade_value: p.grade_value, grade_value_font: p.grade_value_font,
-      sent: p.sent, image_url: p.image_url, created_at: p.created_at,
+      sent: p.sent, image_url: p.image_url, beta_video_url: p.beta_video_url, created_at: p.created_at,
     })),
     exercises: exercises.map((e): FriendActivityRow => ({ user_id: e.user_id, session_id: e.session_id, created_at: e.created_at })),
     challenges: attempts.map((a): FriendActivityRow => ({ user_id: a.user_id, session_id: a.session_id, created_at: a.created_at })),
@@ -81,23 +82,28 @@ export function FriendSessionPage() {
         <div className="px-4 space-y-2">
           {problems.map(p => (
             <div key={p.id} className="flex gap-3 bg-gray-50 rounded-2xl p-3">
-              {p.image_url ? (
-                <button type="button" onClick={() => setLightbox(p.image_url!)}
-                  className="flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 rounded-xl">
-                  <img src={p.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
-                </button>
-              ) : p.board ? (
-                <BoardThumb board={p.board} angle={p.board_angle} className="w-16 h-16 rounded-xl flex-shrink-0" />
-              ) : p.gym ? (
-                <GymThumb gym={p.gym} compact className="w-16 h-16 rounded-xl flex-shrink-0" />
-              ) : p.beta_video_url ? (
-                <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
-                  className="w-16 h-16 rounded-xl bg-gray-800 grid place-items-center flex-shrink-0">
-                  <Play size={20} className="text-white" fill="currentColor" />
-                </a>
-              ) : (
-                <div className="w-16 h-16 rounded-xl bg-gray-100 flex-shrink-0" />
-              )}
+              <div className="relative flex-shrink-0">
+                {p.image_url ? (
+                  <button type="button" onClick={() => setLightbox(p.image_url!)}
+                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 rounded-xl">
+                    <img src={p.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
+                  </button>
+                ) : p.board ? (
+                  <BoardThumb board={p.board} angle={p.board_angle} className="w-16 h-16 rounded-xl" />
+                ) : p.gym ? (
+                  <GymThumb gym={p.gym} compact className="w-16 h-16 rounded-xl" />
+                ) : p.beta_video_url ? (
+                  <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
+                    className="w-16 h-16 rounded-xl bg-gray-800 grid place-items-center">
+                    <Play size={20} className="text-white" fill="currentColor" />
+                  </a>
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-gray-100" />
+                )}
+                {p.beta_video_url && (p.image_url || p.board || p.gym) && (
+                  <VideoBadge href={p.beta_video_url} />
+                )}
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   {(p.grade_value_font ?? p.grade_value) && (
@@ -112,12 +118,6 @@ export function FriendSessionPage() {
                   )}
                 </div>
                 {p.name && <p className="text-sm font-medium text-gray-800 mt-1 truncate">{p.name}</p>}
-                {p.beta_video_url && (p.image_url || p.board || p.gym) && (
-                  <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                    <Play size={12} fill="currentColor" /> Beta video
-                  </a>
-                )}
                 {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
               </div>
             </div>

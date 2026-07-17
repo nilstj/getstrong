@@ -8,6 +8,7 @@ import { useStripGymProblem, useClaimGymProblem } from '../hooks/useGymProblems'
 import { useSessions, useCreateSession } from '../hooks/useSessions'
 import { useAddProblem } from '../hooks/useProblems'
 import { BottomSheet } from '../components/BottomSheet'
+import { VideoBadge } from '../components/VideoBadge'
 import {
   useBoulderBetaThread,
   useAddBoulderBeta,
@@ -249,10 +250,7 @@ export function CrewPage() {
               <ArrowLeft size={18} />
             </Link>
             {boulder.beta_video_url && (
-              <a href={boulder.beta_video_url} target="_blank" rel="noopener noreferrer"
-                className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
-                <Play size={11} fill="currentColor" /> Video
-              </a>
+              <VideoBadge href={boulder.beta_video_url} size="md" className="absolute right-3 top-3" />
             )}
             <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
             <div className="absolute left-3 bottom-3 flex items-center gap-2">

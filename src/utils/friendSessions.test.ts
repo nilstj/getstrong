@@ -9,6 +9,7 @@ const row = (over: Partial<FriendProblemRow>): FriendProblemRow => ({
   grade_value_font: '6A',
   sent: false,
   image_url: null,
+  beta_video_url: null,
   created_at: '2026-01-01T10:00:00Z',
   ...over,
 })
@@ -36,6 +37,17 @@ describe('summarizeFriendSessions', () => {
       row({ image_url: 'b.jpg' }),
     ])
     expect(out[0].photos).toEqual(['a.jpg', 'b.jpg'])
+  })
+
+  it('flags hasVideo when any problem in the session has a beta video', () => {
+    const withVideo = fromProblems([
+      row({ image_url: 'a.jpg', beta_video_url: null }),
+      row({ image_url: null, beta_video_url: 'https://youtu.be/x' }),
+    ])
+    expect(withVideo[0].hasVideo).toBe(true)
+
+    const withoutVideo = fromProblems([row({ beta_video_url: null })])
+    expect(withoutVideo[0].hasVideo).toBe(false)
   })
 
   it('picks the hardest grade as topGrade (Font ranking)', () => {

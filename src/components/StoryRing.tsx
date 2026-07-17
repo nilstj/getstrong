@@ -1,10 +1,12 @@
 import { GymThumb } from './GymThumb'
+import { VideoBadge } from './VideoBadge'
 
 export function StoryRing({
   label,
   imageUrl,
   fallbackGym,
   helpWanted = false,
+  hasVideo = false,
   active = true,
   onClick,
 }: {
@@ -12,6 +14,7 @@ export function StoryRing({
   imageUrl?: string | null
   fallbackGym?: string | null
   helpWanted?: boolean
+  hasVideo?: boolean
   active?: boolean
   onClick?: () => void
 }) {
@@ -42,6 +45,7 @@ export function StoryRing({
         ) : (
           <span className="block w-full h-full rounded-full border-2 border-white bg-sage-100" />
         )}
+        {hasVideo && <VideoBadge className="absolute bottom-0 right-0 border-2 border-white" />}
       </span>
       <span className="text-[10px] leading-tight text-gray-600 text-center line-clamp-2 max-w-[64px]">{label}</span>
     </button>

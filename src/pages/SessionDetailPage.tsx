@@ -29,6 +29,7 @@ import { PartnerPicker, PartnerAvatars } from '../components/PartnerPicker'
 import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
+import { VideoBadge } from '../components/VideoBadge'
 import { CallForHelp } from '../components/CallForHelp'
 import { BoulderLinkSheet } from '../components/BoulderLinkSheet'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
@@ -232,20 +233,27 @@ export function SessionDetailPage() {
             {problems.map(problem => (
               <div key={problem.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-start gap-2">
-                {problem.image_url ? (
-                  <button type="button" onClick={() => setLightboxUrl(problem.image_url!)} className="flex-shrink-0">
-                    <img src={problem.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
-                  </button>
-                ) : problem.board ? (
-                  <BoardThumb board={problem.board} angle={problem.board_angle} className="flex-shrink-0 w-16 h-16 rounded-xl" />
-                ) : problem.gym ? (
-                  <GymThumb gym={problem.gym} compact className="flex-shrink-0 w-16 h-16 rounded-xl" />
-                ) : problem.beta_video_url ? (
-                  <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
-                    className="flex-shrink-0 w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
-                    <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-                  </a>
-                ) : null}
+                {(problem.image_url || problem.board || problem.gym || problem.beta_video_url) && (
+                  <div className="relative flex-shrink-0">
+                    {problem.image_url ? (
+                      <button type="button" onClick={() => setLightboxUrl(problem.image_url!)}>
+                        <img src={problem.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
+                      </button>
+                    ) : problem.board ? (
+                      <BoardThumb board={problem.board} angle={problem.board_angle} className="w-16 h-16 rounded-xl" />
+                    ) : problem.gym ? (
+                      <GymThumb gym={problem.gym} compact className="w-16 h-16 rounded-xl" />
+                    ) : (
+                      <a href={problem.beta_video_url!} target="_blank" rel="noopener noreferrer"
+                        className="w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
+                        <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                      </a>
+                    )}
+                    {problem.beta_video_url && (problem.image_url || problem.board || problem.gym) && (
+                      <VideoBadge href={problem.beta_video_url} />
+                    )}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div>
@@ -285,12 +293,6 @@ export function SessionDetailPage() {
                   {problem.gym && <span className="text-xs text-gray-400">· {problem.gym}</span>}
                   {problem.crag && <span className="text-xs text-gray-400">🌲 {problem.crag}</span>}
                 </div>
-                {problem.beta_video_url && problem.image_url && (
-                  <a href={problem.beta_video_url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-gray-500 mt-0.5 inline-block">
-                    ▶ Beta video
-                  </a>
-                )}
                 {problem.notes && <p className="text-gray-500 text-sm mt-0.5">{problem.notes}</p>}
                 {(problemTagsMap[problem.id] ?? []).length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">

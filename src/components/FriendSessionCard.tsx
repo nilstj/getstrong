@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { Chip } from './Chip'
+import { VideoBadge } from './VideoBadge'
 import type { FriendSession } from '../hooks/useFriendsFeed'
 
 function formatDate(iso: string): string {
@@ -44,6 +45,7 @@ export function FriendSessionCard({ session, to }: { session: FriendSession; to:
           {photos.map((url, i) => (
             <div key={url} className="relative aspect-square overflow-hidden">
               <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              {i === 0 && session.hasVideo && <VideoBadge />}
               {i === photos.length - 1 && extra > 0 && (
                 <span className="absolute inset-0 grid place-items-center bg-black/50 text-white text-lg font-bold">
                   +{extra}

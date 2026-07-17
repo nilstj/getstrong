@@ -3,6 +3,7 @@ import { LifeBuoy, Play, Users, Globe, Check, MessageSquare, ChevronUp, ChevronD
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
+import { VideoBadge } from '../components/VideoBadge'
 import { useProfile } from '../hooks/useProfile'
 import {
   useHelpRequests,
@@ -131,16 +132,19 @@ function RequestCard({ request }: { request: HelpRequestWithProblem }) {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-3">
       <div className="flex items-start gap-3">
-        {p?.image_url ? (
-          <img src={p.image_url} alt="" className="w-16 h-16 object-cover rounded-xl flex-shrink-0" />
-        ) : p?.beta_video_url ? (
-          <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
-            className="flex-shrink-0 w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
-            <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-          </a>
-        ) : (
-          <div className="w-16 h-16 rounded-xl bg-gray-100 flex-shrink-0" />
-        )}
+        <div className="relative flex-shrink-0">
+          {p?.image_url ? (
+            <img src={p.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
+          ) : p?.beta_video_url ? (
+            <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
+              className="w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
+              <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+            </a>
+          ) : (
+            <div className="w-16 h-16 rounded-xl bg-gray-100" />
+          )}
+          {p?.beta_video_url && p?.image_url && <VideoBadge href={p.beta_video_url} />}
+        </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">

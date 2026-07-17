@@ -34,6 +34,7 @@ export function DashboardPage() {
                 imageUrl={b.image_url}
                 fallbackGym={b.gym}
                 helpWanted={b.helpWanted}
+                hasVideo={!!b.beta_video_url}
                 onClick={() => navigate(`/gym-problems/${b.id}`)}
               />
             ))}

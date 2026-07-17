@@ -26,7 +26,7 @@ export function useFriendsFeed() {
       const [problemsRes, exercisesRes, challengesRes, { data: profs }] = await Promise.all([
         supabase
           .from('problems')
-          .select('user_id, session_id, gym, grade_value, grade_value_font, sent, image_url, created_at')
+          .select('user_id, session_id, gym, grade_value, grade_value_font, sent, image_url, beta_video_url, created_at')
           .in('user_id', followingIds)
           .order('created_at', { ascending: false })
           .limit(SCAN),

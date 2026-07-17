@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Play } from 'lucide-react'
 import { Chip, HoldDot } from './Chip'
+import { VideoBadge } from './VideoBadge'
 import type { FeedEvent, FeedEventType } from '../types'
 
 const VERB: Record<FeedEventType, string> = {
@@ -39,27 +40,26 @@ export function FeedCard({
         </div>
       </div>
 
-      <button type="button" onClick={onOpen} aria-label={`Open ${title}`}
-        className="block w-full relative aspect-[4/3] bg-gradient-to-br from-sage-700 to-sage-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage-500">
-        {event.boulder_image_url && (
-          <img src={event.boulder_image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        )}
-        {event.beta_video_url && (
-          event.boulder_image_url ? (
-            <span className="absolute right-2.5 top-2.5 grid place-items-center w-7 h-7 rounded-full bg-black/55">
-              <Play size={14} className="text-white" fill="currentColor" />
-            </span>
-          ) : (
+      <div className="relative">
+        <button type="button" onClick={onOpen} aria-label={`Open ${title}`}
+          className="block w-full relative aspect-[4/3] bg-gradient-to-br from-sage-700 to-sage-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage-500">
+          {event.boulder_image_url && (
+            <img src={event.boulder_image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          {event.beta_video_url && !event.boulder_image_url && (
             <span className="absolute inset-0 grid place-items-center">
               <Play size={40} className="text-white/90" fill="currentColor" />
             </span>
-          )
+          )}
+          <span className="absolute left-2.5 bottom-2.5 flex items-center gap-2">
+            {event.boulder_grade && <Chip label={event.boulder_grade} variant="grade" />}
+            {event.boulder_color && <HoldDot color={event.boulder_color} />}
+          </span>
+        </button>
+        {event.beta_video_url && event.boulder_image_url && (
+          <VideoBadge href={event.beta_video_url} size="md" className="absolute right-2.5 top-2.5" />
         )}
-        <span className="absolute left-2.5 bottom-2.5 flex items-center gap-2">
-          {event.boulder_grade && <Chip label={event.boulder_grade} variant="grade" />}
-          {event.boulder_color && <HoldDot color={event.boulder_color} />}
-        </span>
-      </button>
+      </div>
 
       <div className="px-3.5 pt-2.5 pb-1">{children}</div>
 

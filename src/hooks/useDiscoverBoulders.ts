@@ -81,6 +81,7 @@ export function useDiscoverBoulders() {
         color: b.color,
         community_grade: b.community_grade ?? consensusGrade(gradesByBoulder.get(b.id) ?? []),
         image_url: b.image_url,
+        beta_video_url: b.beta_video_url,
         set_at: b.set_at,
         isBoard: boardBoulderIds.has(b.id),
         helpWanted: helpWantedIds.has(b.id),

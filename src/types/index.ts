@@ -350,6 +350,7 @@ export interface BoulderSummary {
   color: string | null
   community_grade: string | null
   image_url: string | null
+  beta_video_url: string | null
   set_at: string
   isBoard: boolean
   helpWanted: boolean

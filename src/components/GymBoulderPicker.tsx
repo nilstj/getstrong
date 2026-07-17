@@ -1,6 +1,7 @@
 import { Play } from 'lucide-react'
 import { useGymBoulders } from '../hooks/useGymProblems'
 import { GymThumb } from './GymThumb'
+import { VideoBadge } from './VideoBadge'
 import type { GymProblem } from '../types'
 
 export function GymBoulderPicker({
@@ -39,11 +40,7 @@ export function GymBoulderPicker({
             <GymThumb gym={b.gym} className="w-full h-full" />
           )}
 
-          {b.image_url && b.beta_video_url && (
-            <span className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5">
-              <Play className="w-3 h-3 text-white fill-white" strokeWidth={0} />
-            </span>
-          )}
+          {b.image_url && b.beta_video_url && <VideoBadge className="absolute top-1 right-1" />}
 
           {(b.community_grade || b.color) && (
             <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 px-1.5 py-1 bg-gradient-to-t from-black/70 to-transparent">
