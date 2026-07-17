@@ -112,6 +112,12 @@ export function FriendSessionPage() {
                   )}
                 </div>
                 {p.name && <p className="text-sm font-medium text-gray-800 mt-1 truncate">{p.name}</p>}
+                {p.beta_video_url && (p.image_url || p.board || p.gym) && (
+                  <a href={p.beta_video_url} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                    <Play size={12} fill="currentColor" /> Beta video
+                  </a>
+                )}
                 {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
               </div>
             </div>
