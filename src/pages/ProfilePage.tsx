@@ -13,7 +13,7 @@ import {
   useAcceptFollowRequest, useDeclineFollowRequest,
 } from '../hooks/useFollows'
 import toast from 'react-hot-toast'
-import { GymInput } from '../components/GymInput'
+import { DefaultGymsEditor } from '../components/DefaultGymsEditor'
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -33,11 +33,11 @@ export function ProfilePage() {
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [defaultGym, setDefaultGym] = useState('')
+  const [gyms, setGyms] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setDefaultGym(profile?.default_gym ?? '') }, [profile?.default_gym])
+  useEffect(() => { setGyms(profile?.default_gyms ?? []) }, [profile?.default_gyms])
 
   const { data: searchResults = [] } = useSearchUsers(searchQuery)
 
@@ -167,16 +167,12 @@ export function ProfilePage() {
         </div>
 
         <div className="w-full">
-          <p className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Default Gym</p>
-          <GymInput
-            value={defaultGym}
-            onChange={setDefaultGym}
-            placeholder="Your home gym"
-            onCommit={() => {
-              const trimmed = defaultGym.trim()
-              if (trimmed !== (profile?.default_gym ?? '')) {
-                updateProfile.mutate({ default_gym: trimmed === '' ? null : trimmed })
-              }
+          <p className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Default Gyms</p>
+          <DefaultGymsEditor
+            value={gyms}
+            onChange={next => {
+              setGyms(next)
+              updateProfile.mutate({ default_gyms: next })
             }}
           />
         </div>

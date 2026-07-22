@@ -31,11 +31,13 @@ export function NewSessionPage() {
   })
   const { data: profile } = useProfile()
 
+  const primaryGym = profile?.default_gyms?.[0]
+
   useEffect(() => {
-    if (profile?.default_gym && !getValues('location')) {
-      setValue('location', profile.default_gym)
+    if (primaryGym && !getValues('location')) {
+      setValue('location', primaryGym)
     }
-  }, [profile?.default_gym, getValues, setValue])
+  }, [primaryGym, getValues, setValue])
 
   const onSubmit = (values: FormValues) => {
     createSession.mutate(
