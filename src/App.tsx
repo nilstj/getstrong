@@ -18,6 +18,8 @@ import { AdminPage } from './pages/AdminPage'
 import { CrewPage } from './pages/CrewPage'
 import { CrewsPage } from './pages/CrewsPage'
 import { FriendSessionPage } from './pages/FriendSessionPage'
+import { OnboardingPage } from './pages/OnboardingPage'
+import { OnboardingGate } from './components/OnboardingGate'
 
 export default function App() {
   return (
@@ -28,20 +30,23 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/crews" element={<CrewsPage />} />
-              <Route path="/sessions" element={<SessionsPage />} />
-              <Route path="/sessions/new" element={<NewSessionPage />} />
-              <Route path="/sessions/:id" element={<SessionDetailPage />} />
-              <Route path="/sessions/:id/edit" element={<EditSessionPage />} />
-              <Route path="/friends/sessions/:sessionId" element={<FriendSessionPage />} />
-              <Route path="/challenges" element={<ChallengesPage />} />
-              <Route path="/analysis" element={<AnalysisPage />} />
-              <Route path="/help" element={<HelpPage />} />
-              <Route path="/gym-problems/:id" element={<CrewPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/onboarding" element={<OnboardingPage />} />
+              <Route element={<OnboardingGate />}>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/crews" element={<CrewsPage />} />
+                <Route path="/sessions" element={<SessionsPage />} />
+                <Route path="/sessions/new" element={<NewSessionPage />} />
+                <Route path="/sessions/:id" element={<SessionDetailPage />} />
+                <Route path="/sessions/:id/edit" element={<EditSessionPage />} />
+                <Route path="/friends/sessions/:sessionId" element={<FriendSessionPage />} />
+                <Route path="/challenges" element={<ChallengesPage />} />
+                <Route path="/analysis" element={<AnalysisPage />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/gym-problems/:id" element={<CrewPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+              </Route>
             </Route>
           </Routes>
         </BrowserRouter>
