@@ -11,14 +11,27 @@ export function useDiscoverBoulders() {
   return useQuery({
     queryKey: ['discover_boulders', user?.id],
     queryFn: async (): Promise<{ yours: BoulderSummary[]; discover: BoulderSummary[]; archived: BoulderSummary[] }> => {
-      // 1. My gyms + the boulders I've already claimed onto.
+      // 1. My gyms + the boulders I've already claimed onto. "My gyms" is the
+      //    union of my default gyms (so a new user who's only set a home gym
+      //    still sees its shared boulders) and every gym I've logged a problem at.
+      const { data: prof, error: e0 } = await supabase
+        .from('profiles')
+        .select('default_gyms')
+        .eq('id', user!.id)
+        .maybeSingle()
+      if (e0) throw e0
+      const defaultGyms = ((prof?.default_gyms ?? []) as string[]).filter(g => !!g)
+
       const { data: mine, error: e1 } = await supabase
         .from('problems')
         .select('gym, gym_problem_id')
         .eq('user_id', user!.id)
       if (e1) throw e1
       const myRows = (mine ?? []) as { gym: string | null; gym_problem_id: string | null }[]
-      const myGyms = Array.from(new Set(myRows.map(r => r.gym).filter((g): g is string => !!g)))
+      const myGyms = Array.from(new Set([
+        ...defaultGyms,
+        ...myRows.map(r => r.gym).filter((g): g is string => !!g),
+      ]))
       const myClaimedIds = new Set(
         myRows.map(r => r.gym_problem_id).filter((id): id is string => !!id),
       )
