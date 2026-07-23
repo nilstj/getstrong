@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trophy, UserPlus, Check } from 'lucide-react'
+import { ArrowLeft, Trophy, UserPlus, Check, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile } from '../hooks/useProfile'
@@ -9,11 +9,13 @@ import {
   useCrewGroup, useCrewMembers, useCrewPendingInvites, useCrewLeaderboard,
   useCrewActivityFeed, useInviteToCrew, useLeaveCrew, useDeleteCrew,
   useCrewBattles, useCrewBattleScore, useRespondCrewBattle, type CrewBattle,
+  useCrewMessages, usePostCrewMessage, useDeleteCrewMessage,
 } from '../hooks/useCrews'
 import { SetterBadge } from '../components/SetterBadge'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { BottomSheet } from '../components/BottomSheet'
 import { cycleMonth } from '../utils/leaderboard'
+import { weeklyStreak } from '../utils/crewStreak'
 
 export function CrewGroupPage() {
   const { crewId = '' } = useParams<{ crewId: string }>()
@@ -40,6 +42,7 @@ export function CrewGroupPage() {
   if (!crew) return <div className="p-5 text-sm text-gray-400">This crew no longer exists.</div>
 
   const monthLabel = new Date(`${month}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })
+  const streak = weeklyStreak(feed.map(f => f.date), new Date())
 
   const leave = () => {
     leaveCrew.mutate(crewId, {
@@ -63,7 +66,7 @@ export function CrewGroupPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate leading-tight">{crew.name}</h1>
           <p className="text-xs text-gray-500 truncate">
-            {members.length} {members.length === 1 ? 'member' : 'members'}{crew.home_gym ? ` · ${crew.home_gym}` : ''}
+            {members.length} {members.length === 1 ? 'member' : 'members'}{crew.home_gym ? ` · ${crew.home_gym}` : ''}{streak > 0 ? ` · 🔥 ${streak}-week streak` : ''}
           </p>
         </div>
         {amMember && (
@@ -145,6 +148,9 @@ export function CrewGroupPage() {
         </div>
       )}
 
+      {/* Banter */}
+      {amMember && <CrewBanter crewId={crewId} />}
+
       {/* Leave / delete */}
       {amMember && (
         <div className="pt-2 flex justify-center">
@@ -180,6 +186,52 @@ export function CrewGroupPage() {
         crewId={crewId}
         excludeIds={new Set([...memberIds, ...pending.map(p => p.user_id)])}
       />
+    </div>
+  )
+}
+
+function CrewBanter({ crewId }: { crewId: string }) {
+  const { user } = useAuth()
+  const { data: messages = [] } = useCrewMessages(crewId)
+  const post = usePostCrewMessage()
+  const del = useDeleteCrewMessage()
+  const [text, setText] = useState('')
+  const send = () => {
+    const body = text.trim()
+    if (!body) return
+    post.mutate({ crewId, body }, { onSuccess: () => setText(''), onError: () => toast.error('Failed to send') })
+  }
+  return (
+    <div>
+      <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Banter</h2>
+      <div className="bg-gray-50 rounded-2xl p-3 space-y-2.5">
+        {messages.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-2">No banter yet. Say something. 🔥</p>
+        ) : messages.map(m => (
+          <div key={m.id} className="flex items-start gap-2">
+            <span className="w-6 h-6 rounded-full bg-sage-100 grid place-items-center text-[10px] font-semibold text-sage-700 overflow-hidden flex-shrink-0 mt-0.5">
+              {m.avatar_url ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" /> : (m.username ?? '?').slice(0, 1).toUpperCase()}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm leading-tight"><span className="font-semibold">{m.username ?? 'Someone'}</span> <SetterBadge userId={m.user_id} className="align-text-bottom" /></p>
+              <p className="text-sm text-gray-700 break-words">{m.body}</p>
+            </div>
+            {m.user_id === user?.id && (
+              <button onClick={() => del.mutate({ id: m.id, crewId }, { onError: () => toast.error('Failed') })} aria-label="Delete message" className="text-gray-300 hover:text-red-500 mt-0.5"><Trash2 size={13} /></button>
+            )}
+          </div>
+        ))}
+        <div className="flex gap-1.5 pt-1">
+          <input
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+            placeholder="Say something…"
+            className="flex-1 text-sm border rounded-lg px-2.5 py-1.5"
+          />
+          <button onClick={send} disabled={!text.trim() || post.isPending} className="text-sm px-3 py-1.5 bg-sage-700 text-white rounded-lg font-medium disabled:opacity-50">Send</button>
+        </div>
+      </div>
     </div>
   )
 }

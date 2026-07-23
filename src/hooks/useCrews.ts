@@ -372,6 +372,57 @@ export function useRespondCrewBattle() {
   })
 }
 
+// ── Phase 4: crew banter ─────────────────────────────────────────────────────
+export interface CrewMessage {
+  id: string
+  user_id: string
+  body: string
+  created_at: string
+  username: string | null
+  avatar_url: string | null
+}
+
+export function useCrewMessages(crewId: string) {
+  return useQuery({
+    queryKey: ['crew_messages', crewId],
+    enabled: !!crewId,
+    queryFn: async (): Promise<CrewMessage[]> => {
+      const { data, error } = await supabase
+        .from('crew_messages')
+        .select('id, user_id, body, created_at')
+        .eq('crew_id', crewId)
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      const rows = (data ?? []) as { id: string; user_id: string; body: string; created_at: string }[]
+      const byId = await profilesByIds(Array.from(new Set(rows.map(r => r.user_id))))
+      return rows.map(r => ({ ...r, username: byId.get(r.user_id)?.username ?? null, avatar_url: byId.get(r.user_id)?.avatar_url ?? null }))
+    },
+  })
+}
+
+export function usePostCrewMessage() {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  return useMutation({
+    mutationFn: async (v: { crewId: string; body: string }) => {
+      const { error } = await supabase.from('crew_messages').insert({ crew_id: v.crewId, user_id: user!.id, body: v.body })
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['crew_messages', v.crewId] }),
+  })
+}
+
+export function useDeleteCrewMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { id: string; crewId: string }) => {
+      const { error } = await supabase.from('crew_messages').delete().eq('id', v.id)
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['crew_messages', v.crewId] }),
+  })
+}
+
 // ── Mutations (all via SECURITY DEFINER RPCs) ────────────────────────────────
 export function useCreateCrew() {
   const qc = useQueryClient()
