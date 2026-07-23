@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, CalendarDays, Plus, Users, User } from 'lucide-react'
+import { Home, CalendarDays, Plus, Users, User, TrainFront } from 'lucide-react'
 import { useReceivedFollowRequests } from '../hooks/useFollows'
 
 export function BottomNav() {
@@ -44,6 +44,15 @@ export function BottomNav() {
         {({ isActive }) => (
           <>
             <Users size={22} strokeWidth={isActive ? 2.5 : 1.75} />
+            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Crews</span>
+          </>
+        )}
+      </NavLink>
+
+      <NavLink to="/sendtrains" className={linkClass}>
+        {({ isActive }) => (
+          <>
+            <TrainFront size={22} strokeWidth={isActive ? 2.5 : 1.75} />
             <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Sendtrains</span>
           </>
         )}
