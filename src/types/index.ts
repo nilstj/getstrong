@@ -1,5 +1,4 @@
 export type GradeSystem = 'v_scale' | 'font' | 'color'
-export type ExerciseType = 'reps' | 'time'
 
 export type SessionIntensity = 'boring' | 'sunshine' | 'hard' | 'really_hard' | 'to_the_max'
 
@@ -48,20 +47,6 @@ export interface Problem {
   gym_problem_id: string | null
 }
 
-export interface Exercise {
-  id: string
-  session_id: string
-  user_id: string
-  name: string
-  type: ExerciseType
-  sets: number | null
-  reps: number | null
-  duration_seconds: number | null
-  weight_kg: number | null
-  notes: string | null
-  created_at: string
-}
-
 export interface GradeMapping {
   v_scale: string
   font_equivalent: string
@@ -86,40 +71,6 @@ export interface ChallengeAttempt {
   completed: boolean
   notes: string | null
   video_url: string | null
-  created_at: string
-}
-
-export interface StrengthTest {
-  id: string
-  name: string
-  description: string | null
-  unit: string
-  created_by: string
-  created_at: string
-}
-
-export interface TestResult {
-  id: string
-  test_id: string
-  user_id: string
-  value: number
-  session_id: string | null
-  created_at: string
-}
-
-export interface ExerciseTemplate {
-  id: string
-  name: string
-  type: ExerciseType
-  description: string | null
-  test_id: string | null
-  video_url: string | null
-  device: string | null
-  preset_sets: number | null
-  preset_reps: number | null
-  preset_pause_seconds: number | null
-  preset_rest_seconds: number | null
-  created_by: string
   created_at: string
 }
 

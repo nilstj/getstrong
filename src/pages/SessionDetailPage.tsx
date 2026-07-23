@@ -4,17 +4,13 @@ import { Pencil, Trash2, Play } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSession, useDeleteSession, useUpdateSession } from '../hooks/useSessions'
 import { useSessionProblems, useAddProblem, useUpdateProblem, useDeleteProblem } from '../hooks/useProblems'
-import { useSessionExercises, useAddExercise, useUpdateExercise, useDeleteExercise } from '../hooks/useExercises'
 import { useSessionStore } from '../store/sessionStore'
 import { BottomSheet } from '../components/BottomSheet'
 import { FAB } from '../components/FAB'
 import { ProblemForm } from '../components/ProblemForm'
-import { ExerciseForm } from '../components/ExerciseForm'
 import { useForm } from 'react-hook-form'
 import { useSessionChallengeAttempts, useAddChallengeAttempt, useUpdateChallengeAttempt, useChallenges, useDeleteChallengeAttempt } from '../hooks/useChallenges'
 import { useProblemTags } from '../hooks/useProblemTags'
-import { useExerciseTemplates } from '../hooks/useExerciseTemplates'
-import { useSessionTestResults, useLogTestResult, useDeleteTestResult, useStrengthTests } from '../hooks/useStrengthTests'
 import { useProfile } from '../hooks/useProfile'
 import { useSessionProblemTags } from '../hooks/useProblemTags'
 import { INTENSITY_OPTIONS } from '../types'
@@ -23,10 +19,9 @@ import { CalendarClock } from 'lucide-react'
 import {
   useSessionPartners, useSetSessionPartners,
   useProblemPartners, useSetProblemPartners,
-  useExercisePartners, useSetExercisePartners,
 } from '../hooks/usePartners'
 import { PartnerPicker, PartnerAvatars } from '../components/PartnerPicker'
-import type { Problem, Exercise, Challenge, ChallengeAttempt, ExerciseTemplate } from '../types'
+import type { Problem, Challenge, ChallengeAttempt } from '../types'
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { VideoBadge } from '../components/VideoBadge'
@@ -42,7 +37,7 @@ import { ImageLightbox } from '../components/ImageLightbox'
 import { BoardThumb } from '../components/BoardThumb'
 import { GymThumb } from '../components/GymThumb'
 
-type SheetTab = 'problem' | 'exercise' | 'test' | 'challenge'
+type SheetTab = 'problem' | 'challenge'
 
 function SendBadge({ sent, attempts }: { sent: boolean; attempts: number }) {
   if (!sent) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-200 text-gray-600">Project</span>
@@ -64,7 +59,6 @@ export function SessionDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null)
   const [editingAttempt, setEditingAttempt] = useState<ChallengeAttempt | null>(null)
   const [problemMode, setProblemMode] = useState<'new' | 'from-gym'>('new')
   const [pickedBoulder, setPickedBoulder] = useState<GymProblem | null>(null)
@@ -75,24 +69,16 @@ export function SessionDetailPage() {
   const { data: commentCounts = {} } = useProblemCommentCounts(problemIds)
   const [openCommentProblemId, setOpenCommentProblemId] = useState<string | null>(null)
   const [linkProblem, setLinkProblem] = useState<Problem | null>(null)
-  const { data: exercises = [] } = useSessionExercises(id!)
   const addProblem = useAddProblem()
   const updateProblem = useUpdateProblem()
-  const addExercise = useAddExercise()
-  const updateExercise = useUpdateExercise()
   const deleteProblem = useDeleteProblem()
-  const deleteExercise = useDeleteExercise()
   const deleteSession = useDeleteSession()
   const addChallengeAttempt = useAddChallengeAttempt()
   const updateChallengeAttempt = useUpdateChallengeAttempt()
   const deleteChallengeAttempt = useDeleteChallengeAttempt()
   const { data: challengeAttempts = [] } = useSessionChallengeAttempts(id!)
   const { data: challenges = [] } = useChallenges()
-  const { data: testResults = [] } = useSessionTestResults(id!)
-  const logTestResult = useLogTestResult()
-  const deleteTestResult = useDeleteTestResult()
   const { data: myProfile } = useProfile()
-  const { data: templates = [] } = useExerciseTemplates()
   const { data: problemTagsMap = {} } = useSessionProblemTags(problems.map(p => p.id))
   const { data: sessionPartners = [] } = useSessionPartners(id!)
   const setSessionPartners = useSetSessionPartners(id!)
@@ -140,16 +126,6 @@ export function SessionDetailPage() {
           setPickedBoulder(null)
           toast.success('Problem added')
         },
-        onError: () => toast.error('Failed to save. Try again.'),
-      },
-    )
-  }
-
-  const handleAddExercise = (values: Omit<Exercise, 'id' | 'session_id' | 'user_id' | 'created_at'>) => {
-    addExercise.mutate(
-      { ...values, session_id: id! },
-      {
-        onSuccess: () => { setSheetOpen(false); toast.success('Exercise added') },
         onError: () => toast.error('Failed to save. Try again.'),
       },
     )
@@ -336,85 +312,6 @@ export function SessionDetailPage() {
         </div>
       )}
 
-      {exercises.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold mb-2">Exercises ({exercises.length})</h2>
-          <div className="space-y-2">
-            {exercises.map(exercise => {
-              const template = templates.find(t => t.name === exercise.name)
-              return (
-              <div key={exercise.id} className="bg-gray-50 rounded-2xl p-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium">{exercise.name}</p>
-                    {template?.video_url && (
-                      <a
-                        href={template.video_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-sage-800 font-medium mt-0.5 inline-block"
-                      >
-                        ▶ Video
-                      </a>
-                    )}
-                    <p className="text-gray-400 text-sm">
-                      {exercise.sets != null && `${exercise.sets} sets × `}
-                      {exercise.type === 'reps'
-                        ? `${exercise.reps} reps`
-                        : `${exercise.duration_seconds}s`}
-                      {exercise.weight_kg != null && ` · ${exercise.weight_kg}kg`}
-                    </p>
-                    {exercise.notes && <p className="text-gray-500 text-sm mt-0.5">{exercise.notes}</p>}
-                    <ExercisePartnerRow exerciseId={exercise.id} />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setEditingExercise(exercise)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                    >
-                      <Pencil size={14} strokeWidth={1.75} />
-                    </button>
-                    <button
-                      onClick={() => deleteExercise.mutate({ id: exercise.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 size={14} strokeWidth={1.75} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {testResults.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold mb-2">Tests ({testResults.length})</h2>
-          <div className="space-y-2">
-            {testResults.map(result => (
-              <div key={result.id} className="bg-sage-50 rounded-xl p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900">{result.strength_tests.name}</p>
-                    <p className="text-sm text-sage-700 font-semibold mt-0.5">
-                      {result.value} {result.strength_tests.unit}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => deleteTestResult.mutate({ id: result.id, sessionId: id! }, { onError: () => toast.error('Failed to delete') })}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 size={16} strokeWidth={1.75} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {challengeAttempts.length > 0 && (
         <div>
           <h2 className="text-base font-semibold mb-2">Challenges ({challengeAttempts.length})</h2>
@@ -450,9 +347,9 @@ export function SessionDetailPage() {
         </div>
       )}
 
-      {problems.length === 0 && exercises.length === 0 && challengeAttempts.length === 0 && (
+      {problems.length === 0 && challengeAttempts.length === 0 && (
         <p className="text-gray-400 text-sm text-center pt-12">
-          Nothing logged yet. Tap + to add a problem or exercise.
+          Nothing logged yet. Tap + to add a problem.
         </p>
       )}
 
@@ -488,7 +385,7 @@ export function SessionDetailPage() {
         )}
       </div>
 
-      <FAB onClick={() => setSheetOpen(true)} label="Add problem or exercise" />
+      <FAB onClick={() => setSheetOpen(true)} label="Add problem" />
 
       <BottomSheet
         open={sheetOpen}
@@ -496,7 +393,7 @@ export function SessionDetailPage() {
         title="Add to Session"
       >
         <div className="flex rounded-lg overflow-hidden border mb-4 text-xs">
-          {(['problem', 'exercise', 'test', 'challenge'] as const).map(tab => (
+          {(['problem', 'challenge'] as const).map(tab => (
             <button
               key={tab}
               type="button"
@@ -557,17 +454,6 @@ export function SessionDetailPage() {
               />
             )}
           </div>
-        ) : sheetTab === 'exercise' ? (
-          <ExerciseSelector onSubmit={handleAddExercise} isSubmitting={addExercise.isPending} />
-        ) : sheetTab === 'test' ? (
-          <TestLogForm
-            sessionId={id!}
-            onSubmit={(values) => logTestResult.mutate(values, {
-              onSuccess: () => { setSheetOpen(false); toast.success('Test logged') },
-              onError: () => toast.error('Failed to log test'),
-            })}
-            isSubmitting={logTestResult.isPending}
-          />
         ) : (
           <ChallengeAttemptForm
             challenges={challenges}
@@ -613,20 +499,6 @@ export function SessionDetailPage() {
           )}
           isSaving={updateProblem.isPending}
         />
-      )}
-
-      {/* Edit exercise */}
-      {editingExercise && (
-        <BottomSheet open onClose={() => setEditingExercise(null)} title="Edit Exercise">
-          <ExerciseForm
-            existing={editingExercise}
-            onSubmit={vals => updateExercise.mutate(
-              { id: editingExercise.id, sessionId: id!, ...vals },
-              { onSuccess: () => { setEditingExercise(null); toast.success('Exercise updated') }, onError: () => toast.error('Failed to update') },
-            )}
-            isSubmitting={updateExercise.isPending}
-          />
-        </BottomSheet>
       )}
 
       {/* Edit challenge attempt */}
@@ -755,190 +627,6 @@ function ProblemPartnerRow({ problemId }: { problemId: string }) {
         isSaving={setPartners.isPending}
         label={partners.length > 0 ? 'Edit' : '+ friend'}
       />
-    </div>
-  )
-}
-
-function ExercisePartnerRow({ exerciseId }: { exerciseId: string }) {
-  const { data: partners = [] } = useExercisePartners(exerciseId)
-  const setPartners = useSetExercisePartners(exerciseId)
-  return (
-    <div className="flex items-center gap-2 mt-1.5">
-      <PartnerAvatars partnerIds={partners} size="xs" />
-      <PartnerPicker
-        currentPartnerIds={partners}
-        onSave={ids => setPartners.mutate(ids)}
-        isSaving={setPartners.isPending}
-        label={partners.length > 0 ? 'Edit' : '+ friend'}
-      />
-    </div>
-  )
-}
-
-function TestLogForm({
-  sessionId,
-  onSubmit,
-  isSubmitting,
-}: {
-  sessionId: string
-  onSubmit: (values: { test_id: string; value: number; session_id: string }) => void
-  isSubmitting: boolean
-}) {
-  const { data: tests = [] } = useStrengthTests()
-  const [testId, setTestId] = useState('')
-  const [value, setValue] = useState('')
-
-  const selectedTest = tests.find(t => t.id === testId)
-
-  if (tests.length === 0) {
-    return <p className="text-sm text-gray-400 text-center py-8">No tests defined yet. Ask your admin to add some.</p>
-  }
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Test</label>
-        <select
-          value={testId}
-          onChange={e => setTestId(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2.5"
-        >
-          <option value="">Select a test</option>
-          {tests.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
-      </div>
-      {selectedTest && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Result ({selectedTest.unit})
-          </label>
-          {selectedTest.description && (
-            <p className="text-xs text-gray-400 mb-1">{selectedTest.description}</p>
-          )}
-          <input
-            type="number"
-            step="0.5"
-            min="0"
-            value={value}
-            onChange={e => setValue(e.target.value)}
-            placeholder={`Enter value in ${selectedTest.unit}`}
-            className="w-full border rounded-lg px-3 py-2.5"
-          />
-        </div>
-      )}
-      <button
-        type="button"
-        disabled={!testId || !value || isSubmitting}
-        onClick={() => onSubmit({ test_id: testId, value: parseFloat(value), session_id: sessionId })}
-        className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50"
-      >
-        {isSubmitting ? 'Saving...' : 'Log Test Result'}
-      </button>
-    </div>
-  )
-}
-
-function ExerciseSelector({
-  onSubmit,
-  isSubmitting,
-}: {
-  onSubmit: (values: Omit<Exercise, 'id' | 'session_id' | 'user_id' | 'created_at'>) => void
-  isSubmitting: boolean
-}) {
-  const { data: templates = [] } = useExerciseTemplates()
-  const [picked, setPicked] = useState<ExerciseTemplate | null | 'custom'>(null)
-
-  if (picked !== null) {
-    const initialName = picked === 'custom' ? '' : picked.name
-    const initialType = picked === 'custom' ? 'reps' : picked.type
-    const initialTestId = picked === 'custom' ? null : picked.test_id
-    const initialSets = picked === 'custom' ? undefined : picked.preset_sets ?? undefined
-    const initialReps = picked === 'custom' ? undefined : picked.preset_reps ?? undefined
-    const videoUrl = picked === 'custom' ? undefined : picked.video_url ?? undefined
-    return (
-      <div>
-        <button
-          type="button"
-          onClick={() => setPicked(null)}
-          className="text-sm text-sage-800 font-medium mb-4 flex items-center gap-1"
-        >
-          ← Back
-        </button>
-        <ExerciseForm
-          key={picked === 'custom' ? 'custom' : picked.id}
-          initialName={initialName}
-          initialType={initialType}
-          initialTestId={initialTestId}
-          initialSets={initialSets}
-          initialReps={initialReps}
-          videoUrl={videoUrl}
-          onSubmit={onSubmit}
-          isSubmitting={isSubmitting}
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-3">
-      {templates.length > 0 && (
-        <div>
-          <p className="text-sm font-medium text-gray-700 mb-2">From Library</p>
-          <div className="space-y-2">
-            {templates.map(t => {
-              const presetParts = [
-                t.preset_sets ? `${t.preset_sets} sets` : null,
-                t.preset_reps && t.type === 'reps' ? `${t.preset_reps} reps` : null,
-                t.preset_pause_seconds ? `${t.preset_pause_seconds}s pause` : null,
-                t.preset_rest_seconds ? `${t.preset_rest_seconds}s rest` : null,
-              ].filter(Boolean)
-
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => setPicked(t)}
-                  className="w-full text-left bg-gray-50 border rounded-xl px-4 py-3 hover:border-gray-300 transition-colors cursor-pointer"
-                >
-                  <p className="font-medium text-gray-900">{t.name}</p>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
-                    <span className="text-xs text-gray-400 capitalize">{t.type}</span>
-                    {t.description && <span className="text-xs text-gray-400">· {t.description}</span>}
-                    {t.device && (
-                      <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{t.device}</span>
-                    )}
-                    {t.test_id && (
-                      <span className="text-xs bg-sage-50 text-sage-600 px-1.5 py-0.5 rounded-full">% test</span>
-                    )}
-                  </div>
-                  {presetParts.length > 0 && (
-                    <p className="text-xs text-gray-400 mt-1">{presetParts.join(' · ')}</p>
-                  )}
-                  {t.video_url && (
-                    <a
-                      href={t.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="text-xs text-sage-800 font-medium mt-1 inline-block"
-                    >
-                      ▶ Video
-                    </a>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={() => setPicked('custom')}
-        className="w-full border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm text-gray-500 hover:border-gray-400 hover:text-sage-800 transition-colors"
-      >
-        + Custom exercise
-      </button>
     </div>
   )
 }

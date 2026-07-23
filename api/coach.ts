@@ -9,13 +9,9 @@ interface Problem {
   session_id: string; sent: boolean; board: string | null
   grade_value_font: string | null; grade_value: string | null
 }
-interface Exercise {
-  session_id: string; name: string; sets: number | null
-  reps: number | null; duration_seconds: number | null; weight_kg: number | null
-}
 interface TagStat { name: string; category: string; count: number }
 interface Payload {
-  sessions: Session[]; problems: Problem[]; exercises: Exercise[]
+  sessions: Session[]; problems: Problem[]
   tagStats: TagStat[]; gradeScale: 'font' | 'v_scale'
   promptTemplate?: string
 }
@@ -26,20 +22,19 @@ const DEFAULT_INSTRUCTION = `You are an expert climbing coach. Analyze this athl
 3-5 bullet points flagging patterns (grade trends, session frequency, strengths, weaknesses, recovery).
 
 ## Training Recommendations
-What the athlete should prioritize over the next 2-4 weeks. Reference their weak move types, grade targets, and exercise gaps.
+What the athlete should prioritize over the next 2-4 weeks. Reference their weak move types and grade targets.
 
 ## Next Session Plan
 A concrete session: warm-up, main exercises (sets/reps/load), problems to attempt (grade range per board), cool-down. Be specific.`
 
 function buildPrompt(payload: Payload): string {
-  const { sessions, problems, exercises, tagStats, gradeScale } = payload
+  const { sessions, problems, tagStats, gradeScale } = payload
   const instruction = payload.promptTemplate ?? DEFAULT_INSTRUCTION
 
   const cutoffMs = Date.now() - 90 * 24 * 60 * 60 * 1000
   const recentSessions = sessions.filter(s => new Date(s.date).getTime() >= cutoffMs)
   const sessionIdSet = new Set(recentSessions.map(s => s.id))
   const recentProblems = problems.filter(p => sessionIdSet.has(p.session_id))
-  const recentExercises = exercises.filter(e => sessionIdSet.has(e.session_id))
 
   const sentProblems = recentProblems.filter(p => p.sent)
   const sendRate = recentProblems.length > 0
@@ -68,12 +63,6 @@ function buildPrompt(payload: Payload): string {
   const intensityLine = Object.entries(intensityCounts)
     .map(([k, v]) => `${k}: ${v}`).join(', ') || 'not recorded'
 
-  const exerciseLines = recentExercises.slice(0, 12)
-    .map(e => {
-      const vol = e.reps != null ? `${e.sets ?? '?'}×${e.reps}` : `${e.sets ?? '?'}×${e.duration_seconds ?? '?'}s`
-      return `  - ${e.name}: ${vol}${e.weight_kg ? ` @ ${e.weight_kg}kg` : ''}`
-    }).join('\n') || '  (none)'
-
   const strongTags = tagStats.slice(0, 6).map(t => t.name).join(', ') || 'none recorded'
   const weakTags = [...tagStats].reverse().slice(0, 6).map(t => t.name).join(', ') || 'none recorded'
 
@@ -87,9 +76,6 @@ Sessions: ${recentSessions.length} sessions | intensity: ${intensityLine}
 Problems: ${recentProblems.length} total, ${sentProblems.length} sent (${sendRate}% send rate)
 Sends by board/context:
 ${boardLines}
-
-Exercises:
-${exerciseLines}
 
 Climbing DNA:
   Most trained moves: ${strongTags}

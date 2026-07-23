@@ -1,11 +1,10 @@
 import { useState, useCallback } from 'react'
-import type { Session, Problem, Exercise } from '../types'
+import type { Session, Problem } from '../types'
 import type { TagStat } from './useProblemTags'
 
 export interface CoachPayload {
   sessions: Session[]
   problems: Problem[]
-  exercises: Exercise[]
   tagStats: TagStat[]
   gradeScale: 'font' | 'v_scale'
   promptTemplate?: string

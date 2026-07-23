@@ -81,35 +81,35 @@ describe('summarizeFriendSessions', () => {
   it('uses the latest activity time as the session date', () => {
     const out = summarizeFriendSessions({
       problems: [row({ created_at: '2026-01-01T10:00:00Z' })],
-      exercises: [{ user_id: 'u1', session_id: 's1', created_at: '2026-01-01T13:00:00Z' }],
+      challenges: [{ user_id: 'u1', session_id: 's1', created_at: '2026-01-01T13:00:00Z' }],
     })
     expect(out[0].date).toBe('2026-01-01T13:00:00Z')
   })
 
-  it('counts exercises and challenges per session', () => {
+  it('counts challenges per session', () => {
     const out = summarizeFriendSessions({
       problems: [row({ session_id: 's1' })],
-      exercises: [
+      challenges: [
         { user_id: 'u1', session_id: 's1', created_at: '2026-01-01T10:00:00Z' },
-        { user_id: 'u1', session_id: 's1', created_at: '2026-01-01T10:05:00Z' },
+        { user_id: 'u1', session_id: 's1', created_at: '2026-01-01T10:10:00Z' },
       ],
-      challenges: [{ user_id: 'u1', session_id: 's1', created_at: '2026-01-01T10:10:00Z' }],
     })
-    expect(out[0].exerciseCount).toBe(2)
-    expect(out[0].challengeCount).toBe(1)
+    expect(out[0].challengeCount).toBe(2)
   })
 
-  it('includes sessions that have only exercises or challenges (no problems)', () => {
+  it('includes sessions that have only challenges (no problems)', () => {
     const out = summarizeFriendSessions({
       problems: [],
-      exercises: [{ user_id: 'u1', session_id: 'gym-strength', created_at: '2026-01-02T10:00:00Z' }],
-      challenges: [{ user_id: 'u1', session_id: 'challenge-day', created_at: '2026-01-01T10:00:00Z' }],
+      challenges: [
+        { user_id: 'u1', session_id: 'challenge-day-2', created_at: '2026-01-02T10:00:00Z' },
+        { user_id: 'u1', session_id: 'challenge-day-1', created_at: '2026-01-01T10:00:00Z' },
+      ],
     })
-    expect(out.map(s => s.sessionId)).toEqual(['gym-strength', 'challenge-day'])
-    const ex = out.find(s => s.sessionId === 'gym-strength')!
-    expect(ex.problemCount).toBe(0)
-    expect(ex.exerciseCount).toBe(1)
-    expect(ex.gym).toBeNull()
+    expect(out.map(s => s.sessionId)).toEqual(['challenge-day-2', 'challenge-day-1'])
+    const ch = out.find(s => s.sessionId === 'challenge-day-2')!
+    expect(ch.problemCount).toBe(0)
+    expect(ch.challengeCount).toBe(1)
+    expect(ch.gym).toBeNull()
   })
 
   it('sorts sessions newest first', () => {
