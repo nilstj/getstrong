@@ -250,15 +250,15 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
                     title={c.name}
                     aria-label={c.name}
                     aria-pressed={selected}
-                    className={`w-8 h-8 rounded-full border border-black/10 transition ${selected ? 'ring-2 ring-sage-600 ring-offset-2' : ''}`}
-                    style={{ backgroundColor: c.hex }}
-                  />
+                    className={`grid place-items-center rounded-lg p-1 transition ${selected ? 'ring-2 ring-sage-600 bg-sage-50' : 'hover:bg-gray-100'}`}
+                  >
+                    <HoldGraphic color={c.name} size={30} />
+                  </button>
                 )
               })}
             </div>
             {holdColor && (
-              <div className="mt-2.5 flex items-center gap-2">
-                <HoldGraphic color={holdColor} size={34} />
+              <div className="mt-2 flex items-center gap-2">
                 <span className="text-sm text-gray-600">{holdColor} hold</span>
                 <button type="button" onClick={() => setValue('hold_color', '')} className="text-xs text-gray-400 hover:text-gray-600 ml-1">Clear</button>
               </div>
