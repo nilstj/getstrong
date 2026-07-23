@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil } from 'lucide-react'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
+import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -36,6 +36,7 @@ import { daysUntil } from '../utils/gymProblems'
 import { cycleMonth } from '../utils/leaderboard'
 import { crewTitles } from '../utils/crewTitles'
 import { boulderToPrefill } from '../utils/boulderPrefill'
+import type { BoulderNavState } from '../utils/boulderNav'
 import { todayDateString } from '../utils/dates'
 import { useAuth } from '../providers/AuthProvider'
 import { Chip, HoldDot } from '../components/Chip'
@@ -76,6 +77,13 @@ export function CrewPage() {
   const { id = '' } = useParams<{ id: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
+  // Prev/next through the exact list the user opened this boulder from (passed
+  // as router state). Absent on refresh/deep-link/notification — then hidden.
+  const navState = (useLocation().state ?? null) as BoulderNavState | null
+  const siblingIds = navState?.boulderIds ?? []
+  const siblingIndex = siblingIds.indexOf(id)
+  const hasSiblings = siblingIndex !== -1 && siblingIds.length > 1
+  const goToSibling = (i: number) => navigate(`/gym-problems/${siblingIds[i]}`, { state: navState })
   const { data: boulder, isLoading: loadingBoulder } = useGymProblem(id)
   const { data: crew, isLoading: loadingCrew } = useCrew(id)
   const month = cycleMonth(new Date())
@@ -237,6 +245,27 @@ export function CrewPage() {
 
   return (
     <div className="pb-32">
+      {hasSiblings && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2 lg:max-w-5xl lg:mx-auto lg:px-4">
+          <button
+            type="button"
+            disabled={siblingIndex <= 0}
+            onClick={() => goToSibling(siblingIndex - 1)}
+            className="inline-flex items-center gap-0.5 text-sm font-medium text-sage-700 disabled:text-gray-300"
+          >
+            <ChevronLeft size={18} /> Prev
+          </button>
+          <span className="text-xs font-medium text-gray-400 tabular-nums">{siblingIndex + 1} / {siblingIds.length}</span>
+          <button
+            type="button"
+            disabled={siblingIndex >= siblingIds.length - 1}
+            onClick={() => goToSibling(siblingIndex + 1)}
+            className="inline-flex items-center gap-0.5 text-sm font-medium text-sage-700 disabled:text-gray-300"
+          >
+            Next <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
       <div className="lg:flex lg:items-start lg:gap-6 lg:max-w-5xl lg:mx-auto lg:px-4 lg:pt-4">
         {/* Media (photo-first) */}
         <div className="lg:w-[42%] lg:flex-none lg:sticky lg:top-4">
