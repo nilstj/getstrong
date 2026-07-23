@@ -318,6 +318,7 @@ export function CrewPage() {
         board: null,
         board_angle: null,
         crag: null,
+        hold_color: null,
         notes: null,
       },
       {

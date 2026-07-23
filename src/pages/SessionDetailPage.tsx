@@ -211,7 +211,7 @@ export function SessionDetailPage() {
             {problems.map(problem => (
               <div key={problem.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-start gap-2">
-                {(problem.image_url || problem.board || problem.gym || problem.color || problem.beta_video_url) && (
+                {(problem.image_url || problem.board || problem.gym || problem.hold_color || problem.beta_video_url) && (
                   <div className="relative flex-shrink-0">
                     {problem.image_url ? (
                       <button type="button" onClick={() => setLightboxUrl(problem.image_url!)}>
@@ -221,9 +221,9 @@ export function SessionDetailPage() {
                       <BoardThumb board={problem.board} angle={problem.board_angle} className="w-16 h-16 rounded-xl" />
                     ) : problem.gym ? (
                       <GymThumb gym={problem.gym} compact className="w-16 h-16 rounded-xl" />
-                    ) : problem.color ? (
+                    ) : problem.hold_color ? (
                       <div className="w-16 h-16 rounded-xl bg-gray-100 grid place-items-center">
-                        <HoldGraphic color={problem.color} size={40} />
+                        <HoldGraphic color={problem.hold_color} size={40} />
                       </div>
                     ) : (
                       <a href={problem.beta_video_url!} target="_blank" rel="noopener noreferrer"
@@ -243,7 +243,12 @@ export function SessionDetailPage() {
                     <span className={problem.name ? 'text-sm text-gray-500' : 'font-medium'}>
                       {displayGrade(problem, myProfile?.grade_preference ?? 'font')}
                       {problem.color && (
-                        <span className="text-gray-400 text-sm font-normal ml-1 inline-flex items-center gap-1">· <HoldDot color={problem.color} size={11} /> {problem.color}</span>
+                        <span className="text-gray-400 text-sm font-normal ml-1">· {problem.color}</span>
+                      )}
+                      {problem.hold_color && (
+                        <span className="ml-1.5 inline-flex items-center gap-1 align-middle text-gray-400 text-sm font-normal">
+                          <HoldDot color={problem.hold_color} size={11} /> {problem.hold_color}
+                        </span>
                       )}
                     </span>
                   </div>
