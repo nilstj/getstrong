@@ -7,9 +7,10 @@ import { useProfile } from '../hooks/useProfile'
 import { useFollowing } from '../hooks/useFollows'
 import {
   useCrewGroup, useCrewMembers, useCrewPendingInvites, useCrewLeaderboard,
-  useInviteToCrew, useLeaveCrew, useDeleteCrew,
+  useCrewActivityFeed, useInviteToCrew, useLeaveCrew, useDeleteCrew,
 } from '../hooks/useCrews'
 import { SetterBadge } from '../components/SetterBadge'
+import { FriendSessionCard } from '../components/FriendSessionCard'
 import { BottomSheet } from '../components/BottomSheet'
 import { cycleMonth } from '../utils/leaderboard'
 
@@ -23,6 +24,7 @@ export function CrewGroupPage() {
   const month = cycleMonth(new Date())
   const memberIds = members.map(m => m.user_id)
   const { data: standings = [] } = useCrewLeaderboard(memberIds, month)
+  const { data: feed = [] } = useCrewActivityFeed(memberIds)
   const leaveCrew = useLeaveCrew()
   const deleteCrew = useDeleteCrew()
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -118,6 +120,18 @@ export function CrewGroupPage() {
           ))}
         </div>
       </div>
+
+      {/* Crew feed */}
+      {feed.length > 0 && (
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Crew feed</h2>
+          <div className="space-y-3">
+            {feed.slice(0, 15).map(s => (
+              <FriendSessionCard key={s.sessionId} session={s} to={`/friends/sessions/${s.sessionId}`} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Leave / delete */}
       {amMember && (

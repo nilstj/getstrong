@@ -8,6 +8,7 @@ function formatJoined(iso: string): string {
   try { return format(new Date(iso), 'd MMM yyyy') } catch { return '' }
 }
 import { useGymProblem, useCrew } from '../hooks/useCrew'
+import { useCrewBoulderProgress } from '../hooks/useCrews'
 import { useProfile } from '../hooks/useProfile'
 import { SetterBadge } from '../components/SetterBadge'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
@@ -136,6 +137,45 @@ function SetterIntentionBlock({ boulderId, intention, canEdit }: { boulderId: st
       ) : (
         <p className="text-sm italic text-gray-400">No setter's intention yet — add one.</p>
       )}
+    </div>
+  )
+}
+
+function CrewBoulderTracker({ gymProblemId }: { gymProblemId: string }) {
+  const { data: crews = [] } = useCrewBoulderProgress(gymProblemId)
+  if (crews.length === 0) return null
+  return (
+    <div className="space-y-2">
+      {crews.map(c => {
+        const all = c.doneCount === c.total
+        return (
+          <Link
+            key={c.crewId}
+            to={`/crews/${c.crewId}`}
+            className={`block rounded-2xl border p-3 ${all ? 'border-transparent bg-green-50' : 'border-gray-200 bg-white'}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-gray-800">{c.emoji ?? '🧗'} {c.name} on this boulder</span>
+              <span className={`text-sm font-extrabold tabular-nums ${all ? 'text-green-600' : 'text-sage-700'}`}>{c.doneCount}/{c.total}</span>
+            </div>
+            <div className="h-2 rounded-full bg-gray-100 overflow-hidden mb-2.5">
+              <span className={`block h-full rounded-full ${all ? 'bg-green-500' : 'bg-sage-500'}`} style={{ width: `${Math.round((c.doneCount / c.total) * 100)}%` }} />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {c.members.map(m => (
+                <span key={m.user_id} className={`text-xs inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${m.done ? 'bg-green-100 text-green-700 font-medium' : 'bg-gray-100 text-gray-500'}`}>
+                  {m.done ? '✅' : '⬜'} {m.username ?? 'Someone'}
+                </span>
+              ))}
+            </div>
+            {all ? (
+              <p className="mt-2.5 text-sm font-semibold text-green-700">🎉 Crew send — everyone's done it!</p>
+            ) : c.doneCount === c.total - 1 ? (
+              <p className="mt-2.5 text-sm text-sage-700">One send away from a Crew Send.</p>
+            ) : null}
+          </Link>
+        )
+      })}
     </div>
   )
 }
@@ -469,6 +509,8 @@ export function CrewPage() {
                 {left >= 0 ? `${left} days left` : 'Stripped'}
               </span>
             </div>
+
+            <CrewBoulderTracker gymProblemId={id} />
 
             <div className="space-y-2">
               {members.length === 0 ? (
