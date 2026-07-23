@@ -12,7 +12,7 @@ import { useCrewBoulderProgress } from '../hooks/useCrews'
 import { useProfile } from '../hooks/useProfile'
 import { SetterBadge } from '../components/SetterBadge'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
-import { useStripGymProblem, useClaimGymProblem } from '../hooks/useGymProblems'
+import { useStripGymProblem, useClaimGymProblem, useDeleteGymProblem } from '../hooks/useGymProblems'
 import { useSessions, useCreateSession } from '../hooks/useSessions'
 import { useAddProblem } from '../hooks/useProblems'
 import { BottomSheet } from '../components/BottomSheet'
@@ -203,6 +203,7 @@ export function CrewPage() {
   const { data: help } = useBoulderHelp(id)
   const requestHelp = useRequestBetaHelp()
   const strip = useStripGymProblem()
+  const del = useDeleteGymProblem()
   const addBeta = useAddBoulderBeta()
   const markWorked = useMarkBetaWorked()
   const unmarkWorked = useUnmarkBetaWorked()
@@ -478,6 +479,22 @@ export function CrewPage() {
                 className="mt-3 text-xs text-gray-400 hover:text-red-600 underline disabled:opacity-50"
               >
                 This got stripped
+              </button>
+            )}
+            {boulder.created_by === user?.id && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!confirm('Delete this boulder for everyone? Removes its beta, reviews and comments. Your own logged sends stay in your sessions. Only works if no one else has logged it.')) return
+                  del.mutate(boulder.id, {
+                    onSuccess: () => { toast.success('Boulder deleted'); navigate('/sendtrains') },
+                    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to delete'),
+                  })
+                }}
+                disabled={del.isPending}
+                className="mt-2 block text-xs text-gray-400 hover:text-red-600 underline disabled:opacity-50"
+              >
+                Delete boulder
               </button>
             )}
           </div>
