@@ -57,7 +57,7 @@ export function FeedCard({
           </span>
         </button>
         {event.beta_video_url && event.boulder_image_url && (
-          <VideoBadge href={event.beta_video_url} size="md" className="absolute right-2.5 top-2.5" />
+          <VideoBadge href={event.beta_video_url} />
         )}
       </div>
 

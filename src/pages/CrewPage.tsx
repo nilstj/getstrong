@@ -249,17 +249,12 @@ export function CrewPage() {
             ) : (
               <GymThumb gym={boulder.gym} className="absolute inset-0 w-full h-full" />
             )}
-            {boulder.beta_video_url && !boulder.image_url && (
-              <span className="absolute inset-0 grid place-items-center pointer-events-none">
-                <Play size={48} className="text-white drop-shadow" fill="currentColor" />
-              </span>
-            )}
             <Link to="/dashboard" aria-label="Back"
               className="absolute left-3 top-3 z-10 grid place-items-center w-9 h-9 rounded-full bg-black/35 text-white">
               <ArrowLeft size={18} />
             </Link>
             {boulder.beta_video_url && (
-              <VideoBadge href={boulder.beta_video_url} size="md" className="absolute right-3 top-3" />
+              <VideoBadge href={boulder.beta_video_url} />
             )}
             <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
             <div className="absolute left-3 bottom-3 flex items-center gap-2">

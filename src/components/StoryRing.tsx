@@ -45,7 +45,7 @@ export function StoryRing({
         ) : (
           <span className="block w-full h-full rounded-full border-2 border-white bg-sage-100" />
         )}
-        {hasVideo && <VideoBadge className="absolute bottom-0 right-0 border-2 border-white" />}
+        {hasVideo && <VideoBadge variant="corner" className="absolute bottom-0 right-0 border-2 border-white" />}
       </span>
       <span className="text-[10px] leading-tight text-gray-600 text-center line-clamp-2 max-w-[64px]">{label}</span>
     </button>
