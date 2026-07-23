@@ -423,6 +423,102 @@ export function useDeleteCrewMessage() {
   })
 }
 
+// ── Phase 4: session planning ────────────────────────────────────────────────
+export interface CrewPlanRsvp { user_id: string; username: string | null; avatar_url: string | null }
+export interface CrewPlan { id: string; plan_date: string; gym: string | null; note: string | null; created_by: string | null; rsvps: CrewPlanRsvp[] }
+
+/** Upcoming crew sessions (today onward) with who's RSVP'd. */
+export function useCrewPlans(crewId: string) {
+  return useQuery({
+    queryKey: ['crew_plans', crewId],
+    enabled: !!crewId,
+    queryFn: async (): Promise<CrewPlan[]> => {
+      const today = new Date().toISOString().split('T')[0]
+      const { data: plans, error } = await supabase
+        .from('crew_plans')
+        .select('id, plan_date, gym, note, created_by')
+        .eq('crew_id', crewId)
+        .gte('plan_date', today)
+        .order('plan_date', { ascending: true })
+      if (error) throw error
+      const rows = (plans ?? []) as Omit<CrewPlan, 'rsvps'>[]
+      if (rows.length === 0) return []
+      const { data: rsvps, error: rErr } = await supabase.from('crew_plan_rsvps').select('plan_id, user_id').in('plan_id', rows.map(r => r.id))
+      if (rErr) throw rErr
+      const byId = await profilesByIds(Array.from(new Set((rsvps ?? []).map(r => r.user_id as string))))
+      const byPlan = new Map<string, CrewPlanRsvp[]>()
+      for (const r of rsvps ?? []) {
+        const arr = byPlan.get(r.plan_id as string) ?? []
+        arr.push({ user_id: r.user_id as string, username: byId.get(r.user_id as string)?.username ?? null, avatar_url: byId.get(r.user_id as string)?.avatar_url ?? null })
+        byPlan.set(r.plan_id as string, arr)
+      }
+      return rows.map(r => ({ ...r, rsvps: byPlan.get(r.id) ?? [] }))
+    },
+  })
+}
+
+export function useCreateCrewPlan() {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  return useMutation({
+    mutationFn: async (v: { crewId: string; date: string; gym: string | null; note: string | null }) => {
+      const { data, error } = await supabase
+        .from('crew_plans')
+        .insert({ crew_id: v.crewId, created_by: user!.id, plan_date: v.date, gym: v.gym, note: v.note })
+        .select('id')
+        .single()
+      if (error) throw error
+      // The proposer is in by default.
+      await supabase.from('crew_plan_rsvps').insert({ plan_id: (data as { id: string }).id, user_id: user!.id })
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['crew_plans', v.crewId] }),
+  })
+}
+
+export function useRsvpCrewPlan() {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  return useMutation({
+    mutationFn: async (v: { planId: string; crewId: string; going: boolean }) => {
+      if (v.going) {
+        const { error } = await supabase.from('crew_plan_rsvps').insert({ plan_id: v.planId, user_id: user!.id })
+        if (error && error.code !== '23505') throw error // ignore "already in"
+      } else {
+        const { error } = await supabase.from('crew_plan_rsvps').delete().eq('plan_id', v.planId).eq('user_id', user!.id)
+        if (error) throw error
+      }
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['crew_plans', v.crewId] }),
+  })
+}
+
+export function useDeleteCrewPlan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { id: string; crewId: string }) => {
+      const { error } = await supabase.from('crew_plans').delete().eq('id', v.id)
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['crew_plans', v.crewId] }),
+  })
+}
+
+// ── Phase 4: crew badges ─────────────────────────────────────────────────────
+export interface CrewBadgeFlags { crew_send: boolean; flash_mob: boolean; first_blood: boolean; deep_bench: boolean }
+
+export function useCrewBadges(crewId: string) {
+  return useQuery({
+    queryKey: ['crew_badges', crewId],
+    enabled: !!crewId,
+    queryFn: async (): Promise<CrewBadgeFlags> => {
+      const { data, error } = await supabase.rpc('crew_badges', { p_crew: crewId })
+      if (error) throw error
+      const row = (Array.isArray(data) ? data[0] : data) as CrewBadgeFlags | undefined
+      return row ?? { crew_send: false, flash_mob: false, first_blood: false, deep_bench: false }
+    },
+  })
+}
+
 // ── Mutations (all via SECURITY DEFINER RPCs) ────────────────────────────────
 export function useCreateCrew() {
   const qc = useQueryClient()
