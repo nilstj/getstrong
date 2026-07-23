@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trophy, UserPlus, Check } from 'lucide-react'
+import { ArrowLeft, Trophy, UserPlus, Check, Trash2, CalendarPlus } from 'lucide-react'
+import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile } from '../hooks/useProfile'
@@ -9,11 +10,23 @@ import {
   useCrewGroup, useCrewMembers, useCrewPendingInvites, useCrewLeaderboard,
   useCrewActivityFeed, useInviteToCrew, useLeaveCrew, useDeleteCrew,
   useCrewBattles, useCrewBattleScore, useRespondCrewBattle, type CrewBattle,
+  useCrewMessages, usePostCrewMessage, useDeleteCrewMessage,
+  useCrewPlans, useCreateCrewPlan, useRsvpCrewPlan, useDeleteCrewPlan, type CrewPlan,
+  useCrewBadges, type CrewBadgeFlags,
 } from '../hooks/useCrews'
 import { SetterBadge } from '../components/SetterBadge'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { BottomSheet } from '../components/BottomSheet'
 import { cycleMonth } from '../utils/leaderboard'
+import { weeklyStreak } from '../utils/crewStreak'
+
+const CREW_BADGES: { key: keyof CrewBadgeFlags | 'on_fire'; emoji: string; label: string; desc: string }[] = [
+  { key: 'crew_send', emoji: '🤝', label: 'Crew Send', desc: 'Everyone cleared the same boulder' },
+  { key: 'flash_mob', emoji: '⚡', label: 'Flash Mob', desc: 'Everyone flashed one boulder' },
+  { key: 'first_blood', emoji: '🩸', label: 'First Blood', desc: 'All-cleared a battle boulder' },
+  { key: 'deep_bench', emoji: '🏋️', label: 'Deep Bench', desc: '5 or more members' },
+  { key: 'on_fire', emoji: '🔥', label: 'On Fire', desc: '4-week active streak' },
+]
 
 export function CrewGroupPage() {
   const { crewId = '' } = useParams<{ crewId: string }>()
@@ -27,9 +40,12 @@ export function CrewGroupPage() {
   const { data: standings = [] } = useCrewLeaderboard(memberIds, month)
   const { data: feed = [] } = useCrewActivityFeed(memberIds)
   const { data: battles = [] } = useCrewBattles(crewId)
+  const { data: plans = [] } = useCrewPlans(crewId)
+  const { data: badgeFlags } = useCrewBadges(crewId)
   const leaveCrew = useLeaveCrew()
   const deleteCrew = useDeleteCrew()
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [proposeOpen, setProposeOpen] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
 
   const myRole = members.find(m => m.user_id === user?.id)?.role
@@ -40,6 +56,8 @@ export function CrewGroupPage() {
   if (!crew) return <div className="p-5 text-sm text-gray-400">This crew no longer exists.</div>
 
   const monthLabel = new Date(`${month}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })
+  const streak = weeklyStreak(feed.map(f => f.date), new Date())
+  const earnedBadges = CREW_BADGES.filter(b => (b.key === 'on_fire' ? streak >= 4 : !!badgeFlags?.[b.key]))
 
   const leave = () => {
     leaveCrew.mutate(crewId, {
@@ -63,7 +81,7 @@ export function CrewGroupPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate leading-tight">{crew.name}</h1>
           <p className="text-xs text-gray-500 truncate">
-            {members.length} {members.length === 1 ? 'member' : 'members'}{crew.home_gym ? ` · ${crew.home_gym}` : ''}
+            {members.length} {members.length === 1 ? 'member' : 'members'}{crew.home_gym ? ` · ${crew.home_gym}` : ''}{streak > 0 ? ` · 🔥 ${streak}-week streak` : ''}
           </p>
         </div>
         {amMember && (
@@ -72,6 +90,17 @@ export function CrewGroupPage() {
           </button>
         )}
       </div>
+
+      {/* Badges */}
+      {earnedBadges.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {earnedBadges.map(b => (
+            <span key={b.key} title={b.desc} className="inline-flex items-center gap-1 rounded-full bg-sage-50 text-sage-700 text-xs font-medium px-2.5 py-1">
+              <span aria-hidden>{b.emoji}</span> {b.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Standings */}
       <div>
@@ -123,6 +152,23 @@ export function CrewGroupPage() {
         </div>
       </div>
 
+      {/* Upcoming sessions */}
+      {amMember && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">Upcoming sessions</h2>
+            <button onClick={() => setProposeOpen(true)} className="inline-flex items-center gap-1 text-xs font-semibold text-sage-700"><CalendarPlus size={14} /> Propose</button>
+          </div>
+          {plans.length === 0 ? (
+            <p className="text-xs text-gray-400">No sessions planned yet — propose one.</p>
+          ) : (
+            <div className="space-y-2">
+              {plans.map(p => <PlanCard key={p.id} plan={p} crewId={crewId} meId={user?.id} />)}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Battles */}
       {battles.length > 0 && (
         <div>
@@ -144,6 +190,9 @@ export function CrewGroupPage() {
           </div>
         </div>
       )}
+
+      {/* Banter */}
+      {amMember && <CrewBanter crewId={crewId} />}
 
       {/* Leave / delete */}
       {amMember && (
@@ -180,6 +229,128 @@ export function CrewGroupPage() {
         crewId={crewId}
         excludeIds={new Set([...memberIds, ...pending.map(p => p.user_id)])}
       />
+
+      <ProposeSessionSheet open={proposeOpen} onClose={() => setProposeOpen(false)} crewId={crewId} defaultGym={crew.home_gym} />
+    </div>
+  )
+}
+
+function PlanCard({ plan, crewId, meId }: { plan: CrewPlan; crewId: string; meId?: string }) {
+  const rsvp = useRsvpCrewPlan()
+  const del = useDeleteCrewPlan()
+  const going = plan.rsvps.some(r => r.user_id === meId)
+  const dateLabel = (() => { try { return format(new Date(`${plan.plan_date}T00:00:00`), 'EEE d MMM') } catch { return plan.plan_date } })()
+  return (
+    <div className="bg-gray-50 rounded-2xl p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-semibold text-sm text-gray-800">{dateLabel}{plan.gym ? ` · ${plan.gym}` : ''}</p>
+          {plan.note && <p className="text-xs text-gray-500 mt-0.5">{plan.note}</p>}
+        </div>
+        {plan.created_by === meId && (
+          <button onClick={() => del.mutate({ id: plan.id, crewId }, { onError: () => toast.error('Failed') })} aria-label="Delete session" className="text-gray-300 hover:text-red-500 flex-shrink-0"><Trash2 size={14} /></button>
+        )}
+      </div>
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex -space-x-1.5">
+            {plan.rsvps.slice(0, 5).map(r => (
+              <span key={r.user_id} title={r.username ?? ''} className="w-6 h-6 rounded-full bg-sage-100 border-2 border-gray-50 grid place-items-center text-[9px] font-semibold text-sage-700 overflow-hidden">
+                {r.avatar_url ? <img src={r.avatar_url} alt="" className="w-full h-full object-cover" /> : (r.username ?? '?').slice(0, 1).toUpperCase()}
+              </span>
+            ))}
+          </div>
+          <span className="text-xs text-gray-500">{plan.rsvps.length} in</span>
+        </div>
+        <button
+          onClick={() => rsvp.mutate({ planId: plan.id, crewId, going: !going }, { onError: () => toast.error('Failed') })}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-full ${going ? 'bg-sage-100 text-sage-700' : 'bg-sage-700 text-white'}`}
+        >
+          {going ? "You're in ✓" : "I'm in"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ProposeSessionSheet({ open, onClose, crewId, defaultGym }: { open: boolean; onClose: () => void; crewId: string; defaultGym: string | null }) {
+  const create = useCreateCrewPlan()
+  const [minDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState('')
+  const [gym, setGym] = useState(defaultGym ?? '')
+  const [note, setNote] = useState('')
+  const submit = () => {
+    if (!date) { toast.error('Pick a date'); return }
+    create.mutate(
+      { crewId, date, gym: gym.trim() || null, note: note.trim() || null },
+      { onSuccess: () => { toast.success('Session proposed'); setDate(''); setNote(''); onClose() }, onError: () => toast.error('Could not propose') },
+    )
+  }
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Propose a session">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          <input type="date" min={minDate} value={date} onChange={e => setDate(e.target.value)} className="w-full border rounded-lg px-3 py-2.5" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Gym (optional)</label>
+          <input value={gym} onChange={e => setGym(e.target.value)} placeholder="e.g. Boulders Oslo" className="w-full border rounded-lg px-3 py-2.5" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. after work, projecting" className="w-full border rounded-lg px-3 py-2.5" />
+        </div>
+        <button onClick={submit} disabled={!date || create.isPending} className="w-full bg-sage-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
+          {create.isPending ? 'Proposing…' : 'Propose session'}
+        </button>
+      </div>
+    </BottomSheet>
+  )
+}
+
+function CrewBanter({ crewId }: { crewId: string }) {
+  const { user } = useAuth()
+  const { data: messages = [] } = useCrewMessages(crewId)
+  const post = usePostCrewMessage()
+  const del = useDeleteCrewMessage()
+  const [text, setText] = useState('')
+  const send = () => {
+    const body = text.trim()
+    if (!body) return
+    post.mutate({ crewId, body }, { onSuccess: () => setText(''), onError: () => toast.error('Failed to send') })
+  }
+  return (
+    <div>
+      <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Banter</h2>
+      <div className="bg-gray-50 rounded-2xl p-3 space-y-2.5">
+        {messages.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-2">No banter yet. Say something. 🔥</p>
+        ) : messages.map(m => (
+          <div key={m.id} className="flex items-start gap-2">
+            <span className="w-6 h-6 rounded-full bg-sage-100 grid place-items-center text-[10px] font-semibold text-sage-700 overflow-hidden flex-shrink-0 mt-0.5">
+              {m.avatar_url ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" /> : (m.username ?? '?').slice(0, 1).toUpperCase()}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm leading-tight"><span className="font-semibold">{m.username ?? 'Someone'}</span> <SetterBadge userId={m.user_id} className="align-text-bottom" /></p>
+              <p className="text-sm text-gray-700 break-words">{m.body}</p>
+            </div>
+            {m.user_id === user?.id && (
+              <button onClick={() => del.mutate({ id: m.id, crewId }, { onError: () => toast.error('Failed') })} aria-label="Delete message" className="text-gray-300 hover:text-red-500 mt-0.5"><Trash2 size={13} /></button>
+            )}
+          </div>
+        ))}
+        <div className="flex gap-1.5 pt-1">
+          <input
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+            placeholder="Say something…"
+            className="flex-1 text-sm border rounded-lg px-2.5 py-1.5"
+          />
+          <button onClick={send} disabled={!text.trim() || post.isPending} className="text-sm px-3 py-1.5 bg-sage-700 text-white rounded-lg font-medium disabled:opacity-50">Send</button>
+        </div>
+      </div>
     </div>
   )
 }
