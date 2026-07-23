@@ -17,6 +17,8 @@ import { HelpPage } from './pages/HelpPage'
 import { AdminPage } from './pages/AdminPage'
 import { CrewPage } from './pages/CrewPage'
 import { CrewsPage } from './pages/CrewsPage'
+import { MyCrewsPage } from './pages/MyCrewsPage'
+import { CrewGroupPage } from './pages/CrewGroupPage'
 import { FriendSessionPage } from './pages/FriendSessionPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { OnboardingGate } from './components/OnboardingGate'
@@ -34,7 +36,9 @@ export default function App() {
               <Route element={<OnboardingGate />}>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/crews" element={<CrewsPage />} />
+                <Route path="/crews" element={<MyCrewsPage />} />
+                <Route path="/crews/:crewId" element={<CrewGroupPage />} />
+                <Route path="/sendtrains" element={<CrewsPage />} />
                 <Route path="/sessions" element={<SessionsPage />} />
                 <Route path="/sessions/new" element={<NewSessionPage />} />
                 <Route path="/sessions/:id" element={<SessionDetailPage />} />

@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { Home, CalendarDays, Users, User, BarChart2, LifeBuoy, Trophy, Plus } from 'lucide-react'
+import { Home, CalendarDays, Users, User, BarChart2, LifeBuoy, Trophy, Plus, TrainFront } from 'lucide-react'
 
 const ITEMS = [
   { to: '/dashboard', label: 'Home', Icon: Home },
   { to: '/sessions', label: 'Sessions', Icon: CalendarDays },
-  { to: '/crews', label: 'Sendtrains', Icon: Users },
+  { to: '/crews', label: 'Crews', Icon: Users },
+  { to: '/sendtrains', label: 'Sendtrains', Icon: TrainFront },
   { to: '/challenges', label: 'Challenges', Icon: Trophy },
   { to: '/analysis', label: 'Analysis', Icon: BarChart2 },
   { to: '/help', label: 'Help', Icon: LifeBuoy },
