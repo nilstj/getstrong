@@ -57,8 +57,16 @@ export function useUpdateProblem() {
         patch.grade_value_font = font
         patch.grade_value_vscale = vscale
       }
-      const { error } = await supabase.from('problems').update(patch).eq('id', id)
+      const { data: updated, error } = await supabase.from('problems').update(patch).eq('id', id).select('gym_problem_id').single()
       if (error) throw error
+      // Keep a linked shared boulder's hold colour in sync when this problem's is edited.
+      if (updated?.gym_problem_id && 'hold_color' in values) {
+        const { error: hcErr } = await supabase.rpc('set_boulder_hold_color', {
+          p_gym_problem_id: updated.gym_problem_id,
+          p_hold_color: values.hold_color ?? null,
+        })
+        if (hcErr) throw hcErr
+      }
       if (tagIds !== undefined) {
         await supabase.from('problem_tag_assignments').delete().eq('problem_id', id)
         if (tagIds.length > 0) {
@@ -71,6 +79,8 @@ export function useUpdateProblem() {
       queryClient.invalidateQueries({ queryKey: ['session_problem_tags'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['crew'] })
+      queryClient.invalidateQueries({ queryKey: ['gym_problem'] })
+      queryClient.invalidateQueries({ queryKey: ['discover_boulders'] })
     },
   })
 }
