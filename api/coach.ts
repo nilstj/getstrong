@@ -48,7 +48,7 @@ function buildPrompt(payload: Payload): string {
 
   const byBoard: Record<string, string[]> = {}
   for (const p of sentProblems) {
-    const board = p.board ?? 'outdoor'
+    const board = p.board ?? 'gym'
     const grade = p.grade_value_font ?? p.grade_value
     if (grade) {
       if (!byBoard[board]) byBoard[board] = []

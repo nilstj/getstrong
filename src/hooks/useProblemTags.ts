@@ -104,6 +104,7 @@ export function useMyTagStats() {
         .from('problems')
         .select('id')
         .eq('user_id', user!.id)
+        .is('crag', null)
       if (!problems || problems.length === 0) return [] as TagStat[]
       const { data: assignments, error } = await supabase
         .from('problem_tag_assignments')

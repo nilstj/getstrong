@@ -30,7 +30,7 @@ const BOARDS: { label: string; filter: string | null }[] = [
   { label: 'Kilterboard', filter: 'Kilterboard' },
   { label: 'Moonboard',   filter: 'Moonboard' },
   { label: 'TB2',         filter: 'TB2' },
-  { label: 'Outdoor',     filter: null },
+  { label: 'Gym problems', filter: null },
 ]
 
 export function AnalysisPage() {

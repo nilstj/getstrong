@@ -28,6 +28,7 @@ export function useFriendsWeeklyActivity() {
           .from('problems')
           .select('user_id, sent')
           .in('user_id', followingIds)
+          .is('crag', null)
           .gte('created_at', sinceStr),
         supabase
           .from('challenge_attempts')
@@ -94,6 +95,7 @@ export function useFriendWeeklyDetail(userId: string | null) {
           .from('problems')
           .select('*')
           .eq('user_id', userId!)
+          .is('crag', null)
           .gte('created_at', sinceStr)
           .order('created_at', { ascending: false }),
         supabase

@@ -292,7 +292,6 @@ export function SessionDetailPage() {
                     </span>
                   )}
                   {problem.gym && <span className="text-xs text-gray-400">· {problem.gym}</span>}
-                  {problem.crag && <span className="text-xs text-gray-400">🌲 {problem.crag}</span>}
                 </div>
                 {problem.notes && <p className="text-gray-500 text-sm mt-0.5">{problem.notes}</p>}
                 {problem.beta_video_url && <WatchVideoLink href={problem.beta_video_url} className="mt-1" />}

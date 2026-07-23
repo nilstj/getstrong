@@ -78,7 +78,7 @@ export function NewSessionPage() {
               <GymInput
                 value={field.value}
                 onChange={field.onChange}
-                placeholder="Gym name, Kilter Board, crag..."
+                placeholder="Gym name, Kilter Board..."
               />
             )}
           />

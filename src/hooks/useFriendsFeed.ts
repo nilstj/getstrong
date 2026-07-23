@@ -28,6 +28,7 @@ export function useFriendsFeed() {
           .from('problems')
           .select('user_id, session_id, gym, grade_value, grade_value_font, sent, image_url, beta_video_url, created_at')
           .in('user_id', followingIds)
+          .is('crag', null)
           .order('created_at', { ascending: false })
           .limit(SCAN),
         supabase
