@@ -265,6 +265,113 @@ export function useCrewActivityFeed(memberIds: string[]) {
   })
 }
 
+export interface CrewStanding {
+  crew_id: string
+  name: string
+  emoji: string | null
+  home_gym: string | null
+  member_count: number
+  total_points: number
+  avg_points: number
+}
+
+/** Cross-crew leaderboard, ranked by average points per member. `gym` null = everywhere. */
+export function useCrewStandings(gym: string | null, cycleMonth: string) {
+  return useQuery({
+    queryKey: ['crew_standings', gym ?? 'all', cycleMonth],
+    enabled: !!cycleMonth,
+    queryFn: async (): Promise<CrewStanding[]> => {
+      const { data, error } = await supabase.rpc('crew_standings', { p_gym: gym, p_cycle: cycleMonth })
+      if (error) throw error
+      return (data ?? []) as CrewStanding[]
+    },
+  })
+}
+
+// ── Phase 3: crew-vs-crew battles ────────────────────────────────────────────
+export interface CrewBattle {
+  id: string
+  challenger_crew: string
+  opponent_crew: string
+  created_by: string | null
+  battle_type: 'boulder' | 'sends'
+  gym_problem_id: string | null
+  duration_days: number
+  status: 'pending' | 'active' | 'declined'
+  starts_at: string | null
+  ends_at: string | null
+  created_at: string
+  challenger: { name: string; emoji: string | null } | null
+  opponent: { name: string; emoji: string | null } | null
+  boulder: { name: string | null } | null
+}
+
+export interface CrewBattleScore {
+  challenger_score: number
+  challenger_total: number
+  opponent_score: number
+  opponent_total: number
+}
+
+/** Battles involving a crew (excludes declined). */
+export function useCrewBattles(crewId: string) {
+  return useQuery({
+    queryKey: ['crew_battles', crewId],
+    enabled: !!crewId,
+    queryFn: async (): Promise<CrewBattle[]> => {
+      const { data, error } = await supabase
+        .from('crew_battles')
+        .select('*, challenger:crews!challenger_crew(name, emoji), opponent:crews!opponent_crew(name, emoji), boulder:gym_problems(name)')
+        .or(`challenger_crew.eq.${crewId},opponent_crew.eq.${crewId}`)
+        .neq('status', 'declined')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as unknown as CrewBattle[]
+    },
+  })
+}
+
+export function useCrewBattleScore(battleId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['crew_battle_score', battleId],
+    enabled: !!battleId && enabled,
+    queryFn: async (): Promise<CrewBattleScore> => {
+      const { data, error } = await supabase.rpc('crew_battle_score', { p_battle: battleId })
+      if (error) throw error
+      const row = (Array.isArray(data) ? data[0] : data) as CrewBattleScore | undefined
+      return row ?? { challenger_score: 0, challenger_total: 0, opponent_score: 0, opponent_total: 0 }
+    },
+  })
+}
+
+export function useCreateCrewBattle() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { challengerCrew: string; opponentCrew: string; type: 'boulder' | 'sends'; gymProblemId: string | null; durationDays: number }) => {
+      const { data, error } = await supabase.rpc('create_crew_battle', {
+        p_challenger: v.challengerCrew, p_opponent: v.opponentCrew, p_type: v.type, p_gym_problem: v.gymProblemId, p_duration: v.durationDays,
+      })
+      if (error) throw error
+      return data as string
+    },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['crew_battles', v.challengerCrew] })
+      qc.invalidateQueries({ queryKey: ['crew_battles', v.opponentCrew] })
+    },
+  })
+}
+
+export function useRespondCrewBattle() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { battleId: string; accept: boolean }) => {
+      const { error } = await supabase.rpc('respond_crew_battle', { p_battle: v.battleId, p_accept: v.accept })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['crew_battles'] }),
+  })
+}
+
 // ── Mutations (all via SECURITY DEFINER RPCs) ────────────────────────────────
 export function useCreateCrew() {
   const qc = useQueryClient()

@@ -8,6 +8,7 @@ import { useFollowing } from '../hooks/useFollows'
 import {
   useCrewGroup, useCrewMembers, useCrewPendingInvites, useCrewLeaderboard,
   useCrewActivityFeed, useInviteToCrew, useLeaveCrew, useDeleteCrew,
+  useCrewBattles, useCrewBattleScore, useRespondCrewBattle, type CrewBattle,
 } from '../hooks/useCrews'
 import { SetterBadge } from '../components/SetterBadge'
 import { FriendSessionCard } from '../components/FriendSessionCard'
@@ -25,6 +26,7 @@ export function CrewGroupPage() {
   const memberIds = members.map(m => m.user_id)
   const { data: standings = [] } = useCrewLeaderboard(memberIds, month)
   const { data: feed = [] } = useCrewActivityFeed(memberIds)
+  const { data: battles = [] } = useCrewBattles(crewId)
   const leaveCrew = useLeaveCrew()
   const deleteCrew = useDeleteCrew()
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -121,6 +123,16 @@ export function CrewGroupPage() {
         </div>
       </div>
 
+      {/* Battles */}
+      {battles.length > 0 && (
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Battles</h2>
+          <div className="space-y-2">
+            {battles.map(b => <BattleCard key={b.id} battle={b} thisCrewId={crewId} amMember={amMember} />)}
+          </div>
+        </div>
+      )}
+
       {/* Crew feed */}
       {feed.length > 0 && (
         <div>
@@ -168,6 +180,93 @@ export function CrewGroupPage() {
         crewId={crewId}
         excludeIds={new Set([...memberIds, ...pending.map(p => p.user_id)])}
       />
+    </div>
+  )
+}
+
+function ScoreRow({ name, emoji, score, total, pct, highlight }: { name: string; emoji: string | null | undefined; score: number; total?: number; pct: number; highlight?: boolean }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm">
+        <span className={`truncate ${highlight ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{emoji ?? '🧗'} {name}</span>
+        <span className="tabular-nums font-bold text-gray-700">{score}{total != null ? `/${total}` : ''}</span>
+      </div>
+      <div className="h-2 rounded-full bg-gray-100 overflow-hidden mt-0.5">
+        <span className={`block h-full rounded-full ${highlight ? 'bg-sage-500' : 'bg-gray-300'}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function BattleCard({ battle, thisCrewId, amMember }: { battle: CrewBattle; thisCrewId: string; amMember: boolean }) {
+  const respond = useRespondCrewBattle()
+  const [now] = useState(() => Date.now())
+  const { data: score } = useCrewBattleScore(battle.id, battle.status === 'active')
+  const isChallenger = battle.challenger_crew === thisCrewId
+  const isOpponent = battle.opponent_crew === thisCrewId
+  const thisMeta = isChallenger ? battle.challenger : battle.opponent
+  const otherMeta = isChallenger ? battle.opponent : battle.challenger
+  const s = score ?? { challenger_score: 0, challenger_total: 0, opponent_score: 0, opponent_total: 0 }
+  const thisScore = isChallenger ? s.challenger_score : s.opponent_score
+  const thisTotal = isChallenger ? s.challenger_total : s.opponent_total
+  const otherScore = isChallenger ? s.opponent_score : s.challenger_score
+  const otherTotal = isChallenger ? s.opponent_total : s.challenger_total
+  const isBoulder = battle.battle_type === 'boulder'
+  const typeLabel = isBoulder ? `Boulder all-clear · ${battle.boulder?.name ?? 'boulder'}` : 'Most sends'
+
+  const endsMs = battle.ends_at ? new Date(battle.ends_at).getTime() : null
+  const expired = endsMs != null && now > endsMs
+  const daysLeft = endsMs != null ? Math.max(0, Math.ceil((endsMs - now) / 86400000)) : null
+
+  let outcome: { done: boolean; winnerIsThis: boolean | null } = { done: false, winnerIsThis: null }
+  if (battle.status === 'active') {
+    const thisAll = isBoulder && thisTotal > 0 && thisScore === thisTotal
+    const otherAll = isBoulder && otherTotal > 0 && otherScore === otherTotal
+    if (thisAll && !otherAll) outcome = { done: true, winnerIsThis: true }
+    else if (otherAll && !thisAll) outcome = { done: true, winnerIsThis: false }
+    else if (thisAll && otherAll) outcome = { done: true, winnerIsThis: null }
+    else if (expired) {
+      if (thisScore > otherScore) outcome = { done: true, winnerIsThis: true }
+      else if (otherScore > thisScore) outcome = { done: true, winnerIsThis: false }
+      else outcome = { done: true, winnerIsThis: null }
+    }
+  }
+
+  const thisDenom = isBoulder ? Math.max(thisTotal, 1) : Math.max(thisScore, otherScore, 1)
+  const otherDenom = isBoulder ? Math.max(otherTotal, 1) : Math.max(thisScore, otherScore, 1)
+
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-white p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 min-w-0"><span className="truncate">⚔️ {typeLabel}</span></span>
+        <span className="text-[11px] font-medium text-gray-400 flex-shrink-0 ml-2">
+          {battle.status === 'pending' ? 'Pending' : outcome.done ? 'Final' : expired ? 'Ended' : `${daysLeft}d left`}
+        </span>
+      </div>
+
+      {battle.status === 'pending' ? (
+        <div>
+          <p className="text-sm text-gray-600 mb-2">
+            {isChallenger ? <>Waiting for <b>{otherMeta?.name}</b> to accept.</> : <><b>{otherMeta?.name}</b> challenged your crew.</>}
+          </p>
+          {isOpponent && amMember && (
+            <div className="flex gap-2">
+              <button onClick={() => respond.mutate({ battleId: battle.id, accept: false }, { onError: () => toast.error('Failed') })} className="flex-1 py-2 rounded-lg border text-sm text-gray-600">Decline</button>
+              <button onClick={() => respond.mutate({ battleId: battle.id, accept: true }, { onSuccess: () => toast.success('Battle on! ⚔️'), onError: () => toast.error('Failed') })} className="flex-1 py-2 rounded-lg bg-sage-700 text-white text-sm font-semibold">Accept</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <ScoreRow name={thisMeta?.name ?? 'Your crew'} emoji={thisMeta?.emoji} score={thisScore} total={isBoulder ? thisTotal : undefined} pct={Math.round((thisScore / thisDenom) * 100)} highlight />
+          <ScoreRow name={otherMeta?.name ?? 'Crew'} emoji={otherMeta?.emoji} score={otherScore} total={isBoulder ? otherTotal : undefined} pct={Math.round((otherScore / otherDenom) * 100)} />
+          {outcome.done && (
+            <p className={`text-sm font-semibold pt-1 ${outcome.winnerIsThis === true ? 'text-green-600' : 'text-gray-500'}`}>
+              {outcome.winnerIsThis === true ? '🏆 Your crew won!' : outcome.winnerIsThis === false ? `${otherMeta?.name} won` : "It's a draw"}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

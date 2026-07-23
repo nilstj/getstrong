@@ -4,9 +4,11 @@ import { Users, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   useMyCrews, usePendingCrewInvites, useCreateCrew,
-  useAcceptCrewInvite, useDeclineCrewInvite,
+  useAcceptCrewInvite, useDeclineCrewInvite, useCrewStandings,
 } from '../hooks/useCrews'
 import { BottomSheet } from '../components/BottomSheet'
+import { CreateBattleSheet } from '../components/CreateBattleSheet'
+import { cycleMonth } from '../utils/leaderboard'
 
 export function MyCrewsPage() {
   const navigate = useNavigate()
@@ -20,6 +22,14 @@ export function MyCrewsPage() {
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('')
   const [homeGym, setHomeGym] = useState('')
+
+  // Cross-crew leaderboard, filterable by the home gyms of my crews.
+  const month = cycleMonth(new Date())
+  const myGyms = Array.from(new Set(crews.map(c => c.crew.home_gym).filter((g): g is string => !!g)))
+  const myCrewIds = new Set(crews.map(c => c.crew.id))
+  const [standingsGym, setStandingsGym] = useState<string | null>(null)
+  const { data: standings = [] } = useCrewStandings(standingsGym, month)
+  const [battleOpponent, setBattleOpponent] = useState<{ id: string; name: string } | null>(null)
 
   const create = () => {
     createCrew.mutate(
@@ -109,6 +119,56 @@ export function MyCrewsPage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {standings.length > 0 && (
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Top crews</h2>
+          {myGyms.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {[null, ...myGyms].map(g => (
+                <button
+                  key={g ?? 'all'}
+                  onClick={() => setStandingsGym(g)}
+                  className={`text-xs font-medium rounded-full px-2.5 py-1 ${standingsGym === g ? 'bg-sage-700 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  {g ?? 'Everywhere'}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="bg-white border border-gray-100 rounded-2xl p-2">
+            {standings.map((s, i) => (
+              <div key={s.crew_id} className={`flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm ${myCrewIds.has(s.crew_id) ? 'bg-sage-50' : ''}`}>
+                <span className="w-5 text-center font-bold text-gray-400 tabular-nums">{i + 1}</span>
+                <span className="text-lg">{s.emoji ?? '🧗'}</span>
+                <span className="flex-1 font-medium text-gray-800 truncate">
+                  {s.name}<span className="text-gray-400 font-normal"> · {s.member_count}</span>
+                </span>
+                {!myCrewIds.has(s.crew_id) && crews.length > 0 && (
+                  <button
+                    onClick={() => setBattleOpponent({ id: s.crew_id, name: s.name })}
+                    className="text-xs font-medium text-sage-700 hover:text-sage-800"
+                    title="Challenge this crew"
+                  >
+                    ⚔️
+                  </button>
+                )}
+                <span className="font-bold text-sage-700 tabular-nums w-8 text-right">{s.avg_points}</span>
+              </div>
+            ))}
+            <p className="text-[11px] text-gray-400 text-center px-2 py-1.5">Average points per member this month.</p>
+          </div>
+        </div>
+      )}
+
+      {battleOpponent && (
+        <CreateBattleSheet
+          open
+          onClose={() => setBattleOpponent(null)}
+          opponentCrewId={battleOpponent.id}
+          opponentName={battleOpponent.name}
+        />
       )}
 
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Create a crew">
