@@ -40,7 +40,7 @@ export function GymBoulderPicker({
             <GymThumb gym={b.gym} className="w-full h-full" />
           )}
 
-          {b.image_url && b.beta_video_url && <VideoBadge className="absolute top-1 right-1" />}
+          {b.image_url && b.beta_video_url && <VideoBadge />}
 
           {(b.community_grade || b.color) && (
             <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 px-1.5 py-1 bg-gradient-to-t from-black/70 to-transparent">
