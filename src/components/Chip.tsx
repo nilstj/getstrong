@@ -40,16 +40,20 @@ export function HoldDot({ color, size = 14 }: { color: string; size?: number }) 
  */
 export function HoldGraphic({ color, size = 40 }: { color?: string | null; size?: number }) {
   const hex = colorHex(color)
+  const outline = '#1c1c1c'
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label={color ? `${color} hold` : 'hold'} className="flex-shrink-0">
+    <svg width={size} height={size} viewBox="0 0 96 96" role="img" aria-label={color ? `${color} hold` : 'hold'} className="flex-shrink-0">
+      {/* organic hold silhouette, filled with the hold colour */}
       <path
-        d="M14 8 C26 3 42 8 44 20 C46 31 38 42 25 43 C13 44 3 37 4 25 C5 16 6 12 14 8 Z"
+        d="M30 16 C46 6 66 10 77 24 C85 35 84 45 76 53 C88 60 92 74 81 84 C70 93 54 88 47 79 C37 90 18 88 11 73 C4 58 9 33 21 24 C24 21 27 18 30 16 Z"
         fill={hex}
-        stroke="rgba(0,0,0,0.14)"
-        strokeWidth="1"
+        stroke={outline}
+        strokeWidth="4"
+        strokeLinejoin="round"
       />
       {/* bolt hole */}
-      <circle cx="27" cy="21" r="3" fill="rgba(0,0,0,0.22)" />
+      <circle cx="41" cy="44" r="9" fill="none" stroke={outline} strokeWidth="4" />
+      <circle cx="41" cy="44" r="3.5" fill={outline} />
     </svg>
   )
 }
