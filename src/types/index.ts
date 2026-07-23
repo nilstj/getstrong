@@ -225,6 +225,7 @@ export interface GymProblem {
   name: string | null
   setter: string | null
   setter_intention: string | null
+  hold_color: string | null
   image_url: string | null
   beta_video_url: string | null
   created_by: string | null
@@ -301,6 +302,7 @@ export interface BoulderSummary {
   title: string
   gym: string
   color: string | null
+  hold_color: string | null
   community_grade: string | null
   image_url: string | null
   beta_video_url: string | null
@@ -320,6 +322,7 @@ export interface GymSuggestion {
 export interface ProblemPrefill {
   name: string | null
   color: string | null
+  hold_color: string | null
   grade_value: string | null
   image_url: string | null
   beta_video_url: string | null

@@ -1,6 +1,7 @@
 import { Play } from 'lucide-react'
 import { useGymBoulders } from '../hooks/useGymProblems'
 import { GymThumb } from './GymThumb'
+import { HoldDot } from './Chip'
 import { VideoBadge } from './VideoBadge'
 import type { GymProblem } from '../types'
 
@@ -42,9 +43,10 @@ export function GymBoulderPicker({
 
           {b.image_url && b.beta_video_url && <VideoBadge />}
 
-          {(b.community_grade || b.color) && (
+          {(b.community_grade || b.color || b.hold_color) && (
             <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 px-1.5 py-1 bg-gradient-to-t from-black/70 to-transparent">
               {b.community_grade && <span className="text-[11px] font-semibold text-white leading-none">{b.community_grade}</span>}
+              {b.hold_color && <HoldDot color={b.hold_color} size={10} />}
               {b.color && <span className="text-[10px] text-white/80 leading-none truncate">{b.color}</span>}
             </div>
           )}
