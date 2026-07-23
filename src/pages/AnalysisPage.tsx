@@ -6,7 +6,6 @@ import { SessionFrequencyChart } from '../components/SessionFrequencyChart'
 import { ClimbingDNA } from '../components/ClimbingDNA'
 import { hardestSentPerSession, sessionsByWeek, sendRate, totalSends, totalProblems } from '../utils/stats'
 import { useAuth } from '../providers/AuthProvider'
-import { useRecentExercises } from '../hooks/useRecentExercises'
 import { useCoach } from '../hooks/useCoach'
 import { useAppSetting } from '../hooks/useAppSettings'
 import { subDays, formatDistanceToNow } from 'date-fns'
@@ -47,7 +46,6 @@ export function AnalysisPage() {
 
   const recentSessions90 = sessions.filter(s => new Date(s.date) >= subDays(new Date(), 90))
   const recentSessionIds = recentSessions90.map(s => s.id)
-  const { data: recentExercises = [] } = useRecentExercises(recentSessionIds)
   const { data: coachPrompt } = useAppSetting('coach_prompt')
   const { text: coachText, loading: coachLoading, error: coachError, trigger: triggerCoach } = useCoach()
   const [onCooldown, setOnCooldown] = useState(() => isCoachOnCooldown())
@@ -68,7 +66,7 @@ export function AnalysisPage() {
   const handleCoach = () => {
     localStorage.setItem(COACH_STORAGE_KEY, String(Date.now()))
     setOnCooldown(true)
-    triggerCoach({ sessions: recentSessions90, problems: recentProblems90, exercises: recentExercises, tagStats, gradeScale, promptTemplate: coachPrompt ?? undefined })
+    triggerCoach({ sessions: recentSessions90, problems: recentProblems90, tagStats, gradeScale, promptTemplate: coachPrompt ?? undefined })
   }
 
   const boardCharts = BOARDS

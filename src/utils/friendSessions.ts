@@ -13,14 +13,14 @@ export interface FriendProblemRow {
   created_at: string
 }
 
-/** An exercise or challenge attempt, reduced to what the feed needs. */
+/** A challenge attempt, reduced to what the feed needs. */
 export interface FriendActivityRow {
   user_id: string
   session_id: string | null
   created_at: string
 }
 
-/** One friend's session, summarized from its problems, exercises, and challenges
+/** One friend's session, summarized from its problems and challenges
  *  (the sessions table is owner-only under RLS, so everything is derived from
  *  readable child rows). */
 export interface FriendSessionSummary {
@@ -30,7 +30,6 @@ export interface FriendSessionSummary {
   date: string
   problemCount: number
   sendCount: number
-  exerciseCount: number
   challengeCount: number
   topGrade: string | null
   /** Problems that have a photo, each flagged if that same problem links a video. */
@@ -44,26 +43,24 @@ interface Bucket {
   gym: string | null
   date: string
   problems: FriendProblemRow[]
-  exerciseCount: number
   challengeCount: number
 }
 
 /**
  * Group a friend's recent activity into per-session summaries, newest first.
- * A session appears if it has any problems, exercises, or challenge attempts.
+ * A session appears if it has any problems or challenge attempts.
  * Rows with no `session_id` are ignored. `topGrade` is the hardest problem's
  * display grade, ranked on the Font scale.
  */
 export function summarizeFriendSessions(input: {
   problems: FriendProblemRow[]
-  exercises?: FriendActivityRow[]
   challenges?: FriendActivityRow[]
 }): FriendSessionSummary[] {
   const buckets = new Map<string, Bucket>()
   const touch = (sessionId: string, userId: string, createdAt: string): Bucket => {
     let b = buckets.get(sessionId)
     if (!b) {
-      b = { userId, gym: null, date: createdAt, problems: [], exerciseCount: 0, challengeCount: 0 }
+      b = { userId, gym: null, date: createdAt, problems: [], challengeCount: 0 }
       buckets.set(sessionId, b)
     }
     if (createdAt > b.date) b.date = createdAt
@@ -75,10 +72,6 @@ export function summarizeFriendSessions(input: {
     const b = touch(p.session_id, p.user_id, p.created_at)
     b.problems.push(p)
     if (!b.gym && p.gym) b.gym = p.gym
-  }
-  for (const e of input.exercises ?? []) {
-    if (!e.session_id) continue
-    touch(e.session_id, e.user_id, e.created_at).exerciseCount++
   }
   for (const c of input.challenges ?? []) {
     if (!c.session_id) continue
@@ -106,7 +99,6 @@ export function summarizeFriendSessions(input: {
       date: b.date,
       problemCount: b.problems.length,
       sendCount,
-      exerciseCount: b.exerciseCount,
       challengeCount: b.challengeCount,
       topGrade,
       photos,

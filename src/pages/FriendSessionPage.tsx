@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Play, Dumbbell, Trophy } from 'lucide-react'
+import { ArrowLeft, Play, Trophy } from 'lucide-react'
 import { format } from 'date-fns'
 import { useSessionProblems } from '../hooks/useProblems'
-import { useSessionExercises } from '../hooks/useExercises'
 import { useSessionChallengeAttempts } from '../hooks/useChallenges'
 import { useProfile } from '../hooks/useProfile'
 import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow } from '../utils/friendSessions'
@@ -13,7 +12,7 @@ import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { VideoBadge } from '../components/VideoBadge'
 import { WatchVideoLink } from '../components/WatchVideoLink'
-import type { Problem, Exercise } from '../types'
+import type { Problem } from '../types'
 
 function SendBadge({ p }: { p: Problem }) {
   if (!p.sent) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-200 text-gray-600">Project</span>
@@ -21,23 +20,16 @@ function SendBadge({ p }: { p: Problem }) {
   return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Sent</span>
 }
 
-function exerciseDetail(e: Exercise): string {
-  if (e.type === 'reps' && e.sets != null && e.reps != null) return `${e.sets}×${e.reps}${e.weight_kg != null ? ` · ${e.weight_kg}kg` : ''}`
-  if (e.type === 'time' && e.duration_seconds != null) return `${e.sets != null ? `${e.sets}× ` : ''}${e.duration_seconds}s`
-  return [e.sets != null ? `${e.sets} sets` : null, e.weight_kg != null ? `${e.weight_kg}kg` : null].filter(Boolean).join(' · ')
-}
-
 export function FriendSessionPage() {
   const { sessionId = '' } = useParams<{ sessionId: string }>()
   const { data: problems = [], isLoading: pLoading } = useSessionProblems(sessionId)
-  const { data: exercises = [], isLoading: eLoading } = useSessionExercises(sessionId)
   const { data: attempts = [], isLoading: cLoading } = useSessionChallengeAttempts(sessionId)
-  const authorId = problems[0]?.user_id ?? exercises[0]?.user_id ?? attempts[0]?.user_id
+  const authorId = problems[0]?.user_id ?? attempts[0]?.user_id
   const { data: profile } = useProfile(authorId)
   const [lightbox, setLightbox] = useState<string | null>(null)
 
-  if (pLoading || eLoading || cLoading) return <div className="p-5 text-sm text-gray-400">Loading session…</div>
-  if (problems.length === 0 && exercises.length === 0 && attempts.length === 0) {
+  if (pLoading || cLoading) return <div className="p-5 text-sm text-gray-400">Loading session…</div>
+  if (problems.length === 0 && attempts.length === 0) {
     return <div className="p-5 text-sm text-gray-400">This session has no shared activity.</div>
   }
 
@@ -47,18 +39,16 @@ export function FriendSessionPage() {
       grade_value: p.grade_value, grade_value_font: p.grade_value_font,
       sent: p.sent, image_url: p.image_url, beta_video_url: p.beta_video_url, created_at: p.created_at,
     })),
-    exercises: exercises.map((e): FriendActivityRow => ({ user_id: e.user_id, session_id: e.session_id, created_at: e.created_at })),
     challenges: attempts.map((a): FriendActivityRow => ({ user_id: a.user_id, session_id: a.session_id, created_at: a.created_at })),
   })
 
-  const firstCreated = problems[0]?.created_at ?? exercises[0]?.created_at ?? attempts[0]?.created_at
+  const firstCreated = problems[0]?.created_at ?? attempts[0]?.created_at
   const date = (() => {
     try { return format(new Date(summary?.date ?? firstCreated), 'EEEE d MMM') } catch { return '' }
   })()
 
   const summaryParts = [
     summary && summary.problemCount > 0 ? `${summary.problemCount} ${summary.problemCount === 1 ? 'problem' : 'problems'} · ${summary.sendCount} sent` : null,
-    summary && summary.exerciseCount > 0 ? `${summary.exerciseCount} ${summary.exerciseCount === 1 ? 'exercise' : 'exercises'}` : null,
     summary && summary.challengeCount > 0 ? `${summary.challengeCount} ${summary.challengeCount === 1 ? 'challenge' : 'challenges'}` : null,
   ].filter(Boolean)
 
@@ -124,22 +114,6 @@ export function FriendSessionPage() {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {exercises.length > 0 && (
-        <div className="px-4 mt-4">
-          <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">
-            <Dumbbell size={14} strokeWidth={2} /> Exercises
-          </h2>
-          <div className="space-y-2">
-            {exercises.map(e => (
-              <div key={e.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
-                <span className="text-sm font-medium text-gray-800 truncate">{e.name}</span>
-                <span className="text-xs text-gray-500 flex-shrink-0">{exerciseDetail(e)}</span>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 

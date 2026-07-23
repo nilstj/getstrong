@@ -9,10 +9,10 @@ export type FriendSession = FriendSessionSummary & {
   authorAvatarUrl: string | null
 }
 
-// Pull the most recent N problems, exercises, and challenge attempts across
-// everyone you follow, then group them into per-session summaries. All three
-// are world-readable (migrations 015 / 003); the sessions table is not, so the
-// summary is derived entirely from these child rows.
+// Pull the most recent N problems and challenge attempts across everyone you
+// follow, then group them into per-session summaries. Both are world-readable
+// (migrations 015 / 003); the sessions table is not, so the summary is derived
+// entirely from these child rows.
 const SCAN = 300
 
 export function useFriendsFeed() {
@@ -23,18 +23,12 @@ export function useFriendsFeed() {
     queryKey: ['friends_feed', followingIds.slice().sort().join(',')],
     enabled: followingIds.length > 0,
     queryFn: async (): Promise<FriendSession[]> => {
-      const [problemsRes, exercisesRes, challengesRes, { data: profs }] = await Promise.all([
+      const [problemsRes, challengesRes, { data: profs }] = await Promise.all([
         supabase
           .from('problems')
           .select('user_id, session_id, gym, grade_value, grade_value_font, sent, image_url, beta_video_url, created_at')
           .in('user_id', followingIds)
           .is('crag', null)
-          .order('created_at', { ascending: false })
-          .limit(SCAN),
-        supabase
-          .from('exercises')
-          .select('user_id, session_id, created_at')
-          .in('user_id', followingIds)
           .order('created_at', { ascending: false })
           .limit(SCAN),
         supabase
@@ -56,7 +50,6 @@ export function useFriendsFeed() {
 
       return summarizeFriendSessions({
         problems: (problemsRes.data ?? []) as FriendProblemRow[],
-        exercises: (exercisesRes.data ?? []) as FriendActivityRow[],
         challenges: (challengesRes.data ?? []) as FriendActivityRow[],
       }).map(s => ({
         ...s,
