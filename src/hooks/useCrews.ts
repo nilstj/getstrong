@@ -265,6 +265,29 @@ export function useCrewActivityFeed(memberIds: string[]) {
   })
 }
 
+export interface CrewStanding {
+  crew_id: string
+  name: string
+  emoji: string | null
+  home_gym: string | null
+  member_count: number
+  total_points: number
+  avg_points: number
+}
+
+/** Cross-crew leaderboard, ranked by average points per member. `gym` null = everywhere. */
+export function useCrewStandings(gym: string | null, cycleMonth: string) {
+  return useQuery({
+    queryKey: ['crew_standings', gym ?? 'all', cycleMonth],
+    enabled: !!cycleMonth,
+    queryFn: async (): Promise<CrewStanding[]> => {
+      const { data, error } = await supabase.rpc('crew_standings', { p_gym: gym, p_cycle: cycleMonth })
+      if (error) throw error
+      return (data ?? []) as CrewStanding[]
+    },
+  })
+}
+
 // ── Mutations (all via SECURITY DEFINER RPCs) ────────────────────────────────
 export function useCreateCrew() {
   const qc = useQueryClient()
