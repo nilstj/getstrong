@@ -14,6 +14,7 @@ export interface HelpRequestWithProblem extends HelpRequest {
     grade_value_vscale: string | null
     color: string | null
     board: string | null
+    crag: string | null
     sessions: { location: string } | null
   } | null
   help_responses: { count: number }[]
@@ -28,12 +29,14 @@ export function useHelpRequests() {
       const { data, error } = await supabase
         .from('help_requests')
         .select(
-          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, sessions(location)), help_responses(count)',
+          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, crag, sessions(location)), help_responses(count)',
         )
         .eq('resolved', false)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return (data ?? []) as unknown as HelpRequestWithProblem[]
+      // Outdoor problems (non-null crag) are out of scope for v1 — hide any
+      // help request about one. Filtered client-side since it's an embed.
+      return ((data ?? []) as unknown as HelpRequestWithProblem[]).filter(r => !r.problems?.crag)
     },
     enabled: !!user,
   })
@@ -48,13 +51,15 @@ export function useResolvedHelpRequests() {
       const { data, error } = await supabase
         .from('help_requests')
         .select(
-          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, sessions(location)), help_responses(count)',
+          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, crag, sessions(location)), help_responses(count)',
         )
         .eq('resolved', true)
         .order('created_at', { ascending: false })
         .limit(50)
       if (error) throw error
-      return (data ?? []) as unknown as HelpRequestWithProblem[]
+      // Outdoor problems (non-null crag) are out of scope for v1 — hide any
+      // help request about one. Filtered client-side since it's an embed.
+      return ((data ?? []) as unknown as HelpRequestWithProblem[]).filter(r => !r.problems?.crag)
     },
     enabled: !!user,
   })

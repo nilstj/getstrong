@@ -19,7 +19,7 @@ export function useDashboard() {
           ? supabase.from('sessions').select('*').eq('user_id', userId).order('date', { ascending: false })
           : Promise.resolve({ data: [], error: null }),
         userId
-          ? supabase.from('problems').select('*').eq('user_id', userId)
+          ? supabase.from('problems').select('*').eq('user_id', userId).is('crag', null)
           : Promise.resolve({ data: [], error: null }),
         supabase.from('grade_mappings').select('*'),
       ])

@@ -7,7 +7,9 @@ export function useAllProblems() {
   return useQuery({
     queryKey: ['problems'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('problems').select('*')
+      // Outdoor bouldering is out of scope for v1 — a non-null `crag` marks an
+      // outdoor problem, so we exclude those everywhere problems are read.
+      const { data, error } = await supabase.from('problems').select('*').is('crag', null)
       if (error) throw error
       return data as Problem[]
     },
@@ -22,6 +24,7 @@ export function useSessionProblems(sessionId: string) {
         .from('problems')
         .select('*')
         .eq('session_id', sessionId)
+        .is('crag', null)
         .order('created_at', { ascending: true })
       if (error) throw error
       return data as Problem[]

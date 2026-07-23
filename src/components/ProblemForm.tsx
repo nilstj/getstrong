@@ -18,7 +18,6 @@ type FormValues = {
   board: string
   board_angle: number | ''
   gym: string
-  crag: string
   beta_video_url: string
   notes: string
 }
@@ -41,7 +40,6 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const scaleLabel = initialGradeSystem === 'v_scale' ? 'V-Scale' : 'Font'
   const { data: tagDefinitions = [] } = useProblemTagDefinitions()
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(existingTagIds ?? []))
-  const [isOutdoor, setIsOutdoor] = useState<boolean>(!!(existing?.crag))
   const [visibilityPublic, setVisibilityPublic] = useState<boolean>(!!existing?.gym_problem_id)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(existing?.image_url ?? prefill?.image_url ?? null)
@@ -86,7 +84,6 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       board: existing?.board ?? '',
       board_angle: existing?.board_angle ?? '',
       gym: existing?.gym ?? prefill?.gym ?? defaultGym ?? '',
-      crag: existing?.crag ?? '',
       beta_video_url: existing?.beta_video_url ?? prefill?.beta_video_url ?? '',
       notes: existing?.notes ?? '',
     },
@@ -119,17 +116,17 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       name: values.name || null,
       grade_system: initialGradeSystem,
       grade_value: values.grade_value || null,
-      color: isOutdoor ? null : (values.color || null),
+      color: values.color || null,
       attempts: values.attempts,
       sent: values.sent,
-      board: isOutdoor ? null : (values.board || null),
-      board_angle: (!isOutdoor && values.board && values.board_angle !== '') ? Number(values.board_angle) : null,
-      gym: isOutdoor ? null : (values.gym || null),
-      crag: isOutdoor ? (values.crag || null) : null,
+      board: values.board || null,
+      board_angle: (values.board && values.board_angle !== '') ? Number(values.board_angle) : null,
+      gym: values.gym || null,
+      crag: null,
       image_url,
       beta_video_url: values.beta_video_url || null,
       notes: values.notes || null,
-      ...(!isOutdoor && !prefill ? { makePublic: visibilityPublic } : {}),
+      ...(!prefill ? { makePublic: visibilityPublic } : {}),
     })
   }
 
@@ -145,28 +142,6 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         />
       </div>
 
-      {/* Indoor / Outdoor toggle */}
-      <div className="flex rounded-xl overflow-hidden border border-gray-200">
-        <button
-          type="button"
-          onClick={() => setIsOutdoor(false)}
-          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-            !isOutdoor ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
-          }`}
-        >
-          🏠 Indoor
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsOutdoor(true)}
-          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-            isOutdoor ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
-          }`}
-        >
-          🌲 Outdoor
-        </button>
-      </div>
-
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Grade ({scaleLabel})</label>
         <select {...register('grade_value')} className="w-full border rounded-lg px-3 py-2.5">
@@ -177,10 +152,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         </select>
       </div>
 
-      {/* Indoor-only fields */}
-      {!isOutdoor && (
-        <>
-          {!prefill && (
+      {!prefill && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>
               <div className="flex rounded-lg overflow-hidden border text-sm">
@@ -256,21 +228,6 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
               className="w-full border rounded-lg px-3 py-2.5"
             />
           </div>
-        </>
-      )}
-
-      {/* Outdoor-only fields */}
-      {isOutdoor && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Crag (optional)</label>
-          <input
-            {...register('crag')}
-            type="text"
-            placeholder="e.g. Fontainebleau, Magic Wood"
-            className="w-full border rounded-lg px-3 py-2.5"
-          />
-        </div>
-      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Attempts</label>
@@ -298,17 +255,15 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         <label htmlFor="sent" className="text-sm font-medium text-gray-700">Sent (completed)</label>
       </div>
 
-      {!isOutdoor && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Gym (optional)</label>
-          <input
-            {...register('gym')}
-            type="text"
-            placeholder="e.g. Boulders Oslo"
-            className="w-full border rounded-lg px-3 py-2.5"
-          />
-        </div>
-      )}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Gym (optional)</label>
+        <input
+          {...register('gym')}
+          type="text"
+          placeholder="e.g. Boulders Oslo"
+          className="w-full border rounded-lg px-3 py-2.5"
+        />
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Beta video (optional)</label>
