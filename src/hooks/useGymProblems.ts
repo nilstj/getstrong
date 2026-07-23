@@ -113,3 +113,17 @@ export function useStripGymProblem() {
     },
   })
 }
+
+export function useDeleteGymProblem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (gymProblemId: string) => {
+      const { error } = await supabase.rpc('delete_gym_problem', { p_gym_problem_id: gymProblemId })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gym_problems'] })
+      queryClient.invalidateQueries({ queryKey: ['discover_boulders'] })
+    },
+  })
+}
