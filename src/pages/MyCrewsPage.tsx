@@ -7,6 +7,7 @@ import {
   useAcceptCrewInvite, useDeclineCrewInvite, useCrewStandings,
 } from '../hooks/useCrews'
 import { BottomSheet } from '../components/BottomSheet'
+import { CreateBattleSheet } from '../components/CreateBattleSheet'
 import { cycleMonth } from '../utils/leaderboard'
 
 export function MyCrewsPage() {
@@ -28,6 +29,7 @@ export function MyCrewsPage() {
   const myCrewIds = new Set(crews.map(c => c.crew.id))
   const [standingsGym, setStandingsGym] = useState<string | null>(null)
   const { data: standings = [] } = useCrewStandings(standingsGym, month)
+  const [battleOpponent, setBattleOpponent] = useState<{ id: string; name: string } | null>(null)
 
   const create = () => {
     createCrew.mutate(
@@ -143,12 +145,30 @@ export function MyCrewsPage() {
                 <span className="flex-1 font-medium text-gray-800 truncate">
                   {s.name}<span className="text-gray-400 font-normal"> · {s.member_count}</span>
                 </span>
-                <span className="font-bold text-sage-700 tabular-nums">{s.avg_points}</span>
+                {!myCrewIds.has(s.crew_id) && crews.length > 0 && (
+                  <button
+                    onClick={() => setBattleOpponent({ id: s.crew_id, name: s.name })}
+                    className="text-xs font-medium text-sage-700 hover:text-sage-800"
+                    title="Challenge this crew"
+                  >
+                    ⚔️
+                  </button>
+                )}
+                <span className="font-bold text-sage-700 tabular-nums w-8 text-right">{s.avg_points}</span>
               </div>
             ))}
             <p className="text-[11px] text-gray-400 text-center px-2 py-1.5">Average points per member this month.</p>
           </div>
         </div>
+      )}
+
+      {battleOpponent && (
+        <CreateBattleSheet
+          open
+          onClose={() => setBattleOpponent(null)}
+          opponentCrewId={battleOpponent.id}
+          opponentName={battleOpponent.name}
+        />
       )}
 
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Create a crew">
