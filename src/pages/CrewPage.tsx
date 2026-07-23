@@ -43,7 +43,7 @@ import { boulderToPrefill } from '../utils/boulderPrefill'
 import type { BoulderNavState } from '../utils/boulderNav'
 import { todayDateString } from '../utils/dates'
 import { useAuth } from '../providers/AuthProvider'
-import { Chip, HoldDot } from '../components/Chip'
+import { Chip, HoldDot, HoldGraphic } from '../components/Chip'
 import { BetaThreadCard } from '../components/BetaThreadCard'
 import { CrewTitleBadge } from '../components/CrewTitleBadge'
 import { StarRating } from '../components/StarRating'
@@ -318,7 +318,6 @@ export function CrewPage() {
         board: null,
         board_angle: null,
         crag: null,
-        hold_color: null,
         notes: null,
       },
       {
@@ -399,7 +398,7 @@ export function CrewPage() {
             <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
             <div className="absolute left-3 bottom-3 flex items-center gap-2">
               {displayGrade && <Chip label={displayGrade} variant="grade" />}
-              {boulder.color && <HoldDot color={boulder.color} />}
+              {boulder.hold_color && <HoldDot color={boulder.hold_color} />}
               {help?.open && <span className="inline-flex items-center rounded-md bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950">🆘 Help wanted</span>}
             </div>
           </div>
@@ -412,7 +411,8 @@ export function CrewPage() {
             <h1 className="text-xl font-bold tracking-tight">{title}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
               {displayGrade && <span className="font-semibold text-gray-800">{displayGrade}</span>}
-              {boulder.color && <><span className="text-gray-300">·</span><span className="inline-flex items-center gap-1"><HoldDot color={boulder.color} size={11} /> {boulder.color}</span></>}
+              {boulder.color && <><span className="text-gray-300">·</span><span>Gym grade: {boulder.color}</span></>}
+              {boulder.hold_color && <><span className="text-gray-300">·</span><span className="inline-flex items-center gap-1"><HoldGraphic color={boulder.hold_color} size={16} /> {boulder.hold_color}</span></>}
               {boulder.gym && <><span className="text-gray-300">·</span><span>{boulder.gym}</span></>}
               <span className="text-gray-300">·</span>
               {editingSetter ? (

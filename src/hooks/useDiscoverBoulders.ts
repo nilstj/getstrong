@@ -92,6 +92,7 @@ export function useDiscoverBoulders() {
         title: boulderTitle(b),
         gym: b.gym,
         color: b.color,
+        hold_color: b.hold_color,
         community_grade: b.community_grade ?? consensusGrade(gradesByBoulder.get(b.id) ?? []),
         image_url: b.image_url,
         beta_video_url: b.beta_video_url,

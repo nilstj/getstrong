@@ -50,6 +50,7 @@ export function useCreateGymProblem() {
     mutationFn: async (values: {
       gym: string
       color: string | null
+      hold_color: string | null
       wall_angle: string | null
       name: string | null
       image_url: string | null
@@ -58,6 +59,7 @@ export function useCreateGymProblem() {
       const { data, error } = await supabase.rpc('create_gym_problem', {
         p_gym: values.gym,
         p_color: values.color,
+        p_hold_color: values.hold_color,
         p_wall_angle: values.wall_angle,
         p_name: values.name,
         p_image_url: values.image_url,

@@ -42,6 +42,7 @@ export function BoulderLinkSheet({
       {
         gym: problem.gym!,
         color: problem.color,
+        hold_color: problem.hold_color,
         wall_angle: null,
         name: problem.name,
         image_url: problem.image_url,
