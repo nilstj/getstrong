@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Play } from 'lucide-react'
 import { Chip, HoldDot } from './Chip'
 import { VideoBadge } from './VideoBadge'
+import { SetterBadge } from './SetterBadge'
 import type { FeedEvent, FeedEventType } from '../types'
 
 const VERB: Record<FeedEventType, string> = {
@@ -31,7 +32,8 @@ export function FeedCard({
         <span className="w-8 h-8 rounded-full bg-cover bg-center bg-sage-100 flex-shrink-0"
           style={actorAvatarUrl ? { backgroundImage: `url(${actorAvatarUrl})` } : undefined} />
         <div className="min-w-0 text-sm leading-tight">
-          <span className="font-semibold">{actorName}</span>{' '}
+          <span className="font-semibold">{actorName}</span>
+          <SetterBadge userId={event.actor_id} className="mx-0.5 align-text-bottom" />{' '}
           <span className="text-gray-500">{VERB[event.event_type] ?? 'posted on'}</span>{' '}
           <span className="font-semibold">{title}</span>
           <div className="text-[11px] text-gray-400">

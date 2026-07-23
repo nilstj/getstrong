@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { useProfile } from '../hooks/useProfile'
+import { SetterBadge } from './SetterBadge'
 import type { ProblemComment } from '../hooks/useProblemComments'
 import { useProblemComments, usePostProblemComment } from '../hooks/useProblemComments'
 
@@ -15,6 +16,7 @@ function CommentRow({ comment }: { comment: ProblemComment }) {
       </div>
       <div className="flex-1 min-w-0">
         <span className="text-xs font-semibold text-gray-700">{profile?.username ?? '…'}</span>
+        <SetterBadge userId={comment.user_id} size={11} className="ml-1 align-text-bottom" />
         <span className="text-[10px] text-gray-400 ml-1">
           {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
         </span>

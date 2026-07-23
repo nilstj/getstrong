@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Play, Send, Trash2, Star } from 'lucide-react'
 import { EmojiReactions } from './EmojiReactions'
+import { SetterBadge } from './SetterBadge'
 import type { BetaThread } from '../hooks/useBoulderBeta'
 import type { BetaSection, BetaBodyType } from '../types'
 
@@ -45,6 +46,7 @@ export function BetaThreadCard({
       <div className="flex items-center gap-2 mb-1.5">
         <Avatar url={thread.authorAvatarUrl} name={thread.authorName} />
         <span className="text-sm font-semibold">{thread.authorName ?? 'Someone'}</span>
+        <SetterBadge userId={thread.user_id} />
         {best && (
           <span className="inline-flex items-center gap-0.5 rounded-full bg-sage-700 text-white px-2 py-0.5 text-[10px] font-bold">
             <Star size={10} fill="currentColor" /> Top beta
@@ -82,7 +84,7 @@ export function BetaThreadCard({
             <div key={r.id} className="flex items-start gap-2">
               <Avatar url={r.authorAvatarUrl} name={r.authorName} />
               <div className="min-w-0 flex-1">
-                <p className="text-sm"><span className="font-semibold">{r.authorName ?? 'Someone'}</span> <span className="text-gray-700">{r.body}</span></p>
+                <p className="text-sm"><span className="font-semibold">{r.authorName ?? 'Someone'}</span> <SetterBadge userId={r.user_id} className="align-text-bottom" /> <span className="text-gray-700">{r.body}</span></p>
                 <EmojiReactions reactions={r.reactions} onToggle={(emoji, mine) => onReactReply(r.id, emoji, mine)} />
               </div>
               {r.user_id === currentUserId && (

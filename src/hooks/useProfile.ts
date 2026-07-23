@@ -7,6 +7,7 @@ export interface Profile {
   username: string | null
   avatar_url: string | null
   is_admin: boolean
+  is_setter: boolean
   grade_preference: 'font' | 'v_scale'
   default_gyms: string[]
   on_wall_at: string | null
@@ -69,6 +70,41 @@ export function useUploadAvatar() {
         .getPublicUrl(path)
       await updateProfile.mutateAsync({ avatar_url: publicUrl })
       return publicUrl
+    },
+  })
+}
+
+/**
+ * The set of user ids that have the setter role. Cached app-wide and consulted
+ * by <SetterBadge> so the role icon can render next to any name we have an id
+ * for, without threading is_setter through every profile query.
+ */
+export function useSetterUserIds() {
+  return useQuery({
+    queryKey: ['setter_ids'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles').select('id').eq('is_setter', true)
+      if (error) throw error
+      return new Set((data ?? []).map(r => r.id as string))
+    },
+  })
+}
+
+/** Admin-only: grant or revoke the setter role on another user (via RPC). */
+export function useSetUserSetter() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { userId: string; isSetter: boolean }) => {
+      const { error } = await supabase.rpc('set_user_setter', {
+        p_user_id: v.userId,
+        p_is_setter: v.isSetter,
+      })
+      if (error) throw error
+    },
+    onSuccess: (_, v) => {
+      queryClient.invalidateQueries({ queryKey: ['profile', v.userId] })
+      queryClient.invalidateQueries({ queryKey: ['setter_ids'] })
     },
   })
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Users } from 'lucide-react'
 import { useFollowing } from '../hooks/useFollows'
 import { useProfile } from '../hooks/useProfile'
+import { SetterBadge } from './SetterBadge'
 import { BottomSheet } from './BottomSheet'
 
 interface PartnerPickerProps {
@@ -89,7 +90,7 @@ function FollowerRow({ userId, selected, onToggle }: { userId: string; selected:
             ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
             : profile.username?.[0]?.toUpperCase() ?? '?'}
         </div>
-        <span className="font-medium text-sm">{profile.username}</span>
+        <span className="font-medium text-sm inline-flex items-center gap-1">{profile.username} <SetterBadge userId={userId} /></span>
       </div>
       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
         selected ? 'border-sage-600 bg-sage-600' : 'border-gray-300'
