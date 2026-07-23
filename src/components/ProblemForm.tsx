@@ -15,6 +15,7 @@ type FormValues = {
   name: string
   grade_value: string
   color: string
+  hold_color: string
   attempts: number
   sent: boolean
   board: string
@@ -81,6 +82,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       name: existing?.name ?? prefill?.name ?? '',
       grade_value: existing?.grade_value ?? prefill?.grade_value ?? '',
       color: existing?.color ?? prefill?.color ?? '',
+      hold_color: existing?.hold_color ?? '',
       attempts: existing?.attempts ?? 1,
       sent: existing?.sent ?? false,
       board: existing?.board ?? '',
@@ -93,7 +95,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
 
   const attempts = watch('attempts')
   const board = watch('board')
-  const color = watch('color')
+  const holdColor = watch('hold_color')
 
   const submit = async (values: FormValues) => {
     let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? prefill?.image_url ?? null) : null
@@ -120,6 +122,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       grade_system: initialGradeSystem,
       grade_value: values.grade_value || null,
       color: values.color || null,
+      hold_color: values.hold_color || null,
       attempts: values.attempts,
       sent: values.sent,
       board: values.board || null,
@@ -223,16 +226,27 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Color of the holds (optional)</label>
-            <input type="hidden" {...register('color')} />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Gym grading color (optional)</label>
+            <input
+              {...register('color')}
+              type="text"
+              placeholder="e.g. Blue circuit, Yellow tag"
+              className="w-full border rounded-lg px-3 py-2.5"
+            />
+            <p className="text-xs text-gray-400 mt-1">How the gym grades this — the circuit or tag colour.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Hold color (optional)</label>
+            <input type="hidden" {...register('hold_color')} />
             <div className="flex flex-wrap items-center gap-2">
               {HOLD_COLORS.map(c => {
-                const selected = color?.toLowerCase() === c.name.toLowerCase()
+                const selected = holdColor?.toLowerCase() === c.name.toLowerCase()
                 return (
                   <button
                     key={c.name}
                     type="button"
-                    onClick={() => setValue('color', selected ? '' : c.name)}
+                    onClick={() => setValue('hold_color', selected ? '' : c.name)}
                     title={c.name}
                     aria-label={c.name}
                     aria-pressed={selected}
@@ -242,11 +256,11 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
                 )
               })}
             </div>
-            {color && (
+            {holdColor && (
               <div className="mt-2.5 flex items-center gap-2">
-                <HoldGraphic color={color} size={34} />
-                <span className="text-sm text-gray-600">{color} hold</span>
-                <button type="button" onClick={() => setValue('color', '')} className="text-xs text-gray-400 hover:text-gray-600 ml-1">Clear</button>
+                <HoldGraphic color={holdColor} size={34} />
+                <span className="text-sm text-gray-600">{holdColor} hold</span>
+                <button type="button" onClick={() => setValue('hold_color', '')} className="text-xs text-gray-400 hover:text-gray-600 ml-1">Clear</button>
               </div>
             )}
           </div>

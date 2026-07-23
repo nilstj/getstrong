@@ -34,6 +34,7 @@ export interface Problem {
   grade_value_font: string | null
   grade_value_vscale: string | null
   color: string | null
+  hold_color: string | null
   attempts: number
   sent: boolean
   board: string | null
