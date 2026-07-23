@@ -4,12 +4,14 @@ import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
 import { daysUntil } from '../utils/gymProblems'
 import { GymThumb } from './GymThumb'
 import type { BoulderSummary } from '../types'
+import type { BoulderNavState } from '../utils/boulderNav'
 
-function BoulderRow({ b, archived = false }: { b: BoulderSummary; archived?: boolean }) {
+function BoulderRow({ b, boulderIds, archived = false }: { b: BoulderSummary; boulderIds: string[]; archived?: boolean }) {
   const left = daysUntil(b.expires_at, new Date())
   return (
     <Link
       to={`/gym-problems/${b.id}`}
+      state={{ boulderIds } satisfies BoulderNavState}
       className={`flex items-center gap-3 px-2.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 ${archived ? 'opacity-75' : ''}`}
     >
       {b.image_url ? (
@@ -38,11 +40,12 @@ function BoulderRow({ b, archived = false }: { b: BoulderSummary; archived?: boo
 
 function Group({ label, boulders, archived }: { label: string; boulders: BoulderSummary[]; archived?: boolean }) {
   if (boulders.length === 0) return null
+  const boulderIds = boulders.map(b => b.id)
   return (
     <div className="mb-3">
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{label}</p>
       <div className="space-y-1.5">
-        {boulders.map(b => <BoulderRow key={b.id} b={b} archived={archived} />)}
+        {boulders.map(b => <BoulderRow key={b.id} b={b} boulderIds={boulderIds} archived={archived} />)}
       </div>
     </div>
   )

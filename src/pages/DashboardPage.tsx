@@ -15,6 +15,7 @@ export function DashboardPage() {
     .filter(b => !b.isBoard)
     .sort((a, b) => (a.set_at < b.set_at ? 1 : a.set_at > b.set_at ? -1 : 0))
     .slice(0, 12)
+  const storyIds = stories.map(b => b.id)
   // useFriendsFeed stays disabled until follows resolve, so fold the follows
   // load into the spinner — otherwise the empty state flashes on every mount.
   const { isLoading: followLoading } = useFollowing()
@@ -35,7 +36,7 @@ export function DashboardPage() {
                 fallbackGym={b.gym}
                 helpWanted={b.helpWanted}
                 hasVideo={!!b.beta_video_url}
-                onClick={() => navigate(`/gym-problems/${b.id}`)}
+                onClick={() => navigate(`/gym-problems/${b.id}`, { state: { boulderIds: storyIds } })}
               />
             ))}
           </div>
