@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
+import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow, type FriendSessionSummary } from '../utils/friendSessions'
 
 // A Crew is a small, persistent, invite-only training group. Distinct from the
 // per-boulder "sendtrain" served by useCrew.ts.
@@ -164,6 +165,102 @@ export function useCrewLeaderboard(memberIds: string[], cycleMonth: string) {
       return memberIds
         .map(id => ({ user_id: id, username: byId.get(id)?.username ?? null, avatar_url: byId.get(id)?.avatar_url ?? null, points: points.get(id) ?? 0 }))
         .sort((a, b) => b.points - a.points)
+    },
+  })
+}
+
+// ── Phase 2: completion tracker + crew feed ──────────────────────────────────
+
+export interface CrewBoulderProgress {
+  crewId: string
+  name: string
+  emoji: string | null
+  members: { user_id: string; username: string | null; avatar_url: string | null; done: boolean }[]
+  doneCount: number
+  total: number
+}
+
+/**
+ * For each of the current user's crews (2+ members), how many have sent this
+ * boulder — the "everyone's done it" tracker. A boulder counts as done for a
+ * member when they've logged a sent problem linked to it.
+ */
+export function useCrewBoulderProgress(gymProblemId: string) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['crew_boulder_progress', gymProblemId, user?.id],
+    enabled: !!gymProblemId && !!user,
+    queryFn: async (): Promise<CrewBoulderProgress[]> => {
+      const { data: mine, error } = await supabase.from('crew_members').select('crew_id').eq('user_id', user!.id)
+      if (error) throw error
+      const crewIds = (mine ?? []).map(r => r.crew_id as string)
+      if (crewIds.length === 0) return []
+
+      const [memRes, crewRes, sendRes] = await Promise.all([
+        supabase.from('crew_members').select('crew_id, user_id').in('crew_id', crewIds),
+        supabase.from('crews').select('id, name, emoji').in('id', crewIds),
+        supabase.from('problems').select('user_id, sent').eq('gym_problem_id', gymProblemId),
+      ])
+      if (memRes.error) throw memRes.error
+      if (crewRes.error) throw crewRes.error
+      if (sendRes.error) throw sendRes.error
+
+      const senders = new Set((sendRes.data ?? []).filter(p => p.sent).map(p => p.user_id as string))
+      const memberIds = Array.from(new Set((memRes.data ?? []).map(r => r.user_id as string)))
+      const byId = await profilesByIds(memberIds)
+      const crewsById = new Map((crewRes.data ?? []).map(c => [c.id as string, c as { id: string; name: string; emoji: string | null }]))
+      const byCrew = new Map<string, string[]>()
+      for (const r of memRes.data ?? []) {
+        const arr = byCrew.get(r.crew_id as string) ?? []
+        arr.push(r.user_id as string)
+        byCrew.set(r.crew_id as string, arr)
+      }
+
+      const out: CrewBoulderProgress[] = []
+      for (const cid of crewIds) {
+        const uids = byCrew.get(cid) ?? []
+        const crew = crewsById.get(cid)
+        if (!crew || uids.length < 2) continue // solo crews make "everyone did it" meaningless
+        const members = uids
+          .map(uid => ({ user_id: uid, username: byId.get(uid)?.username ?? null, avatar_url: byId.get(uid)?.avatar_url ?? null, done: senders.has(uid) }))
+          .sort((a, b) => (a.done === b.done ? 0 : a.done ? -1 : 1))
+        out.push({ crewId: cid, name: crew.name, emoji: crew.emoji, members, doneCount: members.filter(m => m.done).length, total: members.length })
+      }
+      return out.sort((a, b) => b.doneCount / b.total - a.doneCount / a.total)
+    },
+  })
+}
+
+export type CrewSession = FriendSessionSummary & { authorName: string | null; authorAvatarUrl: string | null }
+
+/** Recent sessions of a crew's members, for the crew home feed. */
+export function useCrewActivityFeed(memberIds: string[]) {
+  return useQuery({
+    queryKey: ['crew_feed', [...memberIds].sort().join(',')],
+    enabled: memberIds.length > 0,
+    queryFn: async (): Promise<CrewSession[]> => {
+      const [problemsRes, challengesRes] = await Promise.all([
+        supabase
+          .from('problems')
+          .select('user_id, session_id, gym, grade_value, grade_value_font, sent, image_url, beta_video_url, created_at')
+          .in('user_id', memberIds)
+          .is('crag', null)
+          .order('created_at', { ascending: false })
+          .limit(300),
+        supabase
+          .from('challenge_attempts')
+          .select('user_id, session_id, created_at')
+          .in('user_id', memberIds)
+          .order('created_at', { ascending: false })
+          .limit(300),
+      ])
+      if (problemsRes.error) throw problemsRes.error
+      if (challengesRes.error) throw challengesRes.error
+      const byId = await profilesByIds(memberIds)
+      return summarizeFriendSessions({
+        problems: (problemsRes.data ?? []) as FriendProblemRow[],
+        challenges: (challengesRes.data ?? []) as FriendActivityRow[],
+      }).map(s => ({ ...s, authorName: byId.get(s.userId)?.username ?? null, authorAvatarUrl: byId.get(s.userId)?.avatar_url ?? null }))
     },
   })
 }
