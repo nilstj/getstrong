@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form'
 import { Camera, X } from 'lucide-react'
 import type { Problem, ProblemPrefill, ProblemTagDefinition } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
+import { HOLD_COLORS } from '../utils/holdColors'
+import { HoldGraphic } from './Chip'
 import { useProblemTagDefinitions } from '../hooks/useProblemTags'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
@@ -91,6 +93,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
 
   const attempts = watch('attempts')
   const board = watch('board')
+  const color = watch('color')
 
   const submit = async (values: FormValues) => {
     let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? prefill?.image_url ?? null) : null
@@ -220,13 +223,32 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Color (optional)</label>
-            <input
-              {...register('color')}
-              type="text"
-              placeholder="e.g. Red, Blue, Yellow"
-              className="w-full border rounded-lg px-3 py-2.5"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-2">Color of the holds (optional)</label>
+            <input type="hidden" {...register('color')} />
+            <div className="flex flex-wrap items-center gap-2">
+              {HOLD_COLORS.map(c => {
+                const selected = color?.toLowerCase() === c.name.toLowerCase()
+                return (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => setValue('color', selected ? '' : c.name)}
+                    title={c.name}
+                    aria-label={c.name}
+                    aria-pressed={selected}
+                    className={`w-8 h-8 rounded-full border border-black/10 transition ${selected ? 'ring-2 ring-sage-600 ring-offset-2' : ''}`}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                )
+              })}
+            </div>
+            {color && (
+              <div className="mt-2.5 flex items-center gap-2">
+                <HoldGraphic color={color} size={34} />
+                <span className="text-sm text-gray-600">{color} hold</span>
+                <button type="button" onClick={() => setValue('color', '')} className="text-xs text-gray-400 hover:text-gray-600 ml-1">Clear</button>
+              </div>
+            )}
           </div>
 
       <div>
