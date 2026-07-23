@@ -11,6 +11,7 @@ import { BoardThumb } from '../components/BoardThumb'
 import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { VideoBadge } from '../components/VideoBadge'
+import { SetterBadge } from '../components/SetterBadge'
 import { WatchVideoLink } from '../components/WatchVideoLink'
 import type { Problem } from '../types'
 
@@ -59,7 +60,7 @@ export function FriendSessionPage() {
         <span className="w-9 h-9 rounded-full bg-cover bg-center bg-sage-100 flex-shrink-0"
           style={profile?.avatar_url ? { backgroundImage: `url(${profile.avatar_url})` } : undefined} />
         <div className="min-w-0">
-          <p className="text-sm font-bold leading-tight truncate">{profile?.username ?? 'Someone'}</p>
+          <p className="text-sm font-bold leading-tight truncate inline-flex items-center gap-1">{profile?.username ?? 'Someone'} <SetterBadge userId={authorId} /></p>
           <p className="text-[11px] text-gray-400">{[summary?.gym, date].filter(Boolean).join(' · ')}</p>
         </div>
       </div>

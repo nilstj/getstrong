@@ -3,7 +3,8 @@ import { LogOut, Shield } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
-import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers } from '../hooks/useProfile'
+import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers, useSetUserSetter } from '../hooks/useProfile'
+import { SetterBadge } from '../components/SetterBadge'
 import { useUserBadges } from '../hooks/useBadges'
 import { BADGES } from '../types'
 import {
@@ -29,6 +30,7 @@ export function ProfilePage() {
   const cancelRequest = useCancelFollowRequest()
   const acceptRequest = useAcceptFollowRequest()
   const declineRequest = useDeclineFollowRequest()
+  const setUserSetter = useSetUserSetter()
 
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
@@ -129,7 +131,7 @@ export function ProfilePage() {
             onClick={() => { setUsernameInput(profile?.username ?? ''); setEditingUsername(true) }}
             className="text-center"
           >
-            <p className="font-semibold text-lg">{profile?.username ?? 'Set username'}</p>
+            <p className="font-semibold text-lg inline-flex items-center gap-1">{profile?.username ?? 'Set username'} <SetterBadge userId={profile?.id} size={15} /></p>
             <p className="text-xs text-gray-500">tap to edit</p>
           </button>
         )}
@@ -208,30 +210,43 @@ export function ProfilePage() {
                         u.username?.[0]?.toUpperCase() ?? '?'
                       )}
                     </div>
-                    <p className="font-medium text-sm">{u.username}</p>
+                    <p className="font-medium text-sm inline-flex items-center gap-1">{u.username} <SetterBadge userId={u.id} /></p>
                   </div>
-                  {isFollowing(u.id) ? (
-                    <button
-                      onClick={() => removeFriend.mutate(u.id, { onError: () => toast.error('Failed') })}
-                      className="text-xs font-medium px-3 py-1.5 rounded-full bg-gray-200 text-gray-600"
-                    >
-                      Friends
-                    </button>
-                  ) : isPending(u.id) ? (
-                    <button
-                      onClick={() => cancelRequest.mutate(u.id, { onError: () => toast.error('Failed') })}
-                      className="text-xs font-medium px-3 py-1.5 rounded-full bg-sage-100 text-sage-700 border border-sage-300"
-                    >
-                      Requested
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => sendRequest.mutate(u.id, { onSuccess: () => toast.success('Request sent'), onError: () => toast.error('Failed') })}
-                      className="text-xs font-medium px-3 py-1.5 rounded-full bg-sage-700 text-white"
-                    >
-                      Add friend
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {profile?.is_admin && (
+                      <button
+                        onClick={() => setUserSetter.mutate(
+                          { userId: u.id, isSetter: !u.is_setter },
+                          { onSuccess: () => toast.success(u.is_setter ? 'Setter role removed' : 'Setter role granted'), onError: () => toast.error('Failed') },
+                        )}
+                        className={`text-xs font-medium px-2.5 py-1.5 rounded-full border ${u.is_setter ? 'bg-sage-700 text-white border-sage-700' : 'border-gray-300 text-gray-600'}`}
+                      >
+                        {u.is_setter ? 'Setter ✓' : 'Make setter'}
+                      </button>
+                    )}
+                    {isFollowing(u.id) ? (
+                      <button
+                        onClick={() => removeFriend.mutate(u.id, { onError: () => toast.error('Failed') })}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full bg-gray-200 text-gray-600"
+                      >
+                        Friends
+                      </button>
+                    ) : isPending(u.id) ? (
+                      <button
+                        onClick={() => cancelRequest.mutate(u.id, { onError: () => toast.error('Failed') })}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full bg-sage-100 text-sage-700 border border-sage-300"
+                      >
+                        Requested
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => sendRequest.mutate(u.id, { onSuccess: () => toast.success('Request sent'), onError: () => toast.error('Failed') })}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full bg-sage-700 text-white"
+                      >
+                        Add friend
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
           </div>
@@ -319,7 +334,7 @@ function FriendRequestRow({
             ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
             : profile.username?.[0]?.toUpperCase() ?? '?'}
         </div>
-        <p className="font-medium text-sm">{profile.username}</p>
+        <p className="font-medium text-sm inline-flex items-center gap-1">{profile.username} <SetterBadge userId={profile.id} /></p>
       </div>
       <div className="flex gap-2">
         <button
@@ -352,7 +367,7 @@ function FollowingItem({ userId, onRemove }: { userId: string; onRemove: () => v
             ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
             : profile.username?.[0]?.toUpperCase() ?? '?'}
         </div>
-        <p className="font-medium text-sm">{profile.username}</p>
+        <p className="font-medium text-sm inline-flex items-center gap-1">{profile.username} <SetterBadge userId={profile.id} /></p>
       </div>
       <button
         onClick={onRemove}

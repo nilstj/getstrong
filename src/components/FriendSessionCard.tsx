@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { Play } from 'lucide-react'
 import { Chip } from './Chip'
 import { VideoBadge } from './VideoBadge'
+import { SetterBadge } from './SetterBadge'
 import type { FriendSession } from '../hooks/useFriendsFeed'
 
 function formatDate(iso: string): string {
@@ -24,7 +25,7 @@ export function FriendSessionCard({ session, to }: { session: FriendSession; to:
         <span className="w-9 h-9 rounded-full bg-cover bg-center bg-sage-100 flex-shrink-0"
           style={session.authorAvatarUrl ? { backgroundImage: `url(${session.authorAvatarUrl})` } : undefined} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-tight truncate">{session.authorName ?? 'Someone'}</p>
+          <p className="text-sm font-semibold leading-tight truncate inline-flex items-center gap-1">{session.authorName ?? 'Someone'} <SetterBadge userId={session.userId} /></p>
           <p className="text-[11px] text-gray-400">
             {[session.gym, formatDate(session.date)].filter(Boolean).join(' · ')}
           </p>

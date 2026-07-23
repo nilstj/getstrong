@@ -223,6 +223,7 @@ export interface GymProblem {
   community_grade: string | null
   name: string | null
   setter: string | null
+  setter_intention: string | null
   image_url: string | null
   beta_video_url: string | null
   created_by: string | null

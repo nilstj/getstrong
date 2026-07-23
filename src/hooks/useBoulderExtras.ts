@@ -29,6 +29,21 @@ export function useSetBoulderSetter() {
   })
 }
 
+// ── Setter's intention (admin/setter-only, via SECURITY DEFINER RPC) ─────────
+export function useSetBoulderSetterIntention() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { gymProblemId: string; intention: string }) => {
+      const { error } = await supabase.rpc('set_boulder_setter_intention', {
+        p_gym_problem_id: v.gymProblemId,
+        p_intention: v.intention,
+      })
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['gym_problem', v.gymProblemId] }),
+  })
+}
+
 // ── Star reviews ─────────────────────────────────────────────────────────────
 export interface BoulderReviewsResult {
   reviews: WithAuthor<BoulderReview>[]

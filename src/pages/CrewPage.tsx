@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil, ChevronLeft, ChevronRight, Wrench } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -8,6 +8,8 @@ function formatJoined(iso: string): string {
   try { return format(new Date(iso), 'd MMM yyyy') } catch { return '' }
 }
 import { useGymProblem, useCrew } from '../hooks/useCrew'
+import { useProfile } from '../hooks/useProfile'
+import { SetterBadge } from '../components/SetterBadge'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
 import { useStripGymProblem, useClaimGymProblem } from '../hooks/useGymProblems'
 import { useSessions, useCreateSession } from '../hooks/useSessions'
@@ -27,6 +29,7 @@ import {
 } from '../hooks/useBoulderBeta'
 import {
   useSetBoulderSetter,
+  useSetBoulderSetterIntention,
   useBoulderReviews,
   useUpsertBoulderReview,
   useBoulderHelp,
@@ -73,6 +76,70 @@ function PeopleRow({ people }: { people: PersonLite[] }) {
   )
 }
 
+function SetterIntentionBlock({ boulderId, intention, canEdit }: { boulderId: string; intention: string | null; canEdit: boolean }) {
+  const setIntention = useSetBoulderSetterIntention()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+
+  // Nothing set and no permission to add → show nothing at all.
+  if (!intention && !canEdit) return null
+
+  const save = () => {
+    setIntention.mutate(
+      { gymProblemId: boulderId, intention: draft },
+      {
+        onSuccess: () => { setEditing(false); toast.success("Setter's intention saved") },
+        onError: () => toast.error('Could not save'),
+      },
+    )
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-sage-200 bg-sage-50 px-3 py-2.5">
+      <div className="mb-1 flex items-center gap-1.5">
+        <Wrench size={13} className="text-sage-600" strokeWidth={2} />
+        <p className="text-xs font-semibold uppercase tracking-wide text-sage-700">Setter's intention</p>
+        {canEdit && !editing && (
+          <button
+            type="button"
+            onClick={() => { setDraft(intention ?? ''); setEditing(true) }}
+            className="ml-auto text-xs font-medium text-sage-700"
+          >
+            {intention ? 'Edit' : 'Add'}
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            rows={3}
+            placeholder="How is this boulder meant to be climbed? What's it testing?"
+            className="w-full rounded-lg border px-2.5 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500"
+          />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setEditing(false)} className="flex-1 rounded-lg border border-sage-200 py-1.5 text-sm text-sage-700">Cancel</button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={setIntention.isPending}
+              className="flex-1 rounded-lg bg-sage-700 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {setIntention.isPending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : intention ? (
+        <p className="whitespace-pre-wrap text-sm leading-snug text-gray-700">{intention}</p>
+      ) : (
+        <p className="text-sm italic text-gray-400">No setter's intention yet — add one.</p>
+      )}
+    </div>
+  )
+}
+
 export function CrewPage() {
   const { id = '' } = useParams<{ id: string }>()
   const { user } = useAuth()
@@ -86,6 +153,9 @@ export function CrewPage() {
   const goToSibling = (i: number) => navigate(`/gym-problems/${siblingIds[i]}`, { state: navState })
   const { data: boulder, isLoading: loadingBoulder } = useGymProblem(id)
   const { data: crew, isLoading: loadingCrew } = useCrew(id)
+  const { data: myProfile } = useProfile()
+  // Only admins and setters may write the setter's intention.
+  const canSetIntention = !!(myProfile?.is_admin || myProfile?.is_setter)
   const month = cycleMonth(new Date())
   const { data: leaderboard = [] } = useGymLeaderboard(boulder?.gym ?? '', month)
   const { data: betaData } = useBoulderBetaThread(id)
@@ -336,6 +406,8 @@ export function CrewPage() {
               </p>
             )}
 
+            <SetterIntentionBlock boulderId={id} intention={boulder.setter_intention} canEdit={canSetIntention} />
+
             {/* Actions */}
             <div className="mt-3 flex items-center gap-2">
               {boulder.status === 'active' && left >= 0 && (
@@ -410,7 +482,10 @@ export function CrewPage() {
                           {(m.username ?? '?').slice(0, 1).toUpperCase()}
                         </div>}
                     <div className="flex-1 min-w-0">
-                      <span className="block text-sm font-medium text-gray-800 truncate">{m.username ?? 'Someone'}</span>
+                      <span className="flex items-center gap-1 text-sm font-medium text-gray-800">
+                        <span className="truncate">{m.username ?? 'Someone'}</span>
+                        <SetterBadge userId={m.user_id} />
+                      </span>
                       <span className="mt-0.5 flex flex-wrap gap-1">
                         {(titles[m.user_id] ?? []).map(t => <CrewTitleBadge key={t} title={t} />)}
                       </span>
@@ -443,7 +518,10 @@ export function CrewPage() {
                         entry.user_id === user?.id ? 'bg-sage-50 border border-sage-200' : 'bg-gray-50'
                       }`}>
                       <span className="w-5 text-center font-bold text-gray-400">{entry.rank}</span>
-                      <span className="flex-1 font-medium text-gray-800 truncate">{entry.username ?? 'Someone'}</span>
+                      <span className="flex flex-1 items-center gap-1 font-medium text-gray-800 min-w-0">
+                        <span className="truncate">{entry.username ?? 'Someone'}</span>
+                        <SetterBadge userId={entry.user_id} />
+                      </span>
                       <span className="font-semibold text-sage-700">{entry.points}</span>
                     </div>
                   ))}
@@ -471,6 +549,7 @@ export function CrewPage() {
                           : <span className="w-6 h-6 rounded-full bg-sage-100 grid place-items-center text-[10px] font-semibold text-sage-700 flex-shrink-0 mt-0.5">{(a.name ?? '?').slice(0, 1).toUpperCase()}</span>}
                         <div className="min-w-0 flex-1">
                           <span className="font-medium">{a.name ?? 'Someone'}</span>
+                          <SetterBadge userId={a.user_id} className="ml-1 align-text-bottom" />
                           {a.note && <span className="text-gray-600"> — {a.note}</span>}
                           {a.videoUrl && (
                             <a href={a.videoUrl} target="_blank" rel="noopener noreferrer" className="ml-1 inline-flex items-center gap-0.5 text-sage-700 font-medium">
