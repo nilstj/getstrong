@@ -181,9 +181,12 @@ function routeFor(n: Notification): string | null {
     case 'new_follower':
     case 'badge_earned':
       return '/profile'
+    // The standalone beta-request feed is gone (asking for beta lives on the
+    // gym problem now); old notifications of this kind stay readable but no
+    // longer navigate anywhere.
     case 'help_response':
     case 'help_marked_helpful':
-      return '/help'
+      return null
     case 'crew_send':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     case 'crew_stripped':

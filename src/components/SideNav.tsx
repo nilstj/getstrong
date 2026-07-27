@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, CalendarDays, Users, User, BarChart2, LifeBuoy, Trophy, Plus, TrainFront } from 'lucide-react'
+import { Home, CalendarDays, Users, User, BarChart2, Trophy, Plus, TrainFront } from 'lucide-react'
 
 const ITEMS = [
   { to: '/dashboard', label: 'Home', Icon: Home },
@@ -8,7 +8,6 @@ const ITEMS = [
   { to: '/gym-problems', label: 'Gym problems', Icon: TrainFront },
   { to: '/challenges', label: 'Challenges', Icon: Trophy },
   { to: '/analysis', label: 'Analysis', Icon: BarChart2 },
-  { to: '/help', label: 'Help', Icon: LifeBuoy },
   { to: '/profile', label: 'Profile', Icon: User },
 ]
 
