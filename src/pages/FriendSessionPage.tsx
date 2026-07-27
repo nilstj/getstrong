@@ -6,7 +6,7 @@ import { useSessionProblems } from '../hooks/useProblems'
 import { useSessionChallengeAttempts } from '../hooks/useChallenges'
 import { useProfile } from '../hooks/useProfile'
 import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow } from '../utils/friendSessions'
-import { Chip, HoldGraphic } from '../components/Chip'
+import { Chip, HoldGraphic, ProblemColorIcons } from '../components/Chip'
 import { BoardThumb } from '../components/BoardThumb'
 import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
@@ -105,8 +105,7 @@ export function FriendSessionPage() {
                   {(p.grade_value_font ?? p.grade_value) && (
                     <Chip label={(p.grade_value_font ?? p.grade_value)!} variant="grade" />
                   )}
-                  {p.hold_color && <span className="inline-flex items-center gap-1 text-xs text-gray-500"><HoldGraphic color={p.hold_color} size={16} /> {p.hold_color}</span>}
-                  {p.color && <span className="text-xs text-gray-400">Gym grade: {p.color}</span>}
+                  <ProblemColorIcons color={p.color} holdColor={p.hold_color} size={16} />
                   <SendBadge p={p} />
                   {p.board && (
                     <span className="inline-flex items-center rounded-md bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">

@@ -13,6 +13,7 @@ export interface HelpRequestWithProblem extends HelpRequest {
     grade_value_font: string | null
     grade_value_vscale: string | null
     color: string | null
+    hold_color: string | null
     board: string | null
     crag: string | null
     sessions: { location: string } | null
@@ -29,7 +30,7 @@ export function useHelpRequests() {
       const { data, error } = await supabase
         .from('help_requests')
         .select(
-          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, crag, sessions(location)), help_responses(count)',
+          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, hold_color, board, crag, sessions(location)), help_responses(count)',
         )
         .eq('resolved', false)
         .order('created_at', { ascending: false })
@@ -51,7 +52,7 @@ export function useResolvedHelpRequests() {
       const { data, error } = await supabase
         .from('help_requests')
         .select(
-          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, board, crag, sessions(location)), help_responses(count)',
+          '*, problems(id, name, image_url, beta_video_url, grade_value_font, grade_value_vscale, color, hold_color, board, crag, sessions(location)), help_responses(count)',
         )
         .eq('resolved', true)
         .order('created_at', { ascending: false })

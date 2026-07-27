@@ -34,6 +34,32 @@ export function HoldDot({ color, size = 14 }: { color: string; size?: number }) 
 }
 
 /**
+ * The two colour markers for a problem/boulder — the gym grading tape and the
+ * physical hold colour — shown wherever a problem is listed. Each icon renders
+ * only when its colour is set; no text label follows the icons. Renders nothing
+ * when both colours are absent.
+ */
+export function ProblemColorIcons({
+  color,
+  holdColor,
+  size = 16,
+  className = '',
+}: {
+  color?: string | null
+  holdColor?: string | null
+  size?: number
+  className?: string
+}) {
+  if (!color && !holdColor) return null
+  return (
+    <span className={`inline-flex items-center gap-1 align-middle ${className}`}>
+      {color && <TapeGraphic color={color} size={size} />}
+      {holdColor && <HoldGraphic color={holdColor} size={size} />}
+    </span>
+  )
+}
+
+/**
  * A generic climbing-hold silhouette tinted with a problem's hold colour — used
  * as a preview when logging a problem and as the thumbnail for a colour-only
  * problem that has no photo.

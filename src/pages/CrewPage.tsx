@@ -44,7 +44,7 @@ import { boulderToPrefill } from '../utils/boulderPrefill'
 import type { BoulderNavState } from '../utils/boulderNav'
 import { todayDateString } from '../utils/dates'
 import { useAuth } from '../providers/AuthProvider'
-import { Chip, HoldDot, HoldGraphic, TapeGraphic } from '../components/Chip'
+import { Chip, ProblemColorIcons } from '../components/Chip'
 import { BetaThreadCard } from '../components/BetaThreadCard'
 import { CrewTitleBadge } from '../components/CrewTitleBadge'
 import { StarRating } from '../components/StarRating'
@@ -401,7 +401,7 @@ export function CrewPage() {
             <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
             <div className="absolute left-3 bottom-3 flex items-center gap-2">
               {displayGrade && <Chip label={displayGrade} variant="grade" />}
-              {boulder.hold_color && <HoldDot color={boulder.hold_color} />}
+              <ProblemColorIcons color={boulder.color} holdColor={boulder.hold_color} size={18} />
               {help?.open && <span className="inline-flex items-center rounded-md bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950">🆘 Help wanted</span>}
             </div>
           </div>
@@ -414,8 +414,7 @@ export function CrewPage() {
             <h1 className="text-xl font-bold tracking-tight">{title}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
               {displayGrade && <span className="font-semibold text-gray-800">{displayGrade}</span>}
-              {boulder.color && <><span className="text-gray-300">·</span><span className="inline-flex items-center gap-1"><TapeGraphic color={boulder.color} size={16} /> {boulder.color}</span></>}
-              {boulder.hold_color && <><span className="text-gray-300">·</span><span className="inline-flex items-center gap-1"><HoldGraphic color={boulder.hold_color} size={16} /> {boulder.hold_color}</span></>}
+              {(boulder.color || boulder.hold_color) && <><span className="text-gray-300">·</span><ProblemColorIcons color={boulder.color} holdColor={boulder.hold_color} size={16} /></>}
               {boulder.gym && <><span className="text-gray-300">·</span><span>{boulder.gym}</span></>}
               <span className="text-gray-300">·</span>
               {editingSetter ? (

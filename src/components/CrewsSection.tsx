@@ -3,7 +3,7 @@ import { Users } from 'lucide-react'
 import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
 import { daysUntil } from '../utils/gymProblems'
 import { GymThumb } from './GymThumb'
-import { HoldDot } from './Chip'
+import { ProblemColorIcons } from './Chip'
 import type { BoulderSummary } from '../types'
 import type { BoulderNavState } from '../utils/boulderNav'
 
@@ -26,7 +26,7 @@ function BoulderRow({ b, boulderIds, archived = false }: { b: BoulderSummary; bo
         </p>
         <p className="text-xs text-gray-400 truncate">{b.gym}</p>
       </div>
-      {b.hold_color && <HoldDot color={b.hold_color} size={12} />}
+      <ProblemColorIcons color={b.color} holdColor={b.hold_color} size={14} className="flex-shrink-0" />
       {b.helpWanted && (
         <span title="Help wanted" aria-label="Help wanted" className="text-sm leading-none flex-shrink-0">🆘</span>
       )}

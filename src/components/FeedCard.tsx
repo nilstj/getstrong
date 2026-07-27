@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Play } from 'lucide-react'
-import { Chip, HoldDot } from './Chip'
+import { Chip, ProblemColorIcons } from './Chip'
 import { VideoBadge } from './VideoBadge'
 import { SetterBadge } from './SetterBadge'
 import type { FeedEvent, FeedEventType } from '../types'
@@ -55,7 +55,7 @@ export function FeedCard({
           )}
           <span className="absolute left-2.5 bottom-2.5 flex items-center gap-2">
             {event.boulder_grade && <Chip label={event.boulder_grade} variant="grade" />}
-            {event.boulder_color && <HoldDot color={event.boulder_color} />}
+            <ProblemColorIcons color={event.boulder_color} holdColor={event.boulder_hold_color} size={18} />
           </span>
         </button>
         {event.beta_video_url && event.boulder_image_url && (

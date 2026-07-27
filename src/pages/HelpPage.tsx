@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
 import { VideoBadge } from '../components/VideoBadge'
+import { ProblemColorIcons } from '../components/Chip'
 import { useProfile } from '../hooks/useProfile'
 import {
   useHelpRequests,
@@ -150,6 +151,7 @@ function RequestCard({ request }: { request: HelpRequestWithProblem }) {
           <div className="flex items-center gap-2">
             <span className="font-semibold text-gray-900">{p?.name ?? grade}</span>
             {p?.name && <span className="text-sm text-gray-400">{grade}</span>}
+            <ProblemColorIcons color={p?.color} holdColor={p?.hold_color} size={16} />
             <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
               {request.visibility === 'global' ? <><Globe size={11} /> Everyone</> : <><Users size={11} /> Friends</>}
             </span>

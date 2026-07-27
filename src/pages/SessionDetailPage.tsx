@@ -36,7 +36,7 @@ import type { GymProblem } from '../types'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { BoardThumb } from '../components/BoardThumb'
 import { GymThumb } from '../components/GymThumb'
-import { HoldGraphic, TapeGraphic } from '../components/Chip'
+import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
 
 type SheetTab = 'problem' | 'challenge'
 
@@ -242,16 +242,7 @@ export function SessionDetailPage() {
                     {problem.name && <p className="font-semibold text-gray-900">{problem.name}</p>}
                     <span className={problem.name ? 'text-sm text-gray-500' : 'font-medium'}>
                       {displayGrade(problem, myProfile?.grade_preference ?? 'font')}
-                      {problem.color && (
-                        <span className="ml-1.5 inline-flex items-center gap-1 align-middle text-gray-400 text-sm font-normal">
-                          <TapeGraphic color={problem.color} size={16} /> {problem.color}
-                        </span>
-                      )}
-                      {problem.hold_color && (
-                        <span className="ml-1.5 inline-flex items-center gap-1 align-middle text-gray-400 text-sm font-normal">
-                          <HoldGraphic color={problem.hold_color} size={16} /> {problem.hold_color}
-                        </span>
-                      )}
+                      <ProblemColorIcons color={problem.color} holdColor={problem.hold_color} size={16} className="ml-1.5" />
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
