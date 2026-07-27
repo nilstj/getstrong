@@ -200,7 +200,7 @@ export function CrewPage() {
   const canSetIntention = !!(myProfile?.is_admin || myProfile?.is_setter)
   const month = cycleMonth(new Date())
   const { data: leaderboard = [] } = useGymLeaderboard(boulder?.gym ?? '', month)
-  const { data: gradeLeaderboard = [] } = useGymGradeLeaderboard(boulder?.gym ?? '')
+  const { data: gradeLeaderboard = [] } = useGymGradeLeaderboard(boulder?.gym ?? '', month)
   const { data: betaData } = useBoulderBetaThread(id)
   const { data: reviewsData } = useBoulderReviews(id)
   const { data: help } = useBoulderHelp(id)
