@@ -2,6 +2,13 @@
 -- gym grading tape and the hold colour. Faithful re-creation of get_crew_feed
 -- (migration 055) with one added output column `boulder_hold_color`, selected
 -- from gym_problems.hold_color (migration 068) in every union branch.
+--
+-- Adding a column changes the RETURNS TABLE row type, which `create or replace`
+-- cannot do ("cannot change return type of existing function"), so drop the old
+-- signature first. Recreating restores the default PUBLIC execute grant that 055
+-- relied on.
+drop function if exists public.get_crew_feed(int, timestamptz);
+
 create or replace function public.get_crew_feed(
   p_limit  int default 20,
   p_before timestamptz default null
