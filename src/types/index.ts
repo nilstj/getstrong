@@ -53,6 +53,13 @@ export interface GradeMapping {
   font_equivalent: string
 }
 
+export interface GymGrading {
+  gym: string
+  color_name: string
+  rank: number
+  points: number
+}
+
 export interface Challenge {
   id: string
   creator_id: string

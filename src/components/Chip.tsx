@@ -57,3 +57,30 @@ export function HoldGraphic({ color, size = 40 }: { color?: string | null; size?
     </svg>
   )
 }
+
+export function TapeDot({ color, size = 14 }: { color: string; size?: number }) {
+  return (
+    <span
+      className="inline-block rounded-sm border border-black/25 flex-shrink-0"
+      style={{ width: size * 1.6, height: size * 0.72, backgroundColor: colorHex(color) }}
+      title={color}
+    />
+  )
+}
+
+/**
+ * A strip of climbing tape tinted with a gym's grading colour — the gym-grade
+ * analogue of HoldGraphic. Used in the grade-colour picker and as a swatch
+ * wherever a problem's gym grading colour is shown.
+ */
+export function TapeGraphic({ color, size = 40 }: { color?: string | null; size?: number }) {
+  const hex = colorHex(color)
+  const outline = '#1c1c1c'
+  const w = Math.round(size * 1.7)
+  const h = Math.round(size * 0.8)
+  return (
+    <svg width={w} height={h} viewBox="0 0 68 32" role="img" aria-label={color ? `${color} tape` : 'tape'} className="flex-shrink-0">
+      <rect x="3" y="3" width="62" height="26" rx="4" fill={hex} stroke={outline} strokeWidth="3" strokeLinejoin="round" />
+    </svg>
+  )
+}

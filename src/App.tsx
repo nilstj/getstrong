@@ -15,6 +15,7 @@ import { ChallengesPage } from './pages/ChallengesPage'
 import { AnalysisPage } from './pages/AnalysisPage'
 import { HelpPage } from './pages/HelpPage'
 import { AdminPage } from './pages/AdminPage'
+import { GymGradingPage } from './pages/GymGradingPage'
 import { CrewPage } from './pages/CrewPage'
 import { CrewsPage } from './pages/CrewsPage'
 import { MyCrewsPage } from './pages/MyCrewsPage'
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/gym-problems/:id" element={<CrewPage />} />
                 <Route path="/admin" element={<AdminPage />} />
+                <Route path="/gym-grading" element={<GymGradingPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
               </Route>
             </Route>

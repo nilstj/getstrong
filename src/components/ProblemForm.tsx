@@ -4,8 +4,9 @@ import { Camera, X } from 'lucide-react'
 import type { Problem, ProblemPrefill, ProblemTagDefinition } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
 import { HOLD_COLORS } from '../utils/holdColors'
-import { HoldGraphic } from './Chip'
+import { HoldGraphic, TapeGraphic } from './Chip'
 import { useProblemTagDefinitions } from '../hooks/useProblemTags'
+import { useGymGradings } from '../hooks/useGymGradings'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 
@@ -96,6 +97,9 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const attempts = watch('attempts')
   const board = watch('board')
   const holdColor = watch('hold_color')
+  const color = watch('color')
+  const gym = watch('gym')
+  const { data: gymGradings = [] } = useGymGradings(gym)
 
   const submit = async (values: FormValues) => {
     let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? prefill?.image_url ?? null) : null
@@ -226,14 +230,38 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gym grading color (optional)</label>
-            <input
-              {...register('color')}
-              type="text"
-              placeholder="e.g. Blue circuit, Yellow tag"
-              className="w-full border rounded-lg px-3 py-2.5"
-            />
-            <p className="text-xs text-gray-400 mt-1">How the gym grades this — the circuit or tag colour.</p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Gym grading color (optional)</label>
+            <input type="hidden" {...register('color')} />
+            {!gym ? (
+              <p className="text-xs text-gray-400">Enter a gym below to pick its grading colours.</p>
+            ) : gymGradings.length === 0 ? (
+              <p className="text-xs text-gray-400">No grading colours set for {gym} yet.</p>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                {gymGradings.map(g => {
+                  const selected = color?.toLowerCase() === g.color_name.toLowerCase()
+                  return (
+                    <button
+                      key={g.color_name}
+                      type="button"
+                      onClick={() => setValue('color', selected ? '' : g.color_name)}
+                      title={`${g.color_name} · ${g.points} pts`}
+                      aria-label={g.color_name}
+                      aria-pressed={selected}
+                      className={`grid place-items-center rounded-lg p-1 transition ${selected ? 'ring-2 ring-sage-600 bg-sage-50' : 'hover:bg-gray-100'}`}
+                    >
+                      <TapeGraphic color={g.color_name} size={26} />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {color && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-sm text-gray-600">{color} grade</span>
+                <button type="button" onClick={() => setValue('color', '')} className="text-xs text-gray-400 hover:text-gray-600 ml-1">Clear</button>
+              </div>
+            )}
           </div>
 
           <div>
