@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { Camera, Check, ChevronDown, ChevronRight, X } from 'lucide-react'
-import type { Problem, ProblemPrefill, ProblemTagDefinition } from '../types'
+import type { Problem, ProblemTagDefinition } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
 import { HOLD_COLORS } from '../utils/holdColors'
 import { HoldGraphic, TapeGraphic } from './Chip'
@@ -29,8 +29,6 @@ interface ProblemFormProps {
   existingTagIds?: string[]
   /** Pre-fills the Gym field for a new indoor problem (e.g. from the session location). */
   defaultGym?: string
-  /** Pre-fills a NEW problem's fields from a shared boulder (distinct from `existing`/edit mode). */
-  prefill?: ProblemPrefill
 }
 
 /** The form's row label — the home page's section-label style, shrunk to fit a column. */
@@ -46,14 +44,14 @@ const PILL = 'rounded-full border px-2.5 py-1 text-xs font-medium transition-col
 const PILL_ON = 'border-sage-700 bg-sage-700 text-white'
 const PILL_OFF = 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
 
-export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font', existing, existingTagIds, defaultGym, prefill }: ProblemFormProps) {
+export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font', existing, existingTagIds, defaultGym }: ProblemFormProps) {
   const { user } = useAuth()
   const grades = initialGradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
   const { data: tagDefinitions = [] } = useProblemTagDefinitions()
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(existingTagIds ?? []))
   const [visibilityPublic, setVisibilityPublic] = useState<boolean>(!!existing?.gym_problem_id)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(existing?.image_url ?? prefill?.image_url ?? null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(existing?.image_url ?? null)
   const [isUploading, setIsUploading] = useState(false)
   // Tags start collapsed — they're for analysis, not for logging the go. Already
   // tagged problems open expanded so an edit doesn't hide its own data.
@@ -90,27 +88,26 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
 
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
-      grade_value: existing?.grade_value ?? prefill?.grade_value ?? '',
-      color: existing?.color ?? prefill?.color ?? '',
+      grade_value: existing?.grade_value ?? '',
+      color: existing?.color ?? '',
       hold_color: existing?.hold_color ?? '',
       attempts: existing?.attempts ?? 1,
       sent: existing?.sent ?? false,
-      gym: existing?.gym ?? prefill?.gym ?? defaultGym ?? '',
-      beta_video_url: existing?.beta_video_url ?? prefill?.beta_video_url ?? '',
+      gym: existing?.gym ?? defaultGym ?? '',
+      beta_video_url: existing?.beta_video_url ?? '',
       notes: existing?.notes ?? '',
     },
   })
 
   const attempts = watch('attempts')
   const sent = watch('sent')
-  const grade = watch('grade_value')
   const holdColor = watch('hold_color')
   const color = watch('color')
   const gym = watch('gym')
   const { data: gymGradings = [] } = useGymGradings(gym)
 
   const submit = async (values: FormValues) => {
-    let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? prefill?.image_url ?? null) : null
+    let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? null) : null
 
     if (selectedFile && user) {
       setIsUploading(true)
@@ -146,36 +143,53 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
       image_url,
       beta_video_url: values.beta_video_url || null,
       notes: values.notes || null,
-      ...(!prefill ? { makePublic: visibilityPublic } : {}),
+      makePublic: visibilityPublic,
     })
   }
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-2.5">
       <div className="grid grid-cols-[68px_1fr] items-start gap-x-2.5 gap-y-2.5">
-        <RowLabel>Grade</RowLabel>
-        {/* min-w-0 keeps the scroller inside its grid column instead of
-            stretching the whole form to the width of the grade list. */}
-        <div className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 py-0.5">
-          <input type="hidden" {...register('grade_value')} />
-          {grades.map(g => (
+        <RowLabel>Gym</RowLabel>
+        <input {...register('gym')} type="text" placeholder="e.g. Boulders Oslo" className={INPUT} />
+
+        <RowLabel>Photo</RowLabel>
+        <div>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          {previewUrl ? (
+            <div className="relative inline-block">
+              <img src={previewUrl} alt="Problem preview" className="h-16 w-16 rounded-lg border object-cover" />
+              <button
+                type="button"
+                onClick={clearImage}
+                aria-label="Remove photo"
+                className="absolute -right-2 -top-2 rounded-full border bg-white p-0.5 shadow"
+              >
+                <X className="h-3.5 w-3.5 text-gray-600" />
+              </button>
+            </div>
+          ) : (
             <button
-              key={g}
               type="button"
-              onClick={() => setValue('grade_value', grade === g ? '' : g)}
-              aria-pressed={grade === g}
-              className={`${PILL} flex-shrink-0 ${grade === g ? PILL_ON : PILL_OFF}`}
+              onClick={() => fileInputRef.current?.click()}
+              className={`${PILL} ${PILL_OFF} inline-flex items-center gap-1.5`}
             >
-              {g}
+              <Camera className="h-3.5 w-3.5" /> Add photo
             </button>
-          ))}
+          )}
         </div>
+
+        <RowLabel>Grade</RowLabel>
+        <select {...register('grade_value')} className={INPUT}>
+          <option value="">Select grade</option>
+          {grades.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
 
         <RowLabel>Gym grade</RowLabel>
         <div>
           <input type="hidden" {...register('color')} />
           {!gym ? (
-            <p className="pt-1.5 text-xs text-gray-400">Set the gym below to pick its grading colours.</p>
+            <p className="pt-1.5 text-xs text-gray-400">Set the gym above to pick its grading colours.</p>
           ) : gymGradings.length === 0 ? (
             <p className="pt-1.5 text-xs text-gray-400">No grading colours set for {gym} yet.</p>
           ) : (
@@ -253,54 +267,21 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
           </button>
         </div>
 
-        {!prefill && (
-          <>
-            <RowLabel>Visible</RowLabel>
-            <div>
-              <div className="flex gap-1.5">
-                <button type="button" onClick={() => setVisibilityPublic(false)} aria-pressed={!visibilityPublic}
-                  className={`${PILL} ${!visibilityPublic ? PILL_ON : PILL_OFF}`}>🔒 Private</button>
-                <button type="button" onClick={() => setVisibilityPublic(true)} aria-pressed={visibilityPublic}
-                  className={`${PILL} ${visibilityPublic ? PILL_ON : PILL_OFF}`}>🌐 Public</button>
-              </div>
-              <p className="mt-1 text-[11px] leading-snug text-gray-400">
-                Public problems appear under "From gym" so others can log them and compare beta.
-              </p>
-            </div>
-          </>
-        )}
-
-        <RowLabel>Gym</RowLabel>
-        <input {...register('gym')} type="text" placeholder="e.g. Boulders Oslo" className={INPUT} />
+        <RowLabel>Visible</RowLabel>
+        <div>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={() => setVisibilityPublic(false)} aria-pressed={!visibilityPublic}
+              className={`${PILL} ${!visibilityPublic ? PILL_ON : PILL_OFF}`}>🔒 Private</button>
+            <button type="button" onClick={() => setVisibilityPublic(true)} aria-pressed={visibilityPublic}
+              className={`${PILL} ${visibilityPublic ? PILL_ON : PILL_OFF}`}>🌐 Public</button>
+          </div>
+          <p className="mt-1 text-[11px] leading-snug text-gray-400">
+            Public problems show up on the Gym problems page, where others can log them and compare beta.
+          </p>
+        </div>
 
         <RowLabel>Video</RowLabel>
         <input {...register('beta_video_url')} type="url" placeholder="instagram.com/… or youtube.com/…" className={INPUT} />
-
-        <RowLabel>Photo</RowLabel>
-        <div>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-          {previewUrl ? (
-            <div className="relative inline-block">
-              <img src={previewUrl} alt="Problem preview" className="h-16 w-16 rounded-lg border object-cover" />
-              <button
-                type="button"
-                onClick={clearImage}
-                aria-label="Remove photo"
-                className="absolute -right-2 -top-2 rounded-full border bg-white p-0.5 shadow"
-              >
-                <X className="h-3.5 w-3.5 text-gray-600" />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`${PILL} ${PILL_OFF} inline-flex items-center gap-1.5`}
-            >
-              <Camera className="h-3.5 w-3.5" /> Add photo
-            </button>
-          )}
-        </div>
 
         <RowLabel>Notes</RowLabel>
         <textarea {...register('notes')} rows={2} placeholder="Any notes…" className={`${INPUT} resize-none`} />
