@@ -289,7 +289,7 @@ export interface CrewProblemRow {
   created_at: string
 }
 
-export type BetaPointReason = 'bounty_won' | 'helpful' | 'first_logger'
+export type BetaPointReason = 'bounty_won' | 'helpful' | 'first_logger' | 'beta_posted' | 'engagement'
 
 export interface BetaPointRow {
   user_id: string

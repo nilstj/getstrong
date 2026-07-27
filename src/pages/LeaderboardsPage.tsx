@@ -134,11 +134,13 @@ export function LeaderboardsPage() {
           </div>
 
           <div>
-            <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
-              <Trophy size={15} strokeWidth={2} className="text-amber-500" />
-              Beta points
+            <div className="flex items-center gap-1.5">
+              <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
+                <Trophy size={15} strokeWidth={2} className="text-amber-500" />
+                Beta points
+              </h2>
               <BetaPointsInfo />
-            </h2>
+            </div>
             <p className="text-[11px] text-gray-400 mt-0.5 mb-2">helping others through a boulder</p>
             {betaLoading ? (
               <BoardSkeleton />

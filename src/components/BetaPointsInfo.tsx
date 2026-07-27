@@ -4,10 +4,10 @@ import { BottomSheet } from './BottomSheet'
 
 /** The award scheme from migration 074, in the order a climber earns them. */
 const RULES: { points: number; rule: string; note: string }[] = [
-  { points: 10, rule: 'Logging a shared boulder with a photo', note: 'no photo, no points' },
-  { points: 5, rule: 'Posting a beta', note: 'your first beta on each boulder' },
-  { points: 5, rule: 'Someone marks your beta “worked for me”', note: 'once per beta' },
-  { points: 1, rule: 'Commenting on, or marking, someone else’s beta', note: 'once per beta' },
+  { points: 10, rule: 'Creating a shared boulder with a photo', note: 'no photo, no points' },
+  { points: 5, rule: 'Posting a beta', note: 'once per boulder' },
+  { points: 5, rule: 'Someone marks your beta “worked for me”', note: 'once per beta, ever' },
+  { points: 1, rule: 'Commenting on, or marking, someone else’s beta', note: 'once per beta, per person' },
 ]
 
 export function BetaPointsInfo() {
@@ -16,6 +16,7 @@ export function BetaPointsInfo() {
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         aria-label="How beta points work"
         title="How beta points work"
@@ -39,8 +40,9 @@ export function BetaPointsInfo() {
           ))}
         </div>
         <p className="text-xs text-gray-500 mt-5 leading-relaxed">
-          Points are counted per gym, per month. Once earned they are never taken away —
-          if someone unmarks your beta, you keep the points.
+          These rules apply from this month on. Points are counted per gym, per month, and
+          once earned they are never taken away — if someone unmarks your beta, you keep the
+          points. Emoji reactions don't earn points.
         </p>
       </BottomSheet>
     </>
