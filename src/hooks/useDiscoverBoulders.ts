@@ -110,16 +110,15 @@ export function useDiscoverBoulders() {
         doneByMe: mySentIds.has(b.id),
       }))
 
+      // Both live lists are newest-set first, so the problems added most
+      // recently sit at the top of the Gym problems page. Uncapped: the page
+      // filters (gym, help wanted, done) would silently miss matches if the
+      // list they filter were truncated.
+      const byNewest = (a: BoulderSummary, b: BoulderSummary) =>
+        a.set_at < b.set_at ? 1 : a.set_at > b.set_at ? -1 : 0
       const active = summaries.filter(s => activeIds.has(s.id))
-      const yours = active
-        .filter(s => s.claimed)
-        .sort((a, b) => (a.expires_at < b.expires_at ? -1 : a.expires_at > b.expires_at ? 1 : 0))
-      // Newest-first: a just-shared boulder (crew count 0) must survive the cap,
-      // otherwise it never reaches the "Latest" strip that re-sorts by set_at.
-      const discover = active
-        .filter(s => !s.claimed)
-        .sort((a, b) => (a.set_at < b.set_at ? 1 : a.set_at > b.set_at ? -1 : 0))
-        .slice(0, 5)
+      const yours = active.filter(s => s.claimed).sort(byNewest)
+      const discover = active.filter(s => !s.claimed).sort(byNewest)
       // Your history: boulders you were on that are no longer active, newest gone first.
       const archived = summaries
         .filter(s => s.claimed && !activeIds.has(s.id))

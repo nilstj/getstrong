@@ -26,7 +26,6 @@ import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
 import { VideoBadge } from '../components/VideoBadge'
 import { WatchVideoLink } from '../components/WatchVideoLink'
-import { CallForHelp } from '../components/CallForHelp'
 import { BoulderLinkSheet } from '../components/BoulderLinkSheet'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
 import { GymBoulderPicker } from '../components/GymBoulderPicker'
@@ -298,7 +297,6 @@ export function SessionDetailPage() {
                 {openCommentProblemId === problem.id && (
                   <ProblemCommentThread problemId={problem.id} />
                 )}
-                <CallForHelp problem={problem} />
                 {problem.gym_problem_id && (
                   <Link
                     to={`/gym-problems/${problem.gym_problem_id}`}
