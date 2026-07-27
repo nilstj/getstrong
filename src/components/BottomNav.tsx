@@ -49,11 +49,13 @@ export function BottomNav() {
         )}
       </NavLink>
 
-      <NavLink to="/sendtrains" className={linkClass}>
+      {/* "Problems" rather than the full "Gym problems" — six tabs share the bar
+          and the longer label doesn't fit at 10px on a narrow phone. */}
+      <NavLink to="/gym-problems" className={linkClass} aria-label="Gym problems">
         {({ isActive }) => (
           <>
             <TrainFront size={22} strokeWidth={isActive ? 2.5 : 1.75} />
-            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Sendtrains</span>
+            <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>Problems</span>
           </>
         )}
       </NavLink>

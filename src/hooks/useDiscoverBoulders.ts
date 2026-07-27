@@ -24,16 +24,21 @@ export function useDiscoverBoulders() {
 
       const { data: mine, error: e1 } = await supabase
         .from('problems')
-        .select('gym, gym_problem_id')
+        .select('gym, gym_problem_id, sent')
         .eq('user_id', user!.id)
       if (e1) throw e1
-      const myRows = (mine ?? []) as { gym: string | null; gym_problem_id: string | null }[]
+      const myRows = (mine ?? []) as { gym: string | null; gym_problem_id: string | null; sent: boolean }[]
       const myGyms = Array.from(new Set([
         ...defaultGyms,
         ...myRows.map(r => r.gym).filter((g): g is string => !!g),
       ]))
       const myClaimedIds = new Set(
         myRows.map(r => r.gym_problem_id).filter((id): id is string => !!id),
+      )
+      // "Done" = at least one sent go. A claimed-but-unsent boulder is still a
+      // project, so it stays on the not-done side of the filter.
+      const mySentIds = new Set(
+        myRows.filter(r => r.sent && r.gym_problem_id).map(r => r.gym_problem_id as string),
       )
       if (myGyms.length === 0 && myClaimedIds.size === 0) return { yours: [], discover: [], archived: [] }
 
@@ -102,6 +107,7 @@ export function useDiscoverBoulders() {
         expires_at: b.expires_at,
         crewCount: counts[b.id] ?? 0,
         claimed: myClaimedIds.has(b.id),
+        doneByMe: mySentIds.has(b.id),
       }))
 
       const active = summaries.filter(s => activeIds.has(s.id))

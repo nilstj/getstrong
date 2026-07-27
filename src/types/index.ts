@@ -318,7 +318,10 @@ export interface BoulderSummary {
   helpWanted: boolean
   expires_at: string
   crewCount: number
+  /** The user has this boulder on a session — on the sendtrain, sent or not. */
   claimed: boolean
+  /** The user has logged a *sent* go on this boulder. Drives the done filter. */
+  doneByMe: boolean
 }
 
 export interface GymSuggestion {
