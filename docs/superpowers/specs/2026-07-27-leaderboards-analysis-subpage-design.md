@@ -206,7 +206,7 @@ page never blanks out entirely.
 
 - `npm run build` — `tsc -b` runs with `noUnusedLocals`, which will catch any
   import left behind by the `CrewPage` deletion.
-- `npm run lint` — must stay at the baseline of 17 problems.
+- `npm run lint` — must stay at the baseline of 16 problems.
 - `npm test` — covers `shiftMonth`, `topEntries`, and the existing ranking utils.
 - Manually: open `/analysis/leaderboards`, switch gyms, page a month back, confirm
   a gym with no grading shows the empty label, and confirm the boulder page's crew

@@ -27,9 +27,20 @@ export function LeaderboardsPage() {
   const [lookupOpen, setLookupOpen] = useState(false)
   const [lookupText, setLookupText] = useState('')
 
-  const { data: gradings = [] } = useGymGradings(gym || null)
-  const { data: betaBoard = [], isLoading: betaLoading } = useGymLeaderboard(gym, month)
-  const { data: gradeBoard = [], isLoading: gradeLoading } = useGymGradeLeaderboard(gym, month)
+  // Only accept a known gym, so a partial string typed mid-lookup can never
+  // land in the URL. Closes the panel and clears the text on success so the
+  // chip row and the input never disagree about what is selected.
+  const commitGym = (name: string) => {
+    const match = gymOptions.find(g => g.name === name)
+    if (!match) return
+    selectGym(match.name)
+    setLookupText('')
+    setLookupOpen(false)
+  }
+
+  const { data: gradings = [], isLoading: gradingsLoading } = useGymGradings(gym || null)
+  const { data: betaBoard = [], isLoading: betaLoading, isError: betaError } = useGymLeaderboard(gym, month)
+  const { data: gradeBoard = [], isLoading: gradeLoading, isError: gradeError } = useGymGradeLeaderboard(gym, month)
 
   // A gym reached through the lookup input gets a chip for this visit too, so
   // the selection is always visible somewhere.
@@ -46,7 +57,11 @@ export function LeaderboardsPage() {
           {chips.map(g => (
             <button
               key={g}
-              onClick={() => selectGym(g)}
+              onClick={() => {
+                selectGym(g)
+                setLookupText('')
+                setLookupOpen(false)
+              }}
               className={`text-xs font-semibold px-3 py-1.5 rounded-full border whitespace-nowrap transition-colors ${
                 g === gym
                   ? 'bg-sage-700 border-sage-700 text-white'
@@ -79,10 +94,10 @@ export function LeaderboardsPage() {
               setLookupText(next)
               // Commit only on a real gym name. Binding the URL straight to
               // keystrokes would fire a gym-wide query per character typed.
-              if (gymOptions.some(g => g.name === next)) selectGym(next)
+              commitGym(next)
             }}
-            onBlur={() => { if (lookupText) selectGym(lookupText) }}
-            onKeyDown={e => { if (e.key === 'Enter' && lookupText) selectGym(lookupText) }}
+            onBlur={() => commitGym(lookupText)}
+            onKeyDown={e => { if (e.key === 'Enter') commitGym(lookupText) }}
             placeholder="e.g. Boulders Oslo"
             className="w-full border rounded-lg px-3 py-2.5"
           />
@@ -123,9 +138,13 @@ export function LeaderboardsPage() {
               Beta points
             </h2>
             <p className="text-[11px] text-gray-400 mt-0.5 mb-2">helping others through a boulder</p>
-            {betaLoading
-              ? <BoardSkeleton />
-              : <LeaderboardList entries={betaBoard} currentUserId={user?.id} emptyLabel="No points yet this month." />}
+            {betaLoading ? (
+              <BoardSkeleton />
+            ) : betaError ? (
+              <BoardError />
+            ) : (
+              <LeaderboardList entries={betaBoard} currentUserId={user?.id} emptyLabel="No points yet this month." />
+            )}
           </div>
 
           <div>
@@ -134,8 +153,10 @@ export function LeaderboardsPage() {
               Grade score
             </h2>
             <p className="text-[11px] text-gray-400 mt-0.5 mb-2">colour points for boulders sent this month</p>
-            {gradeLoading ? (
+            {gradeLoading || gradingsLoading ? (
               <BoardSkeleton />
+            ) : gradeError ? (
+              <BoardError />
             ) : gradings.length === 0 ? (
               <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-4 py-3.5 text-center">
                 No grading set up for this gym yet.
@@ -156,5 +177,13 @@ function BoardSkeleton() {
     <div className="space-y-1">
       {[0, 1, 2].map(i => <div key={i} className="h-9 rounded-xl bg-gray-100 animate-pulse" />)}
     </div>
+  )
+}
+
+function BoardError() {
+  return (
+    <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-4 py-3.5 text-center">
+      Couldn't load this board.
+    </p>
   )
 }
