@@ -28,10 +28,7 @@ import { VideoBadge } from '../components/VideoBadge'
 import { WatchVideoLink } from '../components/WatchVideoLink'
 import { BoulderLinkSheet } from '../components/BoulderLinkSheet'
 import { useProblemCommentCounts } from '../hooks/useProblemComments'
-import { GymBoulderPicker } from '../components/GymBoulderPicker'
-import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useClaimGymProblem } from '../hooks/useGymProblems'
-import type { GymProblem } from '../types'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { GymThumb } from '../components/GymThumb'
 import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
@@ -59,8 +56,6 @@ export function SessionDetailPage() {
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [editingAttempt, setEditingAttempt] = useState<ChallengeAttempt | null>(null)
-  const [problemMode, setProblemMode] = useState<'new' | 'from-gym'>('new')
-  const [pickedBoulder, setPickedBoulder] = useState<GymProblem | null>(null)
 
   const { data: session, isLoading } = useSession(id!)
   const { data: problems = [] } = useSessionProblems(id!)
@@ -97,33 +92,12 @@ export function SessionDetailPage() {
       { ...values, session_id: id! },
       {
         onSuccess: (created) => {
-          setSheetOpen(false); setProblemMode('new'); setPickedBoulder(null)
+          setSheetOpen(false)
           if (makePublic) {
             setLinkProblem(created)
           } else {
             toast.success('Problem added')
           }
-        },
-        onError: () => toast.error('Failed to save. Try again.'),
-      },
-    )
-  }
-
-  const handleAddFromBoulder = (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[] }) => {
-    addProblem.mutate(
-      { ...values, session_id: id! },
-      {
-        onSuccess: (created) => {
-          if (pickedBoulder) {
-            claimGymProblem.mutate(
-              { problemId: created.id, gymProblemId: pickedBoulder.id },
-              { onError: () => toast.error('Problem added, but linking to the boulder failed') },
-            )
-          }
-          setSheetOpen(false)
-          setProblemMode('new')
-          setPickedBoulder(null)
-          toast.success('Problem added')
         },
         onError: () => toast.error('Failed to save. Try again.'),
       },
@@ -381,7 +355,7 @@ export function SessionDetailPage() {
 
       <BottomSheet
         open={sheetOpen}
-        onClose={() => { setSheetOpen(false); setProblemMode('new'); setPickedBoulder(null) }}
+        onClose={() => setSheetOpen(false)}
         title="Add to Session"
       >
         <div className="flex rounded-lg overflow-hidden border mb-4 text-xs">
@@ -399,53 +373,12 @@ export function SessionDetailPage() {
           ))}
         </div>
         {sheetTab === 'problem' ? (
-          <div>
-            {/* New · From gym toggle */}
-            <div className="flex rounded-lg overflow-hidden border mb-4 text-xs">
-              {(['new', 'from-gym'] as const).map(mode => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => { setProblemMode(mode); setPickedBoulder(null) }}
-                  className={`flex-1 py-2 font-medium transition-colors ${
-                    problemMode === mode ? 'bg-sage-700 text-white' : 'bg-white text-gray-600'
-                  }`}
-                >
-                  {mode === 'new' ? 'New' : 'From gym'}
-                </button>
-              ))}
-            </div>
-            {problemMode === 'new' ? (
-              <ProblemForm
-                onSubmit={handleAddProblem}
-                isSubmitting={addProblem.isPending}
-                initialGradeSystem={myProfile?.grade_preference ?? 'font'}
-                defaultGym={session.location}
-              />
-            ) : pickedBoulder ? (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setPickedBoulder(null)}
-                  className="text-sm text-sage-800 font-medium mb-4 flex items-center gap-1"
-                >
-                  ← Back
-                </button>
-                <ProblemForm
-                  onSubmit={handleAddFromBoulder}
-                  isSubmitting={addProblem.isPending}
-                  initialGradeSystem={myProfile?.grade_preference ?? 'font'}
-                  defaultGym={session.location}
-                  prefill={boulderToPrefill(pickedBoulder)}
-                />
-              </div>
-            ) : (
-              <GymBoulderPicker
-                gym={session.location}
-                onPick={setPickedBoulder}
-              />
-            )}
-          </div>
+          <ProblemForm
+            onSubmit={handleAddProblem}
+            isSubmitting={addProblem.isPending}
+            initialGradeSystem={myProfile?.grade_preference ?? 'font'}
+            defaultGym={session.location}
+          />
         ) : (
           <ChallengeAttemptForm
             challenges={challenges}
