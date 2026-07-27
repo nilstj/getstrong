@@ -4,6 +4,7 @@ import { ProblemColorIcons } from './Chip'
 
 export function StoryRing({
   label,
+  ariaLabel,
   imageUrl,
   fallbackGym,
   color,
@@ -13,7 +14,10 @@ export function StoryRing({
   seen = false,
   onClick,
 }: {
+  /** Caption under the circle. May be empty — pass `ariaLabel` when it is. */
   label: string
+  /** Accessible name for the button when the caption alone doesn't identify it. */
+  ariaLabel?: string
   imageUrl?: string | null
   fallbackGym?: string | null
   color?: string | null
@@ -28,6 +32,7 @@ export function StoryRing({
     <button
       type="button"
       onClick={onClick}
+      aria-label={ariaLabel}
       className="flex flex-col items-center gap-1 w-16 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 rounded-xl"
     >
       <span
