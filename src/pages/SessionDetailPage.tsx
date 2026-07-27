@@ -33,7 +33,6 @@ import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useClaimGymProblem } from '../hooks/useGymProblems'
 import type { GymProblem } from '../types'
 import { ImageLightbox } from '../components/ImageLightbox'
-import { BoardThumb } from '../components/BoardThumb'
 import { GymThumb } from '../components/GymThumb'
 import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
 
@@ -210,14 +209,12 @@ export function SessionDetailPage() {
             {problems.map(problem => (
               <div key={problem.id} className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-start gap-2">
-                {(problem.image_url || problem.board || problem.gym || problem.hold_color || problem.beta_video_url) && (
+                {(problem.image_url || problem.gym || problem.hold_color || problem.beta_video_url) && (
                   <div className="relative flex-shrink-0">
                     {problem.image_url ? (
                       <button type="button" onClick={() => setLightboxUrl(problem.image_url!)}>
                         <img src={problem.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
                       </button>
-                    ) : problem.board ? (
-                      <BoardThumb board={problem.board} angle={problem.board_angle} className="w-16 h-16 rounded-xl" />
                     ) : problem.gym ? (
                       <GymThumb gym={problem.gym} compact className="w-16 h-16 rounded-xl" />
                     ) : problem.hold_color ? (
@@ -230,7 +227,7 @@ export function SessionDetailPage() {
                         <Play className="w-6 h-6 text-white fill-white ml-0.5" />
                       </a>
                     )}
-                    {problem.beta_video_url && (problem.image_url || problem.board || problem.gym) && (
+                    {problem.beta_video_url && (problem.image_url || problem.gym) && (
                       <VideoBadge href={problem.beta_video_url} />
                     )}
                   </div>
@@ -238,8 +235,7 @@ export function SessionDetailPage() {
                 <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div>
-                    {problem.name && <p className="font-semibold text-gray-900">{problem.name}</p>}
-                    <span className={problem.name ? 'text-sm text-gray-500' : 'font-medium'}>
+                    <span className="font-medium">
                       {displayGrade(problem, myProfile?.grade_preference ?? 'font')}
                       <ProblemColorIcons color={problem.color} holdColor={problem.hold_color} size={16} className="ml-1.5" />
                     </span>
@@ -264,11 +260,6 @@ export function SessionDetailPage() {
                   <p className="text-gray-400 text-sm">
                     {problem.attempts} attempt{problem.attempts !== 1 ? 's' : ''}
                   </p>
-                  {problem.board && (
-                    <span className="text-xs bg-gray-50 text-sage-800 border border-gray-200 rounded-full px-2 py-0.5">
-                      {problem.board}{problem.board_angle != null ? ` ${problem.board_angle}°` : ''}
-                    </span>
-                  )}
                   {problem.gym && <span className="text-xs text-gray-400">· {problem.gym}</span>}
                 </div>
                 {problem.notes && <p className="text-gray-500 text-sm mt-0.5">{problem.notes}</p>}

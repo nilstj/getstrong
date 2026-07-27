@@ -25,13 +25,6 @@ function isCoachOnCooldown(): boolean {
   return !!last && Date.now() - last.getTime() < COACH_COOLDOWN_MS
 }
 
-const BOARDS: { label: string; filter: string | null }[] = [
-  { label: 'Kilterboard', filter: 'Kilterboard' },
-  { label: 'Moonboard',   filter: 'Moonboard' },
-  { label: 'TB2',         filter: 'TB2' },
-  { label: 'Gym problems', filter: null },
-]
-
 export function AnalysisPage() {
   const { data, isLoading, error } = useDashboard()
   const { user } = useAuth()
@@ -69,9 +62,7 @@ export function AnalysisPage() {
     triggerCoach({ sessions: recentSessions90, problems: recentProblems90, tagStats, gradeScale, promptTemplate: coachPrompt ?? undefined })
   }
 
-  const boardCharts = BOARDS
-    .map(b => ({ ...b, chartData: hardestSentPerSession(sessions, problems, gradeMappings, 3650, b.filter) }))
-    .filter(b => b.chartData.length > 0)
+  const gradeChart = hardestSentPerSession(sessions, problems, gradeMappings, 3650)
 
   return (
     <div className="p-4 space-y-5 pb-28">
@@ -143,19 +134,16 @@ export function AnalysisPage() {
         <ClimbingDNA tagStats={tagStats} allTags={allTagDefs} />
       )}
 
-      {boardCharts.length > 0 ? boardCharts.map(b => (
-        <div key={b.label}>
-          <h2 className="text-base font-bold mb-3">Grade Progression — {b.label}</h2>
-          <GradeProgressionChart data={b.chartData} gradeScale={gradeScale} mappings={gradeMappings} />
-        </div>
-      )) : (
-        <div>
-          <h2 className="text-base font-bold mb-3">Grade Progression</h2>
+      <div>
+        <h2 className="text-base font-bold mb-3">Grade Progression</h2>
+        {gradeChart.length > 0 ? (
+          <GradeProgressionChart data={gradeChart} gradeScale={gradeScale} mappings={gradeMappings} />
+        ) : (
           <div className="h-40 flex items-center justify-center text-gray-400 text-sm bg-gray-50 rounded-xl">
             No graded sends yet
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div>
         <h2 className="text-base font-bold mb-3">Sessions per Week</h2>

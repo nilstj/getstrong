@@ -7,7 +7,6 @@ import { useSessionChallengeAttempts } from '../hooks/useChallenges'
 import { useProfile } from '../hooks/useProfile'
 import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow } from '../utils/friendSessions'
 import { Chip, HoldGraphic, ProblemColorIcons } from '../components/Chip'
-import { BoardThumb } from '../components/BoardThumb'
 import { GymThumb } from '../components/GymThumb'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { VideoBadge } from '../components/VideoBadge'
@@ -80,8 +79,6 @@ export function FriendSessionPage() {
                     className="focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 rounded-xl">
                     <img src={p.image_url} alt="" className="w-16 h-16 object-cover rounded-xl" />
                   </button>
-                ) : p.board ? (
-                  <BoardThumb board={p.board} angle={p.board_angle} className="w-16 h-16 rounded-xl" />
                 ) : p.gym ? (
                   <GymThumb gym={p.gym} compact className="w-16 h-16 rounded-xl" />
                 ) : p.hold_color ? (
@@ -96,7 +93,7 @@ export function FriendSessionPage() {
                 ) : (
                   <div className="w-16 h-16 rounded-xl bg-gray-100" />
                 )}
-                {p.beta_video_url && (p.image_url || p.board || p.gym) && (
+                {p.beta_video_url && (p.image_url || p.gym) && (
                   <VideoBadge href={p.beta_video_url} />
                 )}
               </div>
@@ -107,13 +104,7 @@ export function FriendSessionPage() {
                   )}
                   <ProblemColorIcons color={p.color} holdColor={p.hold_color} size={16} />
                   <SendBadge p={p} />
-                  {p.board && (
-                    <span className="inline-flex items-center rounded-md bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                      {p.board}{p.board_angle != null ? ` ${p.board_angle}°` : ''}
-                    </span>
-                  )}
                 </div>
-                {p.name && <p className="text-sm font-medium text-gray-800 mt-1 truncate">{p.name}</p>}
                 {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
                 {p.beta_video_url && <WatchVideoLink href={p.beta_video_url} className="mt-1" />}
               </div>

@@ -60,13 +60,11 @@ export interface GradeDataPoint {
   countAtMax: number
 }
 
-// boardFilter: undefined = all boards, null = no board (outdoor/gym), string = specific board
 export function hardestSentPerSession(
   sessions: Session[],
   problems: Problem[],
   mappings: GradeMapping[],
   days = 90,
-  boardFilter?: string | null,
 ): GradeDataPoint[] {
   const now = new Date()
   const cutoff = subDays(now, days)
@@ -75,9 +73,7 @@ export function hardestSentPerSession(
     .filter(s => new Date(s.date) >= cutoff)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .flatMap(session => {
-      const sent = problems
-        .filter(p => p.session_id === session.id && p.sent)
-        .filter(p => boardFilter === undefined ? true : p.board === boardFilter)
+      const sent = problems.filter(p => p.session_id === session.id && p.sent)
 
       const fontGrades = sent
         .map(p => p.grade_value_font ?? normalizeToFont(p.grade_system, p.grade_value, mappings))

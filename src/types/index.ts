@@ -314,7 +314,6 @@ export interface BoulderSummary {
   image_url: string | null
   beta_video_url: string | null
   set_at: string
-  isBoard: boolean
   helpWanted: boolean
   expires_at: string
   crewCount: number
@@ -330,7 +329,6 @@ export interface GymSuggestion {
 }
 
 export interface ProblemPrefill {
-  name: string | null
   color: string | null
   hold_color: string | null
   grade_value: string | null

@@ -63,18 +63,13 @@ export function useDiscoverBoulders() {
       const now = new Date()
       const activeIds = new Set(list.filter(b => isActiveBoulder(b, now)).map(b => b.id))
 
-      // 3. Crew counts (distinct users per boulder) + flag board climbs.
-      // gym_problems don't store a board, so a boulder is a "board problem" when
-      // its linked problems carry one (Kilterboard/Moonboard/TB2).
+      // 3. Crew counts (distinct users per boulder).
       const ids = list.map(b => b.id)
       const { data: probs, error: e3 } = await supabase
-        .from('problems').select('gym_problem_id, user_id, board, grade_value_font').in('gym_problem_id', ids)
+        .from('problems').select('gym_problem_id, user_id, grade_value_font').in('gym_problem_id', ids)
       if (e3) throw e3
-      const probRows = (probs ?? []) as { gym_problem_id: string | null; user_id: string; board: string | null; grade_value_font: string | null }[]
+      const probRows = (probs ?? []) as { gym_problem_id: string | null; user_id: string; grade_value_font: string | null }[]
       const counts = countMembersByBoulder(probRows)
-      const boardBoulderIds = new Set(
-        probRows.filter(p => p.board && p.gym_problem_id).map(p => p.gym_problem_id as string),
-      )
       // gym_problems.community_grade is never populated, so derive a consensus
       // grade from the linked problems' (Font-normalized) grades.
       const gradesByBoulder = new Map<string, (string | null)[]>()
@@ -102,7 +97,6 @@ export function useDiscoverBoulders() {
         image_url: b.image_url,
         beta_video_url: b.beta_video_url,
         set_at: b.set_at,
-        isBoard: boardBoulderIds.has(b.id),
         helpWanted: helpWantedIds.has(b.id),
         expires_at: b.expires_at,
         crewCount: counts[b.id] ?? 0,

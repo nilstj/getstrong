@@ -327,6 +327,8 @@ export function CrewPage() {
         grade_system: 'font',
         attempts: 1,
         sent: false,
+        // Problems no longer carry a name or a training board.
+        name: null,
         board: null,
         board_angle: null,
         crag: null,
