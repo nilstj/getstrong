@@ -8,6 +8,7 @@ import { useGymGradings } from '../hooks/useGymGradings'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
 import { useGymGradeLeaderboard } from '../hooks/useGradeLeaderboard'
 import { LeaderboardList } from '../components/LeaderboardList'
+import { BetaPointsInfo } from '../components/BetaPointsInfo'
 import { cycleMonth, shiftMonth } from '../utils/leaderboard'
 
 export function LeaderboardsPage() {
@@ -136,6 +137,7 @@ export function LeaderboardsPage() {
             <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
               <Trophy size={15} strokeWidth={2} className="text-amber-500" />
               Beta points
+              <BetaPointsInfo />
             </h2>
             <p className="text-[11px] text-gray-400 mt-0.5 mb-2">helping others through a boulder</p>
             {betaLoading ? (
