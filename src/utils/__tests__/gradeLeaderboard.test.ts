@@ -25,9 +25,9 @@ describe('pointsForColor', () => {
 describe('buildGradeLeaderboard', () => {
   it('sums points over sent problems and ranks desc', () => {
     const rows = [
-      { user_id: 'u1', color: 'Black', sent: true },   // 10
-      { user_id: 'u1', color: 'Green', sent: true },   // 1  -> u1 = 11
-      { user_id: 'u2', color: 'Blue', sent: true },    // 3  -> u2 = 3
+      { user_id: 'u1', color: 'Black', sent: true, gym_problem_id: null, name: null, grade_value: null },   // 10
+      { user_id: 'u1', color: 'Green', sent: true, gym_problem_id: null, name: null, grade_value: null },   // 1  -> u1 = 11
+      { user_id: 'u2', color: 'Blue', sent: true, gym_problem_id: null, name: null, grade_value: null },    // 3  -> u2 = 3
     ]
     const lb = buildGradeLeaderboard(rows, gradings, profiles)
     expect(lb.map(e => [e.user_id, e.points, e.rank])).toEqual([
@@ -38,9 +38,9 @@ describe('buildGradeLeaderboard', () => {
 
   it('ignores unsent problems and unknown/zero colours', () => {
     const rows = [
-      { user_id: 'u1', color: 'Black', sent: false },  // unsent -> ignored
-      { user_id: 'u1', color: 'Pink', sent: true },    // unknown -> 0
-      { user_id: 'u2', color: 'Blue', sent: true },    // 3
+      { user_id: 'u1', color: 'Black', sent: false, gym_problem_id: null, name: null, grade_value: null },  // unsent -> ignored
+      { user_id: 'u1', color: 'Pink', sent: true, gym_problem_id: null, name: null, grade_value: null },    // unknown -> 0
+      { user_id: 'u2', color: 'Blue', sent: true, gym_problem_id: null, name: null, grade_value: null },    // 3
     ]
     const lb = buildGradeLeaderboard(rows, gradings, profiles)
     expect(lb).toEqual([{ user_id: 'u2', points: 3, username: 'bo', avatar_url: null, rank: 1 }])
@@ -48,10 +48,19 @@ describe('buildGradeLeaderboard', () => {
 
   it('gives tied scores the same rank (competition ranking)', () => {
     const rows = [
-      { user_id: 'u1', color: 'Blue', sent: true },    // 3
-      { user_id: 'u2', color: 'Blue', sent: true },    // 3
+      { user_id: 'u1', color: 'Blue', sent: true, gym_problem_id: null, name: null, grade_value: null },    // 3
+      { user_id: 'u2', color: 'Blue', sent: true, gym_problem_id: null, name: null, grade_value: null },    // 3
     ]
     const lb = buildGradeLeaderboard(rows, gradings, profiles)
     expect(lb.map(e => e.rank)).toEqual([1, 1])
+  })
+
+  it('dedupes re-logs of the same boulder (same gym_problem_id) to count once per user', () => {
+    const rows = [
+      { user_id: 'u1', color: 'Blue', sent: true, gym_problem_id: 'gp1', name: null, grade_value: null },   // 3
+      { user_id: 'u1', color: 'Blue', sent: true, gym_problem_id: 'gp1', name: null, grade_value: null },   // duplicate -> ignored
+    ]
+    const lb = buildGradeLeaderboard(rows, gradings, profiles)
+    expect(lb).toEqual([{ user_id: 'u1', points: 3, username: 'ana', avatar_url: null, rank: 1 }])
   })
 })

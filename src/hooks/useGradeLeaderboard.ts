@@ -13,11 +13,15 @@ export function useGymGradeLeaderboard(gym: string) {
         .eq('gym', gym)
       if (gErr) throw gErr
 
+      // v1: client-side aggregation; explicit cap makes the (unlikely at current
+      // gym volumes) truncation non-silent. Revisit with a server-side
+      // aggregation RPC if a gym exceeds this.
       const { data: probs, error: pErr } = await supabase
         .from('problems')
-        .select('user_id, color, sent')
+        .select('user_id, color, sent, gym_problem_id, name, grade_value')
         .eq('gym', gym)
         .eq('sent', true)
+        .range(0, 99999)
       if (pErr) throw pErr
       const rows = (probs ?? []) as GradeProblemRow[]
 

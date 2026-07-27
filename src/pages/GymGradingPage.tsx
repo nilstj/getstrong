@@ -15,13 +15,13 @@ export function GymGradingPage() {
   const { data: profile, isLoading } = useProfile()
   const { data: gyms = [] } = useGymSuggestions()
   const [gym, setGym] = useState('')
-  const { data: existing = [] } = useGymGradings(gym || null)
+  const { data: existing } = useGymGradings(gym || null)
   const save = useSaveGymGradings()
 
   // Ordered easiest -> hardest. rank is the array index on save.
   const [rows, setRows] = useState<Row[]>([])
   useEffect(() => {
-    setRows(existing.map(g => ({ color_name: g.color_name, points: g.points })))
+    setRows((existing ?? []).map(g => ({ color_name: g.color_name, points: g.points })))
   }, [existing])
 
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>

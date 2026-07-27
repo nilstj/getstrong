@@ -33,15 +33,15 @@ begin
     raise exception 'gym is required';
   end if;
   if not exists (
-    select 1 from profiles
+    select 1 from public.profiles
     where id = auth.uid() and (is_admin = true or is_setter = true)
   ) then
     raise exception 'Only admins or setters can edit gym gradings';
   end if;
 
-  delete from gym_gradings where gym = v_gym;
+  delete from public.gym_gradings where gym = v_gym;
 
-  insert into gym_gradings (gym, color_name, rank, points)
+  insert into public.gym_gradings (gym, color_name, rank, points)
   select v_gym,
          elem->>'color_name',
          (elem->>'rank')::int,
@@ -49,4 +49,4 @@ begin
   from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) as elem
   where nullif(trim(coalesce(elem->>'color_name', '')), '') is not null;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = '';
