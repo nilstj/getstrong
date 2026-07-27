@@ -102,6 +102,14 @@ about what was earned.
 - Inside `mark_beta_worked`, after the existing author award → 1 `engagement` to
   the marker, under the same two guards.
 
+Both dedupe guards (`beta_posted` on `(user_id, gym_problem_id)`, `engagement` on
+`(user_id, beta_id)`) are enforced by **unique partial indexes**
+(`beta_points_beta_posted_uniq`, `beta_points_engagement_uniq`), with every award
+insert carrying `on conflict do nothing` so a race that slips past the `exists`
+pre-check hits the index instead of raising inside the caller's own insert. The
+`exists` pre-checks stay for readability — the index is what actually prevents the
+double-award.
+
 Every award resolves `gym` from `gym_problems` via the beta's `gym_problem_id`, and
 stamps `cycle_month` as `to_char((now() at time zone 'utc'), 'YYYY-MM')` — matching
 every existing award and the UTC month arithmetic the leaderboards page relies on.
@@ -127,30 +135,46 @@ it opens the existing `BottomSheet` (`open`/`onClose`/`title`/`children`) titled
 ```
 ┌─ How beta points work ─────── × ─┐
 │                                  │
-│   10   logging a shared boulder  │
+│   10   creating a shared boulder │
 │        with a photo              │
+│        no photo, no points       │
 │                                  │
 │    5   posting a beta            │
-│        first beta per boulder    │
+│        once per boulder          │
 │                                  │
 │    5   someone marks your beta   │
 │        "worked for me"           │
+│        once per beta, ever       │
 │                                  │
-│    1   commenting on someone's   │
-│        beta, or marking their    │
-│        beta worked               │
+│    1   commenting on, or         │
+│        marking, someone else's   │
+│        beta                      │
+│        once per beta, per person │
 │                                  │
-│  Points are counted per gym, per │
-│  month. Once earned they're      │
-│  never taken away.               │
+│  These rules apply from this     │
+│  month on. Points are counted    │
+│  per gym, per month, and once    │
+│  earned they are never taken     │
+│  away — if someone unmarks your  │
+│  beta, you keep the points.      │
+│  Emoji reactions don't earn      │
+│  points.                         │
 └──────────────────────────────────┘
 ```
 
 Each row is the points figure in `text-lg font-bold text-sage-700` on the left and
 the rule text on the right, with the qualifier in `text-[11px] text-gray-400`
-beneath. The closing note explains the two properties a climber will otherwise
-discover by surprise: the board resets each month per gym, and unmarking a beta
-does not claw back the author's points (`053`, by design).
+beneath. "Creating" (not "logging") because in this app "logging" already names
+the core problem-logging action, which pays nothing — these 10 points come from
+publishing a *new* shared boulder. The two "once per beta" qualifiers are
+deliberately distinguished: the author's 5-point award is once *ever* per beta no
+matter how many people mark it (the `boulder_beta.awarded` guard, live since
+`053`), while the engagement point is once *per person* per beta. The closing note
+covers the properties a climber will otherwise discover by surprise: the board
+resets each month per gym, unmarking a beta does not claw back the author's points
+(`053`, by design), and — since nothing is backfilled and the month stepper can
+page into months predating 074 — the rules are stated as applying "from this month
+on" rather than as an absolute history.
 
 Only the beta-points board gets an icon. Grade score is self-explanatory from the
 gym's colour→points config and is out of scope here.
