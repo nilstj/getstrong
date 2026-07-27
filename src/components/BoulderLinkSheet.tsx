@@ -1,6 +1,7 @@
 import toast from 'react-hot-toast'
 import { Plus } from 'lucide-react'
 import { BottomSheet } from './BottomSheet'
+import { ProblemColorIcons } from './Chip'
 import {
   useMatchingGymProblems,
   useCreateGymProblem,
@@ -87,6 +88,7 @@ export function BoulderLinkSheet({
                     {left >= 0 ? `${left} days left` : 'expired'}
                   </p>
                 </div>
+                <ProblemColorIcons color={gp.color} holdColor={gp.hold_color} size={16} className="ml-auto flex-shrink-0" />
               </button>
             )
           })}

@@ -34,6 +34,8 @@ export function DashboardPage() {
                 label={b.community_grade ? `${b.title} (${b.community_grade})` : b.title}
                 imageUrl={b.image_url}
                 fallbackGym={b.gym}
+                color={b.color}
+                holdColor={b.hold_color}
                 helpWanted={b.helpWanted}
                 hasVideo={!!b.beta_video_url}
                 onClick={() => navigate(`/gym-problems/${b.id}`, { state: { boulderIds: storyIds } })}

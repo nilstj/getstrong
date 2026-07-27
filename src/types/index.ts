@@ -369,6 +369,7 @@ export interface FeedEvent {
   gym_problem_id: string
   boulder_name: string | null
   boulder_color: string | null
+  boulder_hold_color: string | null
   boulder_grade: string | null
   boulder_image_url: string | null
   gym: string | null

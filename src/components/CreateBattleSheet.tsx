@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from './BottomSheet'
+import { ProblemColorIcons } from './Chip'
 import { GymBoulderPicker } from './GymBoulderPicker'
 import { useMyCrews, useCreateCrewBattle } from '../hooks/useCrews'
 import type { GymProblem } from '../types'
@@ -70,11 +71,12 @@ export function CreateBattleSheet({ open, onClose, opponentCrewId, opponentName 
 
           {type === 'boulder' && canBoulder && (
             boulder ? (
-              <div className="flex items-center justify-between rounded-xl border px-3 py-2.5">
+              <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5">
                 <span className="text-sm font-medium text-gray-800 truncate">
                   {boulder.name ?? boulder.color ?? 'Boulder'}{boulder.community_grade ? ` · ${boulder.community_grade}` : ''}
                 </span>
-                <button type="button" onClick={() => setBoulder(null)} className="text-xs font-medium text-sage-700 flex-shrink-0">Change</button>
+                <ProblemColorIcons color={boulder.color} holdColor={boulder.hold_color} size={16} className="flex-shrink-0" />
+                <button type="button" onClick={() => setBoulder(null)} className="text-xs font-medium text-sage-700 flex-shrink-0 ml-auto">Change</button>
               </div>
             ) : (
               <div>
