@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { totalSessions, totalProblems, totalSends, sendRate, sessionsByWeek, hardestSentPerSession } from '../stats'
+import { totalSessions, totalProblems, totalSends, sendRate, sessionsByWeek, hardestSentPerSession, sentGymGradeCounts } from '../stats'
 import type { Session, Problem, GradeMapping } from '../../types'
 
 const SESSIONS: Session[] = [
@@ -134,5 +134,59 @@ describe('hardestSentPerSession', () => {
       { id: 'p1', session_id: 's1', user_id: 'u1', name: null, grade_system: 'font', grade_value: '7A', color: null, hold_color: null, attempts: 1, sent: true, grade_value_font: null, grade_value_vscale: null, board: null, board_angle: null, gym: null, beta_video_url: null, image_url: null, crag: null, notes: null, created_at: '', gym_problem_id: null },
     ]
     expect(hardestSentPerSession(oldSession, problems, GRADE_MAPPINGS)).toEqual([])
+  })
+})
+
+describe('sentGymGradeCounts', () => {
+  const daysAgo = (n: number): string => {
+    const d = new Date()
+    d.setDate(d.getDate() - n)
+    return d.toISOString().split('T')[0]
+  }
+  const session = (id: string, date: string): Session =>
+    ({ id, user_id: 'u1', date, location: 'Gym', duration_minutes: 60, intensity: null, goal: null, notes: null, wisdom: null, wisdom_shared: false, created_at: '' })
+  const problem = (id: string, sessionId: string, color: string | null, sent: boolean): Problem =>
+    ({ id, session_id: sessionId, user_id: 'u1', name: null, grade_system: 'font', grade_value: '6A', color, hold_color: null, attempts: 1, sent, grade_value_font: null, grade_value_vscale: null, board: null, board_angle: null, gym: 'Gym', beta_video_url: null, image_url: null, crag: null, notes: null, created_at: '', gym_problem_id: null })
+
+  it('returns empty when nothing was sent', () => {
+    expect(sentGymGradeCounts([], [])).toEqual([])
+  })
+
+  it('counts sends per colour, commonest first', () => {
+    const sessions = [session('s1', daysAgo(3)), session('s2', daysAgo(10))]
+    const problems = [
+      problem('p1', 's1', 'Green', true),
+      problem('p2', 's1', 'Blue', true),
+      problem('p3', 's2', 'Green', true),
+      problem('p4', 's2', 'Green', true),
+    ]
+    expect(sentGymGradeCounts(sessions, problems)).toEqual([
+      { color: 'Green', count: 3 },
+      { color: 'Blue', count: 1 },
+    ])
+  })
+
+  it('ignores projects, uncoloured problems and older sessions', () => {
+    const sessions = [session('s1', daysAgo(3)), session('s2', daysAgo(45))]
+    const problems = [
+      problem('p1', 's1', 'Red', true),
+      problem('p2', 's1', 'Red', false),   // not sent
+      problem('p3', 's1', null, true),     // no gym grade
+      problem('p4', 's2', 'Red', true),    // outside the 30-day window
+    ]
+    expect(sentGymGradeCounts(sessions, problems)).toEqual([{ color: 'Red', count: 1 }])
+  })
+
+  it('merges colours that differ only in casing, keeping the first spelling', () => {
+    const sessions = [session('s1', daysAgo(1))]
+    const problems = [problem('p1', 's1', 'Blue', true), problem('p2', 's1', 'blue', true)]
+    expect(sentGymGradeCounts(sessions, problems)).toEqual([{ color: 'Blue', count: 2 }])
+  })
+
+  it('honours a custom window', () => {
+    const sessions = [session('s1', daysAgo(20))]
+    const problems = [problem('p1', 's1', 'Blue', true)]
+    expect(sentGymGradeCounts(sessions, problems, 7)).toEqual([])
+    expect(sentGymGradeCounts(sessions, problems, 30)).toEqual([{ color: 'Blue', count: 1 }])
   })
 })
