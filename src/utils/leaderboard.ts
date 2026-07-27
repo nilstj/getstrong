@@ -52,3 +52,35 @@ export function buildLeaderboard(
 
   return rankEntries(totals, profiles)
 }
+
+/**
+ * Shift a 'YYYY-MM' cycle month by whole months.
+ * shiftMonth('2026-01', -1) === '2025-12'
+ */
+export function shiftMonth(month: string, delta: number): string {
+  const [year, m] = month.split('-').map(Number)
+  return cycleMonth(new Date(Date.UTC(year, m - 1 + delta, 1)))
+}
+
+/**
+ * Half-open UTC bounds for a 'YYYY-MM' month, shaped for a timestamptz range
+ * filter: start <= created_at < end. Half-open avoids the end-of-month
+ * off-by-one that an inclusive upper bound invites.
+ */
+export function monthBounds(month: string): { start: string; end: string } {
+  const [year, m] = month.split('-').map(Number)
+  return {
+    start: new Date(Date.UTC(year, m - 1, 1)).toISOString(),
+    end: new Date(Date.UTC(year, m, 1)).toISOString(),
+  }
+}
+
+/**
+ * Entries whose competition rank falls within `limit`. Tie-inclusive: climbers
+ * tied on the boundary rank all appear, so the result can exceed `limit`.
+ * Filtering on rank rather than slicing is the point — cutting one member of a
+ * tie while showing another on identical points reads as a bug.
+ */
+export function topEntries(entries: LeaderboardEntry[], limit: number): LeaderboardEntry[] {
+  return entries.filter(e => e.rank <= limit)
+}
