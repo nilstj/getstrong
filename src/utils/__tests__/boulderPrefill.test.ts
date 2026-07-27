@@ -12,12 +12,15 @@ const boulder: GymProblem = {
 describe('boulderToPrefill', () => {
   it('maps boulder fields to new-problem defaults', () => {
     expect(boulderToPrefill(boulder)).toEqual({
-      name: 'The Prow', color: 'Blue', hold_color: 'Yellow', grade_value: '6B',
+      color: 'Blue', hold_color: 'Yellow', grade_value: '6B',
       image_url: 'https://x/p.jpg', beta_video_url: 'https://insta/v', gym: 'Boulders Oslo',
     })
   })
-  it('preserves nulls (no name/color/grade/photo/video)', () => {
+  it('drops the boulder name — problems have no name field', () => {
+    expect(boulderToPrefill(boulder)).not.toHaveProperty('name')
+  })
+  it('preserves nulls (no colour/grade/photo/video)', () => {
     expect(boulderToPrefill({ ...boulder, name: null, color: null, hold_color: null, community_grade: null, image_url: null, beta_video_url: null }))
-      .toEqual({ name: null, color: null, hold_color: null, grade_value: null, image_url: null, beta_video_url: null, gym: 'Boulders Oslo' })
+      .toEqual({ color: null, hold_color: null, grade_value: null, image_url: null, beta_video_url: null, gym: 'Boulders Oslo' })
   })
 })

@@ -6,9 +6,7 @@ import type { BoulderNavState } from '../utils/boulderNav'
 
 /**
  * The "Latest Gym Problems" story strip: your boulders + the ones in your gyms,
- * newest first, excluding board climbs (Kilterboard/Moonboard/TB2 aren't gym
- * wall problems). Rings are blue until you open the problem, then grey.
- * Rendered on both the home page and the Gym problems page.
+ * newest first. Rings are blue until you open the problem, then grey.
  */
 export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { heading?: string }) {
   const navigate = useNavigate()
@@ -16,7 +14,6 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
   const { data: seen } = useSeenGymProblems()
 
   const stories = [...(boulders?.yours ?? []), ...(boulders?.discover ?? [])]
-    .filter(b => !b.isBoard)
     .sort((a, b) => (a.set_at < b.set_at ? 1 : a.set_at > b.set_at ? -1 : 0))
     .slice(0, 12)
   if (stories.length === 0) return null

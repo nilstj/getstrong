@@ -94,7 +94,7 @@ export function VideoAnalysisPage() {
               <input
                 value={board}
                 onChange={e => setBoard(e.target.value)}
-                placeholder="Wall / board"
+                placeholder="Wall (e.g. overhang)"
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm"
               />
             </div>
