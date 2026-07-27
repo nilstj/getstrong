@@ -4,7 +4,8 @@ import { useMyTagStats, useProblemTagDefinitions } from '../hooks/useProblemTags
 import { GradeProgressionChart } from '../components/GradeProgressionChart'
 import { SessionFrequencyChart } from '../components/SessionFrequencyChart'
 import { ClimbingDNA } from '../components/ClimbingDNA'
-import { hardestSentPerSession, sessionsByWeek, sendRate, totalSends, totalProblems } from '../utils/stats'
+import { hardestSentPerSession, sentGymGradeCounts, sessionsByWeek, sendRate, totalSends, totalProblems } from '../utils/stats'
+import { TapeGraphic } from '../components/Chip'
 import { useAuth } from '../providers/AuthProvider'
 import { useCoach } from '../hooks/useCoach'
 import { useAppSetting } from '../hooks/useAppSettings'
@@ -63,6 +64,9 @@ export function AnalysisPage() {
   }
 
   const gradeChart = hardestSentPerSession(sessions, problems, gradeMappings, 3650)
+  // Gym grading colours sent in the last 30 days, commonest first.
+  const gymGrades = sentGymGradeCounts(sessions, problems, 30)
+  const gymGradeSends = gymGrades.reduce((sum, g) => sum + g.count, 0)
 
   return (
     <div className="p-4 space-y-5 pb-28">
@@ -133,6 +137,30 @@ export function AnalysisPage() {
       {allTagDefs.length > 0 && (
         <ClimbingDNA tagStats={tagStats} allTags={allTagDefs} />
       )}
+
+      <div>
+        <h2 className="text-base font-bold mb-3">Gym Grades — Last 30 Days</h2>
+        {gymGrades.length > 0 ? (
+          <div className="bg-white border border-gray-200 rounded-2xl p-4">
+            <p className="text-xs text-gray-400">
+              {gymGradeSends} send{gymGradeSends !== 1 ? 's' : ''} across {gymGrades.length} grade{gymGrades.length !== 1 ? 's' : ''}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-3">
+              {gymGrades.map(g => (
+                <div key={g.color} className="flex items-center gap-1.5" title={`${g.color}: ${g.count}`}>
+                  <TapeGraphic color={g.color} size={20} />
+                  <span className="text-lg font-bold leading-none">{g.count}</span>
+                  <span className="text-[11px] text-gray-400">{g.color}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="h-20 flex items-center justify-center text-gray-400 text-sm bg-gray-50 rounded-xl">
+            No gym-graded sends in the last 30 days
+          </div>
+        )}
+      </div>
 
       <div>
         <h2 className="text-base font-bold mb-3">Grade Progression</h2>

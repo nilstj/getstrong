@@ -52,6 +52,45 @@ export function sessionsByWeek(sessions: Session[], days = 90): WeekBucket[] {
   })
 }
 
+export interface GymGradeCount {
+  /** The gym grading colour, in the casing it was first logged with. */
+  color: string
+  /** Sends of that colour in the window. */
+  count: number
+}
+
+/**
+ * How many problems of each gym grading colour the user sent in the window —
+ * "6 greens, 3 blues, 1 red last month".
+ *
+ * Colours are aggregated across gyms: a Blue at one gym and a Blue at another
+ * count together, since the point is a rough spread of difficulty, not a
+ * per-gym score (that's the grade leaderboard's job). Matched case-insensitively
+ * so "Blue" and "blue" don't split into two rows. Sorted commonest first.
+ */
+export function sentGymGradeCounts(
+  sessions: Session[],
+  problems: Problem[],
+  days = 30,
+): GymGradeCount[] {
+  const cutoff = subDays(new Date(), days)
+  const recentSessionIds = new Set(
+    sessions.filter(s => new Date(s.date) >= cutoff).map(s => s.id),
+  )
+
+  const counts = new Map<string, GymGradeCount>()
+  for (const p of problems) {
+    if (!p.sent || !p.color || !recentSessionIds.has(p.session_id)) continue
+    const key = p.color.toLowerCase()
+    const entry = counts.get(key)
+    if (entry) entry.count += 1
+    else counts.set(key, { color: p.color, count: 1 })
+  }
+
+  return Array.from(counts.values())
+    .sort((a, b) => b.count - a.count || a.color.localeCompare(b.color))
+}
+
 export interface GradeDataPoint {
   date: string
   fontGrade: string
