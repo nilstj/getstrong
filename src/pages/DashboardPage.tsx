@@ -34,7 +34,8 @@ export function DashboardPage() {
             {stories.map(b => (
               <StoryRing
                 key={b.id}
-                label={b.community_grade ? `${b.title} (${b.community_grade})` : b.title}
+                label={b.community_grade ?? ''}
+                ariaLabel={b.community_grade ? `${b.title} (${b.community_grade})` : b.title}
                 imageUrl={b.image_url}
                 fallbackGym={b.gym}
                 color={b.color}
