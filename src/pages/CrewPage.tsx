@@ -44,7 +44,7 @@ import { boulderToPrefill } from '../utils/boulderPrefill'
 import type { BoulderNavState } from '../utils/boulderNav'
 import { todayDateString } from '../utils/dates'
 import { useAuth } from '../providers/AuthProvider'
-import { Chip, HoldDot, HoldGraphic } from '../components/Chip'
+import { Chip, HoldDot, HoldGraphic, TapeGraphic } from '../components/Chip'
 import { BetaThreadCard } from '../components/BetaThreadCard'
 import { CrewTitleBadge } from '../components/CrewTitleBadge'
 import { StarRating } from '../components/StarRating'
@@ -414,7 +414,7 @@ export function CrewPage() {
             <h1 className="text-xl font-bold tracking-tight">{title}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
               {displayGrade && <span className="font-semibold text-gray-800">{displayGrade}</span>}
-              {boulder.color && <><span className="text-gray-300">·</span><span>Gym grade: {boulder.color}</span></>}
+              {boulder.color && <><span className="text-gray-300">·</span><span className="inline-flex items-center gap-1"><TapeGraphic color={boulder.color} size={16} /> {boulder.color}</span></>}
               {boulder.hold_color && <><span className="text-gray-300">·</span><span className="inline-flex items-center gap-1"><HoldGraphic color={boulder.hold_color} size={16} /> {boulder.hold_color}</span></>}
               {boulder.gym && <><span className="text-gray-300">·</span><span>{boulder.gym}</span></>}
               <span className="text-gray-300">·</span>
