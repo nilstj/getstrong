@@ -10,7 +10,7 @@ export function StoryRing({
   holdColor,
   helpWanted = false,
   hasVideo = false,
-  active = true,
+  seen = false,
   onClick,
 }: {
   label: string
@@ -20,7 +20,8 @@ export function StoryRing({
   holdColor?: string | null
   helpWanted?: boolean
   hasVideo?: boolean
-  active?: boolean
+  /** Already opened by this user — the ring goes grey. Unseen rings are blue. */
+  seen?: boolean
   onClick?: () => void
 }) {
   return (
@@ -31,13 +32,13 @@ export function StoryRing({
     >
       <span
         className={`relative w-14 h-14 rounded-full p-[2.5px] ${
-          active
-            ? 'bg-gradient-to-tr from-sage-600 via-khaki-400 to-sage-400'
-            : 'bg-gray-300'
+          seen
+            ? 'bg-gray-300'
+            : 'bg-gradient-to-tr from-blue-600 via-blue-400 to-sky-400'
         }`}
       >
         {helpWanted && (
-          <span className="absolute -top-0.5 -right-0.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-amber-400 border-2 border-white text-[10px] leading-none"
+          <span className="absolute -top-0.5 -left-0.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-amber-400 border-2 border-white text-[10px] leading-none"
             title="Help wanted">🆘</span>
         )}
         {imageUrl ? (
@@ -50,7 +51,7 @@ export function StoryRing({
         ) : (
           <span className="block w-full h-full rounded-full border-2 border-white bg-sage-100" />
         )}
-        {hasVideo && <VideoBadge variant="corner" className="absolute bottom-0 right-0 border-2 border-white" />}
+        {hasVideo && <VideoBadge variant="corner" className="absolute -top-0.5 -right-0.5 border-2 border-white" />}
         {(color || holdColor) && (
           <ProblemColorIcons color={color} holdColor={holdColor} size={13} className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-1 py-0.5 shadow-sm" />
         )}

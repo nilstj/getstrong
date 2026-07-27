@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useFriendsFeed } from '../hooks/useFriendsFeed'
 import { useFollowing } from '../hooks/useFollows'
 import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
+import { useSeenGymProblems } from '../hooks/useGymProblemViews'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { StoryRing } from '../components/StoryRing'
 
@@ -16,6 +17,8 @@ export function DashboardPage() {
     .sort((a, b) => (a.set_at < b.set_at ? 1 : a.set_at > b.set_at ? -1 : 0))
     .slice(0, 12)
   const storyIds = stories.map(b => b.id)
+  // Blue ring until you've opened the problem, grey after.
+  const { data: seen } = useSeenGymProblems()
   // useFriendsFeed stays disabled until follows resolve, so fold the follows
   // load into the spinner — otherwise the empty state flashes on every mount.
   const { isLoading: followLoading } = useFollowing()
@@ -38,6 +41,7 @@ export function DashboardPage() {
                 holdColor={b.hold_color}
                 helpWanted={b.helpWanted}
                 hasVideo={!!b.beta_video_url}
+                seen={seen?.has(b.id) ?? false}
                 onClick={() => navigate(`/gym-problems/${b.id}`, { state: { boulderIds: storyIds } })}
               />
             ))}

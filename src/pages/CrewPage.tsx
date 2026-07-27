@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Users, Trophy, Play, Send, Plus, Pencil, ChevronLeft, ChevronRight, Wrench } from 'lucide-react'
 import { format } from 'date-fns'
@@ -37,6 +37,7 @@ import {
   useBoulderHelp,
   useRequestBetaHelp,
 } from '../hooks/useBoulderExtras'
+import { useMarkGymProblemViewed } from '../hooks/useGymProblemViews'
 import { daysUntil } from '../utils/gymProblems'
 import { cycleMonth } from '../utils/leaderboard'
 import { crewTitles } from '../utils/crewTitles'
@@ -219,6 +220,14 @@ export function CrewPage() {
   const createSession = useCreateSession()
   const addProblem = useAddProblem()
   const claim = useClaimGymProblem()
+
+  // Opening the page is what marks the problem "seen" — its home-page ring goes
+  // from blue to grey. Fire-and-forget: a failure here must not block the page.
+  const markViewed = useMarkGymProblemViewed()
+  const markViewedMutate = markViewed.mutate
+  useEffect(() => {
+    if (id) markViewedMutate(id)
+  }, [id, markViewedMutate])
 
   const [tab, setTab] = useState<Tab>('sendtrain')
   const [draft, setDraft] = useState('')
