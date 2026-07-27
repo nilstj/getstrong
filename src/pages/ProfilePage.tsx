@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, Shield } from 'lucide-react'
+import { LogOut, Shield, BarChart2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
@@ -314,6 +314,15 @@ export function ProfilePage() {
           <span className="ml-auto text-gray-400 text-base">›</span>
         </Link>
       )}
+
+      <Link
+        to="/analysis"
+        className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 hover:border-gray-300 transition-colors"
+      >
+        <BarChart2 size={18} strokeWidth={1.75} className="text-sage-700" />
+        <span className="text-sm font-medium text-gray-700">Analysis</span>
+        <span className="ml-auto text-gray-400 text-base">›</span>
+      </Link>
 
       {(profile?.is_admin || profile?.is_setter) && (
         <Link

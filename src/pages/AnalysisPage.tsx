@@ -10,8 +10,9 @@ import { useAuth } from '../providers/AuthProvider'
 import { useCoach } from '../hooks/useCoach'
 import { useAppSetting } from '../hooks/useAppSettings'
 import { subDays, formatDistanceToNow } from 'date-fns'
-import { RefreshCw, Sparkles } from 'lucide-react'
+import { RefreshCw, Sparkles, Trophy } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 const COACH_STORAGE_KEY = 'lastCoachUsed'
 const COACH_COOLDOWN_MS = 24 * 60 * 60 * 1000
@@ -86,6 +87,18 @@ export function AnalysisPage() {
           <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">Problems</p>
         </div>
       </div>
+
+      <Link
+        to="/analysis/leaderboards"
+        className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 hover:border-gray-300 transition-colors"
+      >
+        <Trophy size={18} strokeWidth={1.75} className="text-sage-700" />
+        <div>
+          <p className="text-sm font-medium text-gray-700">Leaderboards</p>
+          <p className="text-[11px] text-gray-400">Beta points &amp; grade score</p>
+        </div>
+        <span className="ml-auto text-gray-400 text-base">›</span>
+      </Link>
 
       {/* AI Coaching */}
       <div>

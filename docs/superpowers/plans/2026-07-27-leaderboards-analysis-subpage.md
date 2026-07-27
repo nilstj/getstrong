@@ -14,7 +14,7 @@
 
 - **No migration, no SQL, no RLS change.** The entire change is client-side. If you find yourself writing a `.sql` file, stop — you have misread the plan.
 - **`npm run build` must pass.** It runs `tsc -b` with `noUnusedLocals`, so an import left behind by a deletion fails the build.
-- **`npm run lint` must stay at the baseline of 17 problems.** Do not "fix" pre-existing lint warnings; do not add new ones.
+- **`npm run lint` must stay at the baseline of 16 problems** (15 errors, 1 warning — all pre-existing, verified on this branch). Do not "fix" pre-existing lint warnings; do not add new ones.
 - **`npm test` must pass.** Vitest, run non-interactively as `npx vitest run`.
 - **Only pure functions in `src/utils/` get tests.** There is no `@testing-library/react` in this project. Do not add one, and do not write component or hook tests — every existing test file tests a pure util.
 - **Month strings are `'YYYY-MM'`** everywhere (matches the `beta_points.cycle_month` column and the existing `cycleMonth` helper).
