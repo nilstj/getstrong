@@ -39,7 +39,9 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/crews" element={<MyCrewsPage />} />
                 <Route path="/crews/:crewId" element={<CrewGroupPage />} />
-                <Route path="/sendtrains" element={<CrewsPage />} />
+                <Route path="/gym-problems" element={<CrewsPage />} />
+                {/* Old name of the page — keep old links and bookmarks working. */}
+                <Route path="/sendtrains" element={<Navigate to="/gym-problems" replace />} />
                 <Route path="/sessions" element={<SessionsPage />} />
                 <Route path="/sessions/new" element={<NewSessionPage />} />
                 <Route path="/sessions/:id" element={<SessionDetailPage />} />

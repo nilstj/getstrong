@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Users } from 'lucide-react'
+import { Users, ChevronDown, ChevronRight } from 'lucide-react'
 import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
 import { daysUntil } from '../utils/gymProblems'
 import { GymThumb } from './GymThumb'
@@ -53,19 +54,98 @@ function Group({ label, boulders, archived }: { label: string; boulders: Boulder
   )
 }
 
+function FilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+        active
+          ? 'border-sage-700 bg-sage-700 text-white'
+          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** Done filter: every problem, only the ones I've sent, only the ones I haven't. */
+type DoneFilter = 'all' | 'done' | 'todo'
+
 export function CrewsSection() {
   const { data } = useDiscoverBoulders()
   const yours = data?.yours ?? []
   const discover = data?.discover ?? []
   const archived = data?.archived ?? []
+
+  const [gym, setGym] = useState('')
+  const [helpOnly, setHelpOnly] = useState(false)
+  const [done, setDone] = useState<DoneFilter>('all')
+  // Archived problems are history — they start collapsed so the live ones own
+  // the page, and expand on demand.
+  const [showArchived, setShowArchived] = useState(false)
+
   if (yours.length === 0 && discover.length === 0 && archived.length === 0) return null
+
+  const gyms = Array.from(new Set([...yours, ...discover, ...archived].map(b => b.gym).filter(Boolean))).sort()
+  const matches = (b: BoulderSummary) =>
+    (!gym || b.gym === gym) &&
+    (!helpOnly || b.helpWanted) &&
+    (done === 'all' || (done === 'done' ? b.doneByMe : !b.doneByMe))
+
+  const yoursF = yours.filter(matches)
+  const discoverF = discover.filter(matches)
+  const archivedF = archived.filter(matches)
+  const filtering = !!gym || helpOnly || done !== 'all'
+  const nothingLive = yoursF.length === 0 && discoverF.length === 0
 
   return (
     <div className="mb-6">
-      <h2 className="flex items-center gap-1.5 text-base font-bold mb-2">🚂 Sendtrains</h2>
-      <Group label="Your sendtrains" boulders={yours} />
-      <Group label="In your gym" boulders={discover} />
-      <Group label="Archived" boulders={archived} archived />
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <select
+          value={gym}
+          onChange={e => setGym(e.target.value)}
+          aria-label="Filter by gym"
+          className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500"
+        >
+          <option value="">All gyms</option>
+          {gyms.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
+        <FilterButton active={helpOnly} onClick={() => setHelpOnly(v => !v)}>🆘 Help wanted</FilterButton>
+        <FilterButton active={done === 'done'} onClick={() => setDone(d => (d === 'done' ? 'all' : 'done'))}>Done</FilterButton>
+        <FilterButton active={done === 'todo'} onClick={() => setDone(d => (d === 'todo' ? 'all' : 'todo'))}>Not done</FilterButton>
+      </div>
+
+      <Group label="Your problems" boulders={yoursF} />
+      <Group label="In your gym" boulders={discoverF} />
+      {nothingLive && (
+        <p className="mb-3 py-6 text-center text-sm text-gray-400">
+          {filtering ? 'No problems match these filters.' : 'No active problems in your gyms.'}
+        </p>
+      )}
+
+      {archivedF.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowArchived(v => !v)}
+            aria-expanded={showArchived}
+            className="flex w-full items-center gap-1 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-600"
+          >
+            {showArchived ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            Archived ({archivedF.length})
+          </button>
+          {showArchived && (
+            <div className="mt-1.5 space-y-1.5">
+              {archivedF.map(b => (
+                <BoulderRow key={b.id} b={b} boulderIds={archivedF.map(a => a.id)} archived />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
