@@ -12,6 +12,7 @@ import { useCrewBoulderProgress } from '../hooks/useCrews'
 import { useProfile } from '../hooks/useProfile'
 import { SetterBadge } from '../components/SetterBadge'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
+import { useGymGradeLeaderboard } from '../hooks/useGradeLeaderboard'
 import { useStripGymProblem, useClaimGymProblem, useDeleteGymProblem } from '../hooks/useGymProblems'
 import { useSessions, useCreateSession } from '../hooks/useSessions'
 import { useAddProblem } from '../hooks/useProblems'
@@ -198,6 +199,7 @@ export function CrewPage() {
   const canSetIntention = !!(myProfile?.is_admin || myProfile?.is_setter)
   const month = cycleMonth(new Date())
   const { data: leaderboard = [] } = useGymLeaderboard(boulder?.gym ?? '', month)
+  const { data: gradeLeaderboard = [] } = useGymGradeLeaderboard(boulder?.gym ?? '')
   const { data: betaData } = useBoulderBetaThread(id)
   const { data: reviewsData } = useBoulderReviews(id)
   const { data: help } = useBoulderHelp(id)
@@ -573,6 +575,31 @@ export function CrewPage() {
                 </h2>
                 <div className="space-y-1">
                   {leaderboard.slice(0, 5).map(entry => (
+                    <div key={entry.user_id}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm ${
+                        entry.user_id === user?.id ? 'bg-sage-50 border border-sage-200' : 'bg-gray-50'
+                      }`}>
+                      <span className="w-5 text-center font-bold text-gray-400">{entry.rank}</span>
+                      <span className="flex flex-1 items-center gap-1 font-medium text-gray-800 min-w-0">
+                        <span className="truncate">{entry.username ?? 'Someone'}</span>
+                        <SetterBadge userId={entry.user_id} />
+                      </span>
+                      <span className="font-semibold text-sage-700">{entry.points}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {boulder.gym && gradeLeaderboard.length > 0 && (
+              <div className="pt-2">
+                <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-800 mb-2">
+                  <Trophy size={15} strokeWidth={2} className="text-amber-500" />
+                  Grade score
+                  <span className="font-normal text-gray-400">· {boulder.gym}</span>
+                </h2>
+                <div className="space-y-1">
+                  {gradeLeaderboard.slice(0, 5).map(entry => (
                     <div key={entry.user_id}
                       className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm ${
                         entry.user_id === user?.id ? 'bg-sage-50 border border-sage-200' : 'bg-gray-50'
