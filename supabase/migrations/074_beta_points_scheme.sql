@@ -22,8 +22,12 @@ alter table beta_points add constraint beta_points_reason_check
 alter table beta_points
   add column if not exists beta_id uuid references boulder_beta(id) on delete set null;
 
-create index if not exists beta_points_engagement_idx
+drop index if exists beta_points_engagement_idx;
+create unique index if not exists beta_points_engagement_uniq
   on beta_points (user_id, beta_id) where reason = 'engagement';
+
+create index if not exists beta_points_beta_posted_idx
+  on beta_points (user_id, gym_problem_id) where reason = 'beta_posted';
 
 -- ── 3. first_logger only when a photo is attached ────────────────────────────
 -- Reproduces 068's 7-arg create_gym_problem. The ONLY change is that the award is
@@ -128,7 +132,8 @@ begin
 
   insert into public.beta_points (user_id, gym, gym_problem_id, beta_id, points, reason, cycle_month)
   values (new.user_id, v_gym, v_gpid, new.beta_id, 1, 'engagement',
-          to_char((now() at time zone 'utc'), 'YYYY-MM'));
+          to_char((now() at time zone 'utc'), 'YYYY-MM'))
+  on conflict do nothing;
   return new;
 end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
@@ -183,7 +188,8 @@ begin
     ) then
       insert into public.beta_points (user_id, gym, gym_problem_id, beta_id, points, reason, cycle_month)
       values (v_user_id, v_gym, v_gpid, p_beta_id, 1, 'engagement',
-              to_char((now() at time zone 'utc'), 'YYYY-MM'));
+              to_char((now() at time zone 'utc'), 'YYYY-MM'))
+      on conflict do nothing;
     end if;
   end if;
 end;
