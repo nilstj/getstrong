@@ -48,6 +48,7 @@ export function BoulderLinkSheet({
         name: null,
         image_url: problem.image_url,
         beta_video_url: problem.beta_video_url,
+        community_grade: null,
       },
       {
         onSuccess: gp => join(gp.id),
