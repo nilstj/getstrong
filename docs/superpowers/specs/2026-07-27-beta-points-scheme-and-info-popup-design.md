@@ -207,3 +207,13 @@ drops and recreates `create_gym_problem`, so an unapplied 074 with the new clien
 deployed is not a risk in itself — the client passes the same 7 arguments — but the
 popup would describe awards the database is not yet paying. Apply 074 first, then
 deploy.
+
+## Grade score info popup
+
+An `Info` icon opens a `BottomSheet` listing the gym's `gym_gradings` colours 
+ordered easiest-first (by `rank` ascending) with their point values. The component 
+reuses the page's existing `useGymGradings` result via props rather than adding a 
+second query. It renders nothing when the gym has no grading configured — the board 
+itself already communicates that, and an icon opening an empty table would be worse 
+than no icon. The sheet carries two rules a climber would otherwise discover by 
+surprise: each boulder counts once, and the month follows when the boulder was logged.
