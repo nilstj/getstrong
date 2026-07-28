@@ -39,6 +39,7 @@ import { useMarkGymProblemViewed } from '../hooks/useGymProblemViews'
 import { daysUntil } from '../utils/gymProblems'
 import { crewTitles } from '../utils/crewTitles'
 import { boulderToPrefill } from '../utils/boulderPrefill'
+import { gradeSystemFor } from '../utils/grades'
 import type { BoulderNavState } from '../utils/boulderNav'
 import { todayDateString } from '../utils/dates'
 import { useAuth } from '../providers/AuthProvider'
@@ -314,11 +315,15 @@ export function CrewPage() {
 
   // Log this shared boulder into one of the caller's sessions (and claim it).
   const logBoulderInto = (sessionId: string) => {
+    const prefill = boulderToPrefill(boulder)
     addProblem.mutate(
       {
         session_id: sessionId,
-        ...boulderToPrefill(boulder),
-        grade_system: 'font',
+        ...prefill,
+        // The publisher's grade is stored verbatim in whichever scale they
+        // prefer, so infer the system rather than hardcoding Font (which
+        // corrupts a V-scale grade like "V5" into an invalid Font grade).
+        grade_system: prefill.grade_value ? gradeSystemFor(prefill.grade_value) : 'font',
         attempts: 1,
         sent: false,
         // Problems no longer carry a name or a training board.

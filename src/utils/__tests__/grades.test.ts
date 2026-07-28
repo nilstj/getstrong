@@ -4,6 +4,7 @@ import {
   fontToVScale,
   normalizeToFont,
   fontGradeToIndex,
+  gradeSystemFor,
   FONT_GRADES_ORDERED,
   V_GRADES,
 } from '../grades'
@@ -63,5 +64,25 @@ describe('V_GRADES', () => {
   it('starts with VB and ends with V17', () => {
     expect(V_GRADES[0]).toBe('VB')
     expect(V_GRADES[V_GRADES.length - 1]).toBe('V17')
+  })
+})
+
+describe('gradeSystemFor', () => {
+  it('recognizes V grades regardless of case', () => {
+    expect(gradeSystemFor('V5')).toBe('v_scale')
+    expect(gradeSystemFor('v5')).toBe('v_scale')
+    expect(gradeSystemFor('VB')).toBe('v_scale')
+  })
+  it('recognizes Font grades', () => {
+    expect(gradeSystemFor('6C')).toBe('font')
+    expect(gradeSystemFor('6C+')).toBe('font')
+    expect(gradeSystemFor('5+')).toBe('font')
+    expect(gradeSystemFor('3')).toBe('font')
+  })
+  it('trims whitespace before checking', () => {
+    expect(gradeSystemFor(' V5 ')).toBe('v_scale')
+  })
+  it('defaults to font for an empty string', () => {
+    expect(gradeSystemFor('')).toBe('font')
   })
 })

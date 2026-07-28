@@ -70,8 +70,9 @@ export function useDiscoverBoulders() {
       if (e3) throw e3
       const probRows = (probs ?? []) as { gym_problem_id: string | null; user_id: string; grade_value_font: string | null }[]
       const counts = countMembersByBoulder(probRows)
-      // gym_problems.community_grade is never populated, so derive a consensus
-      // grade from the linked problems' (Font-normalized) grades.
+      // The publisher may set gym_problems.community_grade when they publish
+      // the boulder; when they didn't, fall back to a consensus grade derived
+      // from the linked problems' (Font-normalized) grades.
       const gradesByBoulder = new Map<string, (string | null)[]>()
       for (const p of probRows) {
         if (!p.gym_problem_id) continue

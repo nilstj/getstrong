@@ -34,3 +34,14 @@ export function normalizeToFont(
 export function fontGradeToIndex(grade: string): number {
   return FONT_GRADES_ORDERED.indexOf(grade)
 }
+
+/**
+ * Which grade system a grade string belongs to. Boulder grades published by a
+ * climber are stored verbatim in whichever scale that climber prefers, so a
+ * consumer that needs to file the string in the right column has to infer it.
+ * V grades are the only ones starting with 'V'; Font grades are digits with an
+ * optional letter/plus.
+ */
+export function gradeSystemFor(grade: string): 'font' | 'v_scale' {
+  return /^v/i.test(grade.trim()) ? 'v_scale' : 'font'
+}

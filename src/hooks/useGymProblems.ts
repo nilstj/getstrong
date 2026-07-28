@@ -55,6 +55,7 @@ export function useCreateGymProblem() {
       name: string | null
       image_url: string | null
       beta_video_url: string | null
+      community_grade: string | null
     }) => {
       const { data, error } = await supabase.rpc('create_gym_problem', {
         p_gym: values.gym,
@@ -64,12 +65,14 @@ export function useCreateGymProblem() {
         p_name: values.name,
         p_image_url: values.image_url,
         p_beta_video_url: values.beta_video_url,
+        p_community_grade: values.community_grade,
       })
       if (error) throw error
       return data as GymProblem
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gym_problems'] })
+      queryClient.invalidateQueries({ queryKey: ['discover_boulders'] })
     },
   })
 }
@@ -94,6 +97,7 @@ export function useClaimGymProblem() {
       queryClient.invalidateQueries({ queryKey: ['problems'] })
       queryClient.invalidateQueries({ queryKey: ['gym_problems'] })
       queryClient.invalidateQueries({ queryKey: ['crew'] })
+      queryClient.invalidateQueries({ queryKey: ['discover_boulders'] })
     },
   })
 }
