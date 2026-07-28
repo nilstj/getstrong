@@ -54,8 +54,9 @@ export function useCrew(gymProblemId: string) {
       }))
 
       const members = buildCrew(rows)
-      // gym_problems.community_grade is never populated, so derive it from the
-      // linked problems' Font-normalized grades (matches the discover feed).
+      // The publisher may set gym_problems.community_grade when they publish
+      // the boulder; this derived consensus (matching the discover feed) is
+      // only the fallback for boulders that arrived without one.
       const communityGrade = consensusGrade(problems.map(p => p.grade_value_font))
       return { members, summary: summarizeCrew(members), problems: rows, communityGrade }
     },

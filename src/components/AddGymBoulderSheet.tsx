@@ -3,9 +3,11 @@ import { Camera, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from './BottomSheet'
 import { TapeGraphic, HoldGraphic } from './Chip'
+import { GymInput } from './GymInput'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile } from '../hooks/useProfile'
 import { useGymGradings } from '../hooks/useGymGradings'
+import { useGymSuggestions } from '../hooks/useGymSuggestions'
 import { useCreateGymProblem } from '../hooks/useGymProblems'
 import { HOLD_COLORS } from '../utils/holdColors'
 import { FONT_GRADES_ORDERED, V_GRADES } from '../utils/grades'
@@ -30,6 +32,7 @@ function RowLabel({ children }: { children: React.ReactNode }) {
 export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth()
   const { data: profile } = useProfile()
+  const { data: gymSuggestions = [] } = useGymSuggestions()
   const create = useCreateGymProblem()
 
   const defaultGyms = profile?.default_gyms ?? []
@@ -44,12 +47,28 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
 
   // The gym drives which grading colours exist, so it has to be chosen first.
   const effectiveGym = gym || defaultGyms[0] || ''
-  const { data: gymGradings = [] } = useGymGradings(effectiveGym || null)
+  // Query is disabled while the sheet is closed — it's mounted for the whole
+  // /gym-problems page, so it must not fire until someone actually opens it.
+  const { data: gymGradings = [] } = useGymGradings(open && effectiveGym ? effectiveGym : null)
   const grades = profile?.grade_preference === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
+
+  // Snap a typed gym to its known spelling (case-insensitively) so the boulder
+  // lands under the same gym string everyone else's discover feed filters on.
+  // No match (a genuinely new gym) just publishes what was typed.
+  const resolveGym = (typed: string): string => {
+    const trimmed = typed.trim()
+    const known = [...defaultGyms, ...gymSuggestions.map(s => s.name)]
+    return known.find(k => k.toLowerCase() === trimmed.toLowerCase()) ?? trimmed
+  }
+
+  const clearFileInput = () => {
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const reset = () => {
     setGym(''); setGrade(''); setColor(''); setHoldColor('')
     setFile(null); setPreviewUrl(null)
+    clearFileInput()
   }
 
   const close = () => { reset(); onClose() }
@@ -57,6 +76,7 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
   const pickFile = (f: File | null) => {
     setFile(f)
     setPreviewUrl(f ? URL.createObjectURL(f) : null)
+    if (!f) clearFileInput()
   }
 
   const submit = async () => {
@@ -69,9 +89,15 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
         const ext = file.name.split('.').pop() ?? 'jpg'
         const path = `${user.id}/${Date.now()}.${ext}`
         const { error } = await supabase.storage.from('problem-images').upload(path, file, { upsert: true })
-        if (!error) {
-          image_url = supabase.storage.from('problem-images').getPublicUrl(path).data.publicUrl
+        if (error) {
+          // No repair path for a failed photo upload — the boulder would
+          // publish without its image_url and could never earn first_logger
+          // points for a photo. Abort and let the user retry with the sheet
+          // (and their other fields) intact rather than silently publishing.
+          toast.error('Could not upload the photo — nothing was published. Try again.')
+          return
         }
+        image_url = supabase.storage.from('problem-images').getPublicUrl(path).data.publicUrl
       } finally {
         setUploading(false)
       }
@@ -79,7 +105,7 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
 
     create.mutate(
       {
-        gym: effectiveGym,
+        gym: resolveGym(effectiveGym),
         color: color || null,
         hold_color: holdColor || null,
         wall_angle: null,
@@ -118,12 +144,10 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
               ))}
             </div>
           )}
-          <input
-            type="text"
+          <GymInput
             value={gym}
-            onChange={e => { setGym(e.target.value); setColor('') }}
+            onChange={v => { setGym(v); setColor('') }}
             placeholder="e.g. Boulders Oslo"
-            className={INPUT}
           />
         </div>
 

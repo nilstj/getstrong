@@ -72,6 +72,7 @@ export function useCreateGymProblem() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gym_problems'] })
+      queryClient.invalidateQueries({ queryKey: ['discover_boulders'] })
     },
   })
 }
@@ -96,6 +97,7 @@ export function useClaimGymProblem() {
       queryClient.invalidateQueries({ queryKey: ['problems'] })
       queryClient.invalidateQueries({ queryKey: ['gym_problems'] })
       queryClient.invalidateQueries({ queryKey: ['crew'] })
+      queryClient.invalidateQueries({ queryKey: ['discover_boulders'] })
     },
   })
 }
