@@ -161,6 +161,16 @@ showing it.
 - Editing a boulder's grade after publishing, and any crowd-consensus aggregation.
   The publisher's grade is the value; a real consensus mechanism is a separate
   piece of work.
+
+  **Decided deliberately, with the consequence understood** (2026-07-28): both
+  `useDiscoverBoulders.ts:96` and `CrewPage.tsx:362` prefer `community_grade` over
+  the derived consensus, and there is no edit RPC — so one publisher's tap is the
+  boulder's grade for everyone, permanently. Recovery is `delete_gym_problem`,
+  which is creator-only, only possible before anyone else has logged the boulder,
+  and pays another `first_logger` 10 on republish. Accepted for v1. If a mis-tapped
+  grade becomes a real complaint, the cheapest fix is to prefer the derived
+  consensus once enough climbers have logged their own grade, at those two lines —
+  not an edit UI.
 - Wall angle, setter name and setter intention at creation. All settable on the
   boulder page already.
 - Any change to the bottom-bar `+`.
