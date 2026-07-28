@@ -8,7 +8,6 @@ export function StoryRing({
   imageUrl,
   fallbackGym,
   color,
-  holdColor,
   helpWanted = false,
   hasVideo = false,
   seen = false,
@@ -19,9 +18,11 @@ export function StoryRing({
   /** Accessible name for the button when the caption alone doesn't identify it. */
   ariaLabel?: string
   imageUrl?: string | null
-  fallbackGym?: string | null
+  /** The gym's grading tape colour, shown as a small swatch on the circle. The
+   *  boulder's hold colour is deliberately not shown here — the strip got too
+   *  busy with both. */
   color?: string | null
-  holdColor?: string | null
+  fallbackGym?: string | null
   helpWanted?: boolean
   hasVideo?: boolean
   /** Already opened by this user — the ring goes grey. Unseen rings are blue. */
@@ -57,8 +58,8 @@ export function StoryRing({
           <span className="block w-full h-full rounded-full border-2 border-white bg-sage-100" />
         )}
         {hasVideo && <VideoBadge variant="corner" className="absolute -top-0.5 -right-0.5 border-2 border-white" />}
-        {(color || holdColor) && (
-          <ProblemColorIcons color={color} holdColor={holdColor} size={13} className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-1 py-0.5 shadow-sm" />
+        {color && (
+          <ProblemColorIcons color={color} size={13} className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-1 py-0.5 shadow-sm" />
         )}
       </span>
       <span className="text-[10px] leading-tight text-gray-600 text-center line-clamp-2 max-w-[64px]">{label}</span>

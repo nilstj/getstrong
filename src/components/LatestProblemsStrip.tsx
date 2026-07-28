@@ -31,7 +31,6 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
             imageUrl={b.image_url}
             fallbackGym={b.gym}
             color={b.color}
-            holdColor={b.hold_color}
             helpWanted={b.helpWanted}
             hasVideo={!!b.beta_video_url}
             seen={seen?.has(b.id) ?? false}
