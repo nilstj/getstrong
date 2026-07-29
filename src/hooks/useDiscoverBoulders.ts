@@ -88,9 +88,9 @@ export function useDiscoverBoulders() {
         else gradesByBoulder.set(p.gym_problem_id, [p.grade_value_font])
       }
 
-      // Open "help wanted" requests per boulder. Non-fatal: if the table isn't
-      // there yet (migration 057 unapplied), degrade to no help indicators
-      // rather than breaking the whole discover/home strip.
+      // Open "help wanted" requests per boulder. Non-fatal: if the table or the
+      // note column isn't there yet (migrations 057/059 unapplied), degrade to no
+      // help indicators rather than breaking the whole discover/home strip.
       const { data: helpRows } = await supabase
         .from('gym_problem_help')
         .select('gym_problem_id, user_id, note, created_at')
@@ -134,7 +134,11 @@ export function useDiscoverBoulders() {
       // Names for the "someone's stuck" section. One batched query, skipped when
       // nobody is asking. Non-fatal like the help query above: no name is better
       // than no home page.
-      const askerIds = Array.from(new Set(openHelp.map(h => h.user_id)))
+      // Your own asks are never rendered, so don't pay a round trip to name
+      // yourself when the only open ask at your gyms is your own.
+      const askerIds = Array.from(new Set(
+        openHelp.filter(h => h.user_id !== user?.id).map(h => h.user_id),
+      ))
       let askerProfiles: { id: string; username: string | null }[] = []
       if (askerIds.length > 0) {
         const { data: askers } = await supabase

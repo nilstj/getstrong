@@ -8,7 +8,10 @@ function boulderLabel(r: BetaRequest): string {
   const colorGrade = [r.boulder.color?.toLowerCase(), r.boulder.community_grade]
     .filter(Boolean)
     .join(' ')
-  return colorGrade ? `the ${colorGrade}` : r.boulder.title
+  // Falling back to boulder.title would read "stuck on Shared boulder" or "stuck
+  // on overhang", since names were removed and the title is then a wall angle or
+  // a generic label. "a boulder" is the same fallback FeedCard uses.
+  return colorGrade ? `the ${colorGrade}` : 'a boulder'
 }
 
 /**
