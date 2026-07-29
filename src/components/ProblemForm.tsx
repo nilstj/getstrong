@@ -278,6 +278,14 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
           <p className="mt-1 text-[11px] leading-snug text-gray-400">
             Public problems show up on the Gym problems page, where others can log them and compare beta.
           </p>
+          {/* Only worth saying while it's still actionable: the photo has to be
+              attached here, and create_gym_problem awards nothing without one.
+              "New" because joining an existing boulder pays no first_logger. */}
+          {visibilityPublic && !previewUrl && (
+            <p className="mt-1 text-[11px] leading-snug text-sage-700">
+              Add a photo above — a new boulder published with one earns 10 points.
+            </p>
+          )}
         </div>
 
         <RowLabel>Video</RowLabel>
