@@ -13,7 +13,9 @@ export function CrewsPage() {
       <CrewsSection />
 
       <FAB onClick={() => setAddOpen(true)} label="Add a gym boulder" />
-      <AddGymBoulderSheet open={addOpen} onClose={() => setAddOpen(false)} />
+      {/* Mounted only while open, so the page load doesn't pay for the sheet's
+          gym-suggestion query. Same shape as SessionDetailPage's link sheet. */}
+      {addOpen && <AddGymBoulderSheet open onClose={() => setAddOpen(false)} />}
     </div>
   )
 }
