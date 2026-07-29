@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import type { BetaRequest } from '../utils/betaRequests'
+import type { BoulderNavState } from '../utils/boulderNav'
 
 const SHOWN = 3
 
@@ -34,7 +35,12 @@ export function BetaRequestsSection({ requests }: { requests: BetaRequest[] }) {
           <button
             key={`${r.gymProblemId}:${r.askerId}`}
             type="button"
-            onClick={() => navigate(`/gym-problems/${r.gymProblemId}`)}
+            // Open on Beta: that is where the ask itself and the composer live, so
+            // the reason for the tap is visible on arrival. No boulderIds — a list
+            // of asks isn't a browsable boulder sequence, so prev/next stays hidden.
+            onClick={() => navigate(`/gym-problems/${r.gymProblemId}`, {
+              state: { openTab: 'beta' } satisfies BoulderNavState,
+            })}
             className="w-full flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/60 px-3.5 py-2.5 text-left hover:border-amber-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500"
           >
             <span aria-hidden className="text-base leading-none mt-0.5">🆘</span>

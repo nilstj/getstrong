@@ -8,6 +8,19 @@
  * paging can continue. When absent (refresh, deep link, notification), the
  * detail page simply hides the prev/next control.
  */
+/** The boulder page's tabs. Lives here so a caller passing `openTab` and the page
+ *  reading it cannot drift apart. */
+export type BoulderTab = 'beta' | 'sendtrain'
+
 export interface BoulderNavState {
-  boulderIds: string[]
+  /** Absent when the boulder wasn't opened from a browsable list — then prev/next
+   *  is hidden. */
+  boulderIds?: string[]
+  /** Which tab to open on. Omitted means the page's own default. Set it when the
+   *  reason for the tap lives on a particular tab — an ask for beta, say.
+   *
+   *  Applies on mount only. The detail page stays mounted while paging between
+   *  siblings (same route, changing param), so an `openTab` carried forward by
+   *  prev/next has no effect — the tab the user last chose persists instead. */
+  openTab?: BoulderTab
 }
