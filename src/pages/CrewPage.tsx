@@ -40,7 +40,7 @@ import { daysUntil } from '../utils/gymProblems'
 import { crewTitles } from '../utils/crewTitles'
 import { boulderToPrefill } from '../utils/boulderPrefill'
 import { gradeSystemFor } from '../utils/grades'
-import type { BoulderNavState } from '../utils/boulderNav'
+import type { BoulderNavState, BoulderTab } from '../utils/boulderNav'
 import { todayDateString } from '../utils/dates'
 import { useAuth } from '../providers/AuthProvider'
 import { Chip, ProblemColorIcons } from '../components/Chip'
@@ -59,7 +59,7 @@ const STATE_CLASS: Record<CrewState, string> = {
   sent: 'bg-sage-100 text-sage-700',
   flashed: 'bg-amber-100 text-amber-700',
 }
-type Tab = 'beta' | 'sendtrain'
+type Tab = BoulderTab
 const SECTIONS: BetaSection[] = ['start', 'crux', 'top']
 const SECTION_LABEL: Record<BetaSection, string> = { start: 'Start', crux: 'Crux', top: 'Top-out' }
 const BODY_TYPES: BetaBodyType[] = ['tall', 'neutral', 'short']
@@ -224,7 +224,9 @@ export function CrewPage() {
     if (id) markViewedMutate(id)
   }, [id, markViewedMutate])
 
-  const [tab, setTab] = useState<Tab>('sendtrain')
+  // Opens on the tab the caller asked for, so a tap on "someone's stuck" lands
+  // where the ask and the beta composer actually are.
+  const [tab, setTab] = useState<Tab>(navState?.openTab ?? 'sendtrain')
   const [draft, setDraft] = useState('')
   const [draftVideo, setDraftVideo] = useState('')
   const [draftSection, setDraftSection] = useState<BetaSection | null>(null)
