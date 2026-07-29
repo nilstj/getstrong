@@ -17,6 +17,10 @@ export interface BoulderNavState {
    *  is hidden. */
   boulderIds?: string[]
   /** Which tab to open on. Omitted means the page's own default. Set it when the
-   *  reason for the tap lives on a particular tab — an ask for beta, say. */
+   *  reason for the tap lives on a particular tab — an ask for beta, say.
+   *
+   *  Applies on mount only. The detail page stays mounted while paging between
+   *  siblings (same route, changing param), so an `openTab` carried forward by
+   *  prev/next has no effect — the tab the user last chose persists instead. */
   openTab?: BoulderTab
 }
