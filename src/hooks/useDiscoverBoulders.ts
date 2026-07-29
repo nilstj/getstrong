@@ -4,13 +4,20 @@ import { useAuth } from '../providers/AuthProvider'
 import { boulderTitle, countMembersByBoulder } from '../utils/boulders'
 import { consensusGrade } from '../utils/consensusGrade'
 import { isActiveBoulder } from '../utils/gymProblems'
+import { buildBetaRequests } from '../utils/betaRequests'
+import type { BetaRequest } from '../utils/betaRequests'
 import type { GymProblem, BoulderSummary } from '../types'
 
 export function useDiscoverBoulders() {
   const { user } = useAuth()
   return useQuery({
     queryKey: ['discover_boulders', user?.id],
-    queryFn: async (): Promise<{ yours: BoulderSummary[]; discover: BoulderSummary[]; archived: BoulderSummary[] }> => {
+    queryFn: async (): Promise<{
+      yours: BoulderSummary[]
+      discover: BoulderSummary[]
+      archived: BoulderSummary[]
+      betaRequests: BetaRequest[]
+    }> => {
       // 1. My gyms + the boulders I've already claimed onto. "My gyms" is the
       //    union of my default gyms (so a new user who's only set a home gym
       //    still sees its shared boulders) and every gym I've logged a problem at.
@@ -40,7 +47,7 @@ export function useDiscoverBoulders() {
       const mySentIds = new Set(
         myRows.filter(r => r.sent && r.gym_problem_id).map(r => r.gym_problem_id as string),
       )
-      if (myGyms.length === 0 && myClaimedIds.size === 0) return { yours: [], discover: [], archived: [] }
+      if (myGyms.length === 0 && myClaimedIds.size === 0) return { yours: [], discover: [], archived: [], betaRequests: [] }
 
       // 2. Candidates: active boulders in my gyms, plus every boulder I've claimed
       //    onto (any status, so archived ones I was on surface in the history).
@@ -59,7 +66,7 @@ export function useDiscoverBoulders() {
         for (const b of (data ?? []) as GymProblem[]) boulders.set(b.id, b)
       }
       const list = Array.from(boulders.values())
-      if (list.length === 0) return { yours: [], discover: [], archived: [] }
+      if (list.length === 0) return { yours: [], discover: [], archived: [], betaRequests: [] }
       const now = new Date()
       const activeIds = new Set(list.filter(b => isActiveBoulder(b, now)).map(b => b.id))
 
@@ -81,12 +88,17 @@ export function useDiscoverBoulders() {
         else gradesByBoulder.set(p.gym_problem_id, [p.grade_value_font])
       }
 
-      // Open "help wanted" requests per boulder. Non-fatal: if the table isn't
-      // there yet (migration 057 unapplied), degrade to no help indicators
-      // rather than breaking the whole discover/home strip.
+      // Open "help wanted" requests per boulder. Non-fatal: if the table or the
+      // note column isn't there yet (migrations 057/059 unapplied), degrade to no
+      // help indicators rather than breaking the whole discover/home strip.
       const { data: helpRows } = await supabase
-        .from('gym_problem_help').select('gym_problem_id').in('gym_problem_id', ids).is('resolved_at', null)
-      const helpWantedIds = new Set((helpRows ?? []).map(h => h.gym_problem_id as string))
+        .from('gym_problem_help')
+        .select('gym_problem_id, user_id, note, created_at')
+        .in('gym_problem_id', ids)
+        .is('resolved_at', null)
+      const openHelp = (helpRows ?? []) as
+        { gym_problem_id: string; user_id: string; note: string | null; created_at: string }[]
+      const helpWantedIds = new Set(openHelp.map(h => h.gym_problem_id))
 
       const summaries: BoulderSummary[] = list.map(b => ({
         id: b.id,
@@ -119,7 +131,23 @@ export function useDiscoverBoulders() {
         .filter(s => s.claimed && !activeIds.has(s.id))
         .sort((a, b) => (a.expires_at < b.expires_at ? 1 : a.expires_at > b.expires_at ? -1 : 0))
 
-      return { yours, discover, archived }
+      // Names for the "someone's stuck" section. One batched query, skipped when
+      // nobody is asking. Non-fatal like the help query above: no name is better
+      // than no home page.
+      // Your own asks are never rendered, so don't pay a round trip to name
+      // yourself when the only open ask at your gyms is your own.
+      const askerIds = Array.from(new Set(
+        openHelp.filter(h => h.user_id !== user?.id).map(h => h.user_id),
+      ))
+      let askerProfiles: { id: string; username: string | null }[] = []
+      if (askerIds.length > 0) {
+        const { data: askers } = await supabase
+          .from('profiles').select('id, username').in('id', askerIds)
+        askerProfiles = (askers ?? []) as { id: string; username: string | null }[]
+      }
+      const betaRequests = buildBetaRequests(openHelp, active, askerProfiles, user?.id)
+
+      return { yours, discover, archived, betaRequests }
     },
     enabled: !!user,
   })

@@ -2,10 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import { useFriendsFeed } from '../hooks/useFriendsFeed'
 import { useCrewFeed } from '../hooks/useCrewFeed'
 import { useFollowing } from '../hooks/useFollows'
+import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
 import { useAuth } from '../providers/AuthProvider'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { FeedCard } from '../components/FeedCard'
 import { LatestProblemsStrip } from '../components/LatestProblemsStrip'
+import { BetaRequestsSection } from '../components/BetaRequestsSection'
 import { mergeHomeFeed } from '../utils/homeFeed'
 
 export function DashboardPage() {
@@ -19,6 +21,9 @@ export function DashboardPage() {
   // not gated on the follow list: the climber who worked out the crux is usually
   // someone you haven't met.
   const { data: betaPages } = useCrewFeed()
+  // Same query key the strip uses, so this shares its cached result rather than
+  // issuing a second request.
+  const { data: boulders } = useDiscoverBoulders()
   const loading = followLoading || feedLoading
 
   const items = mergeHomeFeed(sessions, betaPages?.pages.flat() ?? [], user?.id)
@@ -26,6 +31,8 @@ export function DashboardPage() {
   return (
     <div className="pb-32 lg:max-w-2xl lg:mx-auto">
       <LatestProblemsStrip />
+
+      <BetaRequestsSection requests={boulders?.betaRequests ?? []} />
 
       <div className="px-4 py-4 space-y-3">
         {/* Not "Friends feed" any more: beta comes from anyone at your gyms. */}
