@@ -2,7 +2,13 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { FeedEvent } from '../types'
 
-const PAGE = 20
+// get_crew_feed returns the newest p_limit rows across all four event types,
+// and mergeHomeFeed only afterwards filters down to beta_added/beta_worked.
+// At a gym where boulders and sends dominate, a small page can contain zero
+// beta. 50 is the RPC's hard ceiling (`least(coalesce(p_limit,20),50)` in
+// supabase/migrations/072_crew_feed_hold_color.sql), so it's the biggest page
+// we can ask for without a migration — the only lever available here.
+const PAGE = 50
 
 export type FeedEventEnriched = FeedEvent & {
   actorName: string | null

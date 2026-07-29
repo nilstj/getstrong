@@ -87,4 +87,28 @@ describe('mergeHomeFeed', () => {
     ])
     expect(merged.map(i => i.kind)).toEqual(['session'])
   })
+
+  it('drops a beta event posted by the current user', () => {
+    const mine = { ...event('beta_added', '2026-07-20T10:00:00Z'), actor_id: 'me' }
+    const merged = mergeHomeFeed([], [mine], 'me')
+    expect(merged).toEqual([])
+  })
+
+  it('keeps beta events posted by other users', () => {
+    const theirs = { ...event('beta_added', '2026-07-20T10:00:00Z'), actor_id: 'someone-else' }
+    const merged = mergeHomeFeed([], [theirs], 'me')
+    expect(merged).toHaveLength(1)
+  })
+
+  it('keeps everything when currentUserId is omitted', () => {
+    const e = event('beta_added', '2026-07-20T10:00:00Z')
+    const merged = mergeHomeFeed([], [e])
+    expect(merged).toHaveLength(1)
+  })
+
+  it('never drops a session by currentUserId, even if it matches userId', () => {
+    const s = session('s1', '2026-07-20T10:00:00Z')
+    const merged = mergeHomeFeed([s], [], s.userId)
+    expect(merged).toHaveLength(1)
+  })
 })

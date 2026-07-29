@@ -1,9 +1,14 @@
 import type { ReactNode } from 'react'
+import { format } from 'date-fns'
 import { Play } from 'lucide-react'
 import { Chip, ProblemColorIcons } from './Chip'
 import { VideoBadge } from './VideoBadge'
 import { SetterBadge } from './SetterBadge'
 import type { FeedEvent, FeedEventType } from '../types'
+
+function formatDate(iso: string): string {
+  try { return format(new Date(iso), 'd MMM') } catch { return '' }
+}
 
 const VERB: Record<FeedEventType, string> = {
   boulder_new: 'put up a boulder',
@@ -26,9 +31,11 @@ export function FeedCard({
   children?: ReactNode
 }) {
   // boulder_name is always null since this app dropped problem names, so identify
-  // the boulder the way the rest of the app does: by colour and grade.
-  const title =
-    [event.boulder_color, event.boulder_grade].filter(Boolean).join(' ') || 'a boulder'
+  // the boulder the way the rest of the app does: by colour and grade. The
+  // article lives inside this branch so "the a boulder" can't happen when
+  // colour and grade are both null.
+  const colorGrade = [event.boulder_color?.toLowerCase(), event.boulder_grade].filter(Boolean).join(' ')
+  const title = colorGrade ? `the ${colorGrade}` : 'a boulder'
   return (
     <article className="bg-white rounded-2xl overflow-hidden border border-gray-100">
       <div className="flex items-center gap-2 px-3.5 py-2.5">
@@ -39,7 +46,9 @@ export function FeedCard({
           <SetterBadge userId={event.actor_id} className="mx-0.5 align-text-bottom" />{' '}
           <span className="text-gray-500">{VERB[event.event_type] ?? 'posted on'}</span>{' '}
           <span className="font-semibold">{title}</span>
-          <div className="text-[11px] text-gray-400">{event.gym}</div>
+          <div className="text-[11px] text-gray-400">
+            {[event.gym, formatDate(event.event_at)].filter(Boolean).join(' · ')}
+          </div>
         </div>
       </div>
 

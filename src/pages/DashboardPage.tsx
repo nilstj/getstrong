@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useFriendsFeed } from '../hooks/useFriendsFeed'
 import { useCrewFeed } from '../hooks/useCrewFeed'
 import { useFollowing } from '../hooks/useFollows'
+import { useAuth } from '../providers/AuthProvider'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { FeedCard } from '../components/FeedCard'
 import { LatestProblemsStrip } from '../components/LatestProblemsStrip'
@@ -9,6 +10,7 @@ import { mergeHomeFeed } from '../utils/homeFeed'
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   // useFriendsFeed stays disabled until follows resolve, so fold the follows
   // load into the spinner — otherwise the empty state flashes on every mount.
   const { isLoading: followLoading } = useFollowing()
@@ -19,7 +21,7 @@ export function DashboardPage() {
   const { data: betaPages } = useCrewFeed()
   const loading = followLoading || feedLoading
 
-  const items = mergeHomeFeed(sessions, betaPages?.pages.flat() ?? [])
+  const items = mergeHomeFeed(sessions, betaPages?.pages.flat() ?? [], user?.id)
 
   return (
     <div className="pb-32 lg:max-w-2xl lg:mx-auto">
@@ -29,7 +31,7 @@ export function DashboardPage() {
         {/* Not "Friends feed" any more: beta comes from anyone at your gyms. */}
         <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">Friends &amp; your gyms</h2>
         {loading ? (
-          <p className="py-10 text-center text-sm text-gray-400">Loading your friends' sessions…</p>
+          <p className="py-10 text-center text-sm text-gray-400">Loading your feed…</p>
         ) : isError && items.length === 0 ? (
           <p className="py-10 text-center text-sm text-gray-500">Couldn't load the feed. Pull to refresh or try again later.</p>
         ) : items.length === 0 ? (
@@ -49,7 +51,7 @@ export function DashboardPage() {
               />
             ) : (
               <FeedCard
-                key={`b:${item.event.event_type}:${item.event.beta_id}:${item.at}`}
+                key={`b:${item.event.event_type}:${item.event.beta_id}:${item.event.actor_id}:${item.at}`}
                 event={item.event}
                 actorName={item.event.actorName ?? 'Someone'}
                 actorAvatarUrl={item.event.actorAvatarUrl}
