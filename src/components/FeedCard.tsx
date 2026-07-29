@@ -25,7 +25,10 @@ export function FeedCard({
   onOpen: () => void
   children?: ReactNode
 }) {
-  const title = event.boulder_name || 'a boulder'
+  // boulder_name is always null since this app dropped problem names, so identify
+  // the boulder the way the rest of the app does: by colour and grade.
+  const title =
+    [event.boulder_color, event.boulder_grade].filter(Boolean).join(' ') || 'a boulder'
   return (
     <article className="bg-white rounded-2xl overflow-hidden border border-gray-100">
       <div className="flex items-center gap-2 px-3.5 py-2.5">
@@ -36,9 +39,7 @@ export function FeedCard({
           <SetterBadge userId={event.actor_id} className="mx-0.5 align-text-bottom" />{' '}
           <span className="text-gray-500">{VERB[event.event_type] ?? 'posted on'}</span>{' '}
           <span className="font-semibold">{title}</span>
-          <div className="text-[11px] text-gray-400">
-            {[event.boulder_grade, event.gym].filter(Boolean).join(' · ')}
-          </div>
+          <div className="text-[11px] text-gray-400">{event.gym}</div>
         </div>
       </div>
 
