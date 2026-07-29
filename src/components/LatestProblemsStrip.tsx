@@ -60,7 +60,8 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
  */
 function AddBoulderTile({ onClick }: { onClick: () => void }) {
   const { data: profile } = useProfile()
-  const initial = (profile?.username ?? '?').slice(0, 1).toUpperCase()
+  // ?.[0] rather than a ?? on the whole name, so an empty username still yields '?'
+  const initial = profile?.username?.[0]?.toUpperCase() ?? '?'
 
   return (
     <button
