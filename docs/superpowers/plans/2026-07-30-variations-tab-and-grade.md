@@ -585,6 +585,83 @@ git commit -m "Show, set and regrade a variation's own grade"
 
 ---
 
+### Task 6: The two discovery surfaces land on the tab
+
+A boulder marked as carrying a variation should open on the tab that marker advertises. Both list surfaces already navigate with `BoulderNavState`.
+
+**Files:**
+- Modify: `src/components/LatestProblemsStrip.tsx`
+- Modify: `src/components/CrewsSection.tsx`
+
+**Interfaces:**
+- Consumes: `BoulderTab` including `'variations'` and the `BoulderNavState` type from `src/utils/boulderNav.ts` (Task 4); `BoulderSummary.hasVariation: boolean`, which already exists.
+- Produces: nothing consumed downstream.
+
+- [ ] **Step 1: Open the Variations tab from the home strip**
+
+In `src/components/LatestProblemsStrip.tsx`, the ring's `onClick` currently navigates with only `boulderIds`. Add `openTab` when the boulder carries a variation, keeping `boulderIds` so prev/next paging still works. Inside the existing `stories.map(b => { … })` block body, alongside the `label` const:
+
+```tsx
+            // The caption already says "· Variation" — honour what drew the tap
+            // and land on that tab. openTab applies on mount, which is always the
+            // case arriving from the dashboard.
+            const navState: BoulderNavState = b.hasVariation
+              ? { boulderIds: storyIds, openTab: 'variations' }
+              : { boulderIds: storyIds }
+```
+
+and change the `onClick` to use it:
+
+```tsx
+              onClick={() => navigate(`/gym-problems/${b.id}`, { state: navState })}
+```
+
+The file already imports `BoulderNavState` as a type; the `satisfies BoulderNavState` on the old inline object goes away with it, since the const is now explicitly typed.
+
+- [ ] **Step 2: Mark and link variations in the Gym problems overview**
+
+In `src/components/CrewsSection.tsx`, `BoulderRow` is a single `<Link>` with `state={{ boulderIds } satisfies BoulderNavState}`. Replace that state with the same conditional shape:
+
+```tsx
+  const navState: BoulderNavState = b.hasVariation
+    ? { boulderIds, openTab: 'variations' }
+    : { boulderIds }
+```
+
+```tsx
+      state={navState}
+```
+
+Then add the marker this row never had, immediately **after** the existing `{b.helpWanted && (…)}` badge so the two flags sit together:
+
+```tsx
+      {b.hasVariation && (
+        <span title="Has a variation" aria-label="Has a variation" className="text-sm leading-none flex-shrink-0">🧩</span>
+      )}
+```
+
+A 🧩 badge rather than the strip's `· Variation` text: this row's established idiom for a flag is an emoji beside 🆘, and its text budget already goes to the title and grade.
+
+- [ ] **Step 3: Verify build, tests and lint**
+
+Run: `npm run build`
+Expected: exit 0. `noUnusedLocals` will catch a `navState` you forgot to use, and a stale `satisfies BoulderNavState` left on a removed inline object is a syntax error.
+
+Run: `npx vitest run`
+Expected: all pass.
+
+Run: `npm run lint 2>&1 | grep problems`
+Expected: the same count you measured before starting.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/components/LatestProblemsStrip.tsx src/components/CrewsSection.tsx
+git commit -m "Open the Variations tab from the strip and the gym problems list"
+```
+
+---
+
 ## Release gate
 
 **Migration 077 must be applied by hand in the Supabase dashboard.** The full outstanding order is **074 → 075 → 076 → 077**, and **074 must never be re-run after 076** — it recreates `beta_points_reason_check` without the two variation reasons, and the award trigger has no exception handler, so a clear would fail outright rather than merely go unpaid.
@@ -602,3 +679,5 @@ Between 076 and 077 the Variations tab is hidden entirely, because `useVariation
 - [ ] As a **non**-setter, confirm there is no grade control in the detail sheet.
 - [ ] With a V-scale `grade_preference`, confirm the set sheet offers V grades and that a V-graded variation on a Font-graded boulder shows the chip with no comparison phrase.
 - [ ] Tap a "cleared your variation" notification and confirm it opens the **Variations** tab.
+- [ ] Tap a `· Variation`-marked ring in the home strip and confirm it opens the **Variations** tab; tap an unmarked one and confirm it still opens on Sendtrain as before.
+- [ ] In the Gym problems overview, confirm a variation-bearing boulder shows a 🧩 beside any 🆘, that tapping it opens the **Variations** tab, and that prev/next paging still works from there (proving `boulderIds` survived).

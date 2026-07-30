@@ -51,14 +51,19 @@ someone else's beta.
   set-a-variation sheet + regrading from the detail sheet.
 - A new tested pure util, `gradeDelta`.
 - The `variation_cleared` notification's `openTab` retargeted to the new tab.
+- **Both discovery surfaces land on the new tab.** Tapping a variation-bearing
+  boulder in the Latest Gym Problems strip, or in the Gym problems overview list,
+  opens it on Variations rather than the default tab.
+- **A variation marker in the Gym problems overview list**, which previously had
+  none.
 
 **Out of scope:**
 - Community/consensus grading of a variation.
 - Editing the grade from `/challenges` — the boulder page's detail sheet is
   where the comparison is visible, so that is where regrading belongs.
-- Showing a variation's grade in the Latest Gym Problems strip. That caption
-  carries the *boulder's* grade; the `Variation` marker only flags that
-  variations exist.
+- Showing a variation's grade in the Latest Gym Problems strip or the overview
+  list. Both carry the *boulder's* grade; the marker only flags that variations
+  exist. A variation's own grade lives on the boulder page.
 - Cross-system (Font↔V) comparison.
 
 ## Design
@@ -162,12 +167,42 @@ grade is a real possibility.
 "Harder" and "softer" rather than `+2`/`−1`: it is how climbers say it, and it
 needs no key to read.
 
+### The two discovery surfaces
+
+A boulder marked as carrying a variation should open on the tab that marker is
+advertising. Both surfaces already navigate with `BoulderNavState`, so both gain
+`openTab: 'variations'` when `hasVariation` is true, keeping whatever else they
+already pass:
+
+- **Latest Gym Problems strip** (`LatestProblemsStrip.tsx`) — already passes
+  `boulderIds` for prev/next paging; `openTab` joins it.
+- **Gym problems overview list** (`CrewsSection.tsx`, `BoulderRow`) — same, and
+  it also gains the marker it never had: a 🧩 badge beside the existing 🆘
+  help-wanted badge, which is that row's established idiom for a flag. Not the
+  strip's `· Variation` text, because this row already spends its text budget on
+  the title and grade.
+
+Both rely on `BoulderSummary.hasVariation`, which already exists.
+
+**The tradeoff, accepted:** the whole row and the whole ring navigate to
+Variations, so for a variation-bearing boulder the Beta tab is one extra tap
+away. The alternative — making only the marker deep-link — isn't available: both
+surfaces are already a single `<Link>`/`<button>`, and nesting an anchor inside
+one is invalid markup. Since the marker is what draws the tap, honouring it is
+the right default.
+
+Pre-migration this is inert in both places: `hasVariation` comes from a query
+that fails and is deliberately swallowed, so it is false, no marker renders and
+no `openTab` is passed. And if a stale `openTab: 'variations'` ever did arrive
+while the tab is hidden, the boulder page falls back to Beta.
+
 ### Elsewhere
 
 The `variation_cleared` notification's `openTab` changes from `'beta'` to
 `'variations'` in `AppBar.tsx`. Its known limitation is unchanged and still
 documented in `boulderNav.ts`: `openTab` applies on mount only, so it has no
-effect for a reader already sitting on a boulder page.
+effect for a reader already sitting on a boulder page — which is why this affects
+notifications and lists, both of which arrive from another route.
 
 ## Testing
 
