@@ -17,6 +17,7 @@ import { useAddProblem } from '../hooks/useProblems'
 import { BottomSheet } from '../components/BottomSheet'
 import { VideoBadge } from '../components/VideoBadge'
 import { BoulderVariations } from '../components/BoulderVariations'
+import { useVariations } from '../hooks/useVariations'
 import {
   useBoulderBetaThread,
   useAddBoulderBeta,
@@ -216,6 +217,10 @@ export function CrewPage() {
   const createSession = useCreateSession()
   const addProblem = useAddProblem()
   const claim = useClaimGymProblem()
+  // Same ['variations', id] query key as BoulderVariations, so this costs no
+  // extra request — React Query serves both from one cached result.
+  const { data: variationsData, isError: variationsError, isPending: variationsPending } = useVariations(id)
+  const variations = variationsData ?? []
 
   // Opening the page is what marks the problem "seen" — its home-page ring goes
   // from blue to grey. Fire-and-forget: a failure here must not block the page.
@@ -362,10 +367,30 @@ export function CrewPage() {
   }
   const addBusy = addProblem.isPending || createSession.isPending || claim.isPending
 
+  const variationsReadOnly = boulder.status !== 'active' || left < 0
+  // The tab exists only when its panel has something to render, so tab and
+  // content can never disagree: the query fails until migrations 076/077 are
+  // applied, and an archived boulder with no variations renders nothing. But
+  // React Query retries and refetches on window focus, so a reader can hit a
+  // transient error on flaky gym wifi while a good list is still cached —
+  // only treat the error as fatal (never-succeeded) when there's no data.
+  const showVariationsTab = !(variationsError && variationsData === undefined)
+    && !(variationsReadOnly && variations.length === 0)
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'beta', label: 'Beta' },
     { key: 'sendtrain', label: 'Sendtrain' },
+    // No count while the first fetch is still in flight — asserting "(0)"
+    // before the query has answered reads as "definitely none" on a boulder
+    // that may have three.
+    ...(showVariationsTab
+      ? [{ key: 'variations' as Tab, label: variationsPending ? 'Variations' : `Variations (${variations.length})` }]
+      : []),
   ]
+
+  // A notification can carry openTab: 'variations' while the tab is hidden.
+  // Falling back beats rendering a blank hero screen.
+  const activeTab: Tab = TABS.some(t => t.key === tab) ? tab : 'beta'
 
   const displayGrade = boulder.community_grade ?? crew?.communityGrade ?? null
 
@@ -517,8 +542,8 @@ export function CrewPage() {
           <div className="flex border-b border-gray-200 mt-3">
         {TABS.map(t => (
           <button key={t.key} type="button" onClick={() => setTab(t.key)}
-            className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-              tab === t.key ? 'text-gray-900 shadow-[inset_0_-2px_0] shadow-sage-700' : 'text-gray-400'
+            className={`flex-1 py-3 text-xs font-semibold transition-colors ${
+              activeTab === t.key ? 'text-gray-900 shadow-[inset_0_-2px_0] shadow-sage-700' : 'text-gray-400'
             }`}>
             {t.label}
           </button>
@@ -527,7 +552,7 @@ export function CrewPage() {
 
       <div className="px-4 pt-4">
         {/* SENDTRAIN (the crew) */}
-        {tab === 'sendtrain' && (
+        {activeTab === 'sendtrain' && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <span className="inline-flex items-center gap-1 font-semibold text-gray-700">
@@ -581,13 +606,8 @@ export function CrewPage() {
         )}
 
         {/* BETA (beta thread + comments + reactions) */}
-        {tab === 'beta' && (
+        {activeTab === 'beta' && (
           <div className="space-y-4">
-            <BoulderVariations
-              gymProblemId={id}
-              readOnly={boulder.status !== 'active' || left < 0}
-            />
-
             {/* Beta exchange overview */}
             <div className="rounded-2xl bg-gray-50 p-3 space-y-3">
               <div>
@@ -703,6 +723,10 @@ export function CrewPage() {
               ))
             )}
           </div>
+        )}
+
+        {activeTab === 'variations' && (
+          <BoulderVariations gymProblemId={id} readOnly={variationsReadOnly} boulderGrade={displayGrade} />
         )}
 
         </div>

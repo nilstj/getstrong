@@ -3,45 +3,60 @@ import { Plus, Play } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
 import { BottomSheet } from './BottomSheet'
+import { Chip } from './Chip'
 import { useChallengeTags } from '../hooks/useChallengeTags'
+import { useProfile } from '../hooks/useProfile'
+import { gradeDelta } from '../utils/gradeDelta'
+import { gradeOptions } from '../utils/gradeOptions'
 import {
-  useVariations, useCanSetVariation, useCreateVariation, useClearVariation,
+  useVariations, useCanSetVariation, useCreateVariation, useClearVariation, useUpdateVariationGrade,
   type Variation,
 } from '../hooks/useVariations'
 
 /**
- * Variations on a shared boulder: the same wall with altered rules. Sits at the
- * top of the boulder page's Beta tab, because a variation is beta with a
- * constraint. Compact by design — that page is a hero screen.
+ * Variations on a shared boulder: the same wall with altered rules. Rendered
+ * under the boulder page's own Variations tab, because a variation is beta
+ * with a constraint. Compact by design — that page is a hero screen.
  */
-export function BoulderVariations({ gymProblemId, readOnly = false }: {
+export function BoulderVariations({ gymProblemId, readOnly = false, boulderGrade }: {
   gymProblemId: string
   readOnly?: boolean
+  boulderGrade: string | null
 }) {
-  const { data: variations = [], isError } = useVariations(gymProblemId)
+  const { data: variationsData, isError } = useVariations(gymProblemId)
+  const variations = variationsData ?? []
   const { data: canSet = false } = useCanSetVariation(gymProblemId)
   const [newVariationOpen, setNewVariationOpen] = useState(false)
   const [selected, setSelected] = useState<Variation | null>(null)
 
+  // `selected` is a snapshot from the clicked row. Re-read it from the live query
+  // so a regrade (or a new clear) shows in the open sheet instead of only in the
+  // list behind it — a save that changes nothing on screen reads as a failure.
+  const selectedLive = selected ? variations.find(v => v.id === selected.id) ?? selected : null
+
   // Migration 076 may not be applied yet, in which case the query above throws
   // (gym_problem_id doesn't exist). Disappearing beats showing a "Set a
   // variation" button that always fails — the boulder page is a hero screen and
-  // must stay clean if the client ships ahead of the migration.
-  if (isError) return null
+  // must stay clean if the client ships ahead of the migration. But only treat
+  // this as fatal when the query has never once succeeded (`variationsData` is
+  // still undefined) — React Query retries and refetches on window focus, so a
+  // reader who backgrounds the app on flaky gym wifi can hit a transient error
+  // while a good cached list still sits in `data`. Booting them off the tab for
+  // that would be worse than showing what's already known to be true.
+  if (isError && variationsData === undefined) return null
 
   if (readOnly && variations.length === 0) return null
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-500">🧩 Variations</p>
-        {!readOnly && canSet && (
+      {!readOnly && canSet && (
+        <div className="flex justify-end">
           <button type="button" onClick={() => setNewVariationOpen(true)}
             className="inline-flex items-center gap-1 text-xs font-semibold text-sage-700">
             <Plus size={13} strokeWidth={2.5} /> Set a variation
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {variations.length === 0 ? (
         <p className="mt-1.5 text-xs text-gray-400">
@@ -51,56 +66,85 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
         </p>
       ) : (
         <div className="mt-2 space-y-1.5">
-          {variations.map(v => (
-            <button key={v.id} type="button" onClick={() => setSelected(v)}
-              className="w-full text-left rounded-xl bg-gray-50 px-2.5 py-2 hover:bg-gray-100">
-              <p className="text-sm font-medium text-gray-800 leading-snug">{v.title}</p>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-[11px] text-gray-400 truncate">
-                  {v.creator_name ?? 'Someone'}
-                </span>
-                {v.clears.length > 0 && (
-                  <>
-                    <div className="flex -space-x-1.5">
-                      {v.clears.slice(0, 5).map(c => (
-                        <span key={c.user_id} title={c.username ?? ''}
-                          className="w-5 h-5 rounded-full bg-sage-100 border-2 border-gray-50 grid place-items-center text-[8px] font-semibold text-sage-700 overflow-hidden">
-                          {c.avatar_url
-                            ? <img src={c.avatar_url} alt="" className="w-full h-full object-cover" />
-                            : (c.username ?? '?').slice(0, 1).toUpperCase()}
-                        </span>
-                      ))}
-                    </div>
-                    <span className="text-[11px] text-gray-500">{v.clears.length} cleared</span>
-                  </>
-                )}
-                {v.video_url && <Play size={11} fill="currentColor" className="text-sage-700" />}
-              </div>
-            </button>
-          ))}
+          {variations.map(v => {
+            const delta = gradeDelta(boulderGrade, v.grade)
+            return (
+              <button key={v.id} type="button" onClick={() => setSelected(v)}
+                className="w-full text-left rounded-xl bg-gray-50 px-2.5 py-2 hover:bg-gray-100">
+                <div className="flex items-start gap-1.5">
+                  <p className="flex-1 text-sm font-medium text-gray-800 leading-snug">{v.title}</p>
+                  {v.grade && <Chip label={v.grade} variant="grade" className="flex-shrink-0" />}
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-[11px] text-gray-400 truncate">
+                    {v.creator_name ?? 'Someone'}
+                  </span>
+                  {delta && <span className="text-[11px] text-gray-400 truncate">{delta}</span>}
+                  {v.clears.length > 0 && (
+                    <>
+                      <div className="flex -space-x-1.5">
+                        {v.clears.slice(0, 5).map(c => (
+                          <span key={c.user_id} title={c.username ?? ''}
+                            className="w-5 h-5 rounded-full bg-sage-100 border-2 border-gray-50 grid place-items-center text-[8px] font-semibold text-sage-700 overflow-hidden">
+                            {c.avatar_url
+                              ? <img src={c.avatar_url} alt="" className="w-full h-full object-cover" />
+                              : (c.username ?? '?').slice(0, 1).toUpperCase()}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-[11px] text-gray-500">{v.clears.length} cleared</span>
+                    </>
+                  )}
+                  {v.video_url && <Play size={11} fill="currentColor" className="text-sage-700" />}
+                </div>
+              </button>
+            )
+          })}
         </div>
       )}
 
-      <SetVariationSheet open={newVariationOpen} onClose={() => setNewVariationOpen(false)} gymProblemId={gymProblemId} />
-      <VariationSheet variation={selected} onClose={() => setSelected(null)} gymProblemId={gymProblemId} readOnly={readOnly} />
+      <SetVariationSheet open={newVariationOpen} onClose={() => setNewVariationOpen(false)} gymProblemId={gymProblemId} boulderGrade={boulderGrade} />
+      <VariationSheet key={selected?.id ?? 'none'} variation={selectedLive} onClose={() => setSelected(null)} gymProblemId={gymProblemId} readOnly={readOnly} boulderGrade={boulderGrade} />
     </div>
   )
 }
 
 /** Detail: the constraint, the demo clip, and everyone's clears. */
-function VariationSheet({ variation, onClose, gymProblemId, readOnly }: {
+function VariationSheet({ variation, onClose, gymProblemId, readOnly, boulderGrade }: {
   variation: Variation | null
   onClose: () => void
   gymProblemId: string
   readOnly: boolean
+  boulderGrade: string | null
 }) {
   const { user } = useAuth()
   const clear = useClearVariation()
   const [video, setVideo] = useState('')
+  const { data: profile } = useProfile()
+  const updateGrade = useUpdateVariationGrade()
+  const [gradeDraft, setGradeDraft] = useState(variation?.grade ?? '')
+  // The existing grade's own scale wins first, so a stored grade is never
+  // hidden from its own editor by a viewer's grade_preference switching scale.
+  const grades = gradeOptions(variation?.grade, boulderGrade, profile?.grade_preference)
 
   if (!variation) return null
   const mine = variation.clears.find(c => c.user_id === user?.id)
   const isCreator = !!user?.id && variation.creator_id === user.id
+  const delta = gradeDelta(boulderGrade, variation.grade)
+
+  const saveGrade = () => {
+    updateGrade.mutate(
+      { challengeId: variation.id, gymProblemId, grade: gradeDraft || null },
+      {
+        onSuccess: () => toast.success('Grade updated'),
+        // Migration 076's UPDATE policy on `challenges` re-checks that the
+        // setter has sent the boulder, so deleting the session that held that
+        // send can turn this into an RLS violation. A climber at the wall
+        // doesn't need Postgres's wording for that.
+        onError: () => toast.error('Could not save the grade — you may need a send logged on this boulder to regrade it'),
+      },
+    )
+  }
 
   const submit = () => {
     clear.mutate(
@@ -122,6 +166,12 @@ function VariationSheet({ variation, onClose, gymProblemId, readOnly }: {
         <div>
           <p className="font-semibold text-gray-900">{variation.title}</p>
           {variation.description && <p className="mt-1 text-sm text-gray-600">{variation.description}</p>}
+          {variation.grade && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <Chip label={variation.grade} variant="grade" />
+              {delta && <span className="text-xs text-gray-500">{delta}</span>}
+            </div>
+          )}
           <p className="mt-1 text-xs text-gray-400">set by {variation.creator_name ?? 'someone'}</p>
           {variation.video_url && (
             <a href={variation.video_url} target="_blank" rel="noopener noreferrer"
@@ -159,32 +209,47 @@ function VariationSheet({ variation, onClose, gymProblemId, readOnly }: {
           )}
         </div>
 
-        {!readOnly && (
-          isCreator ? (
-            // The setter can't earn from clearing their own variation — the
-            // trigger pays nothing and notifies nobody for that. Don't show them
-            // a form that promises otherwise; tell them what actually pays.
+        {isCreator ? (
+          // The setter can't earn from clearing their own variation — the
+          // trigger pays nothing and notifies nobody for that. Don't show them
+          // a form that promises otherwise; tell them what actually pays.
+          // Shown regardless of `readOnly`: a variation has no delete path, so
+          // regrading is the only way to fix a mistake, and that need doesn't
+          // go away the moment the boulder is stripped or expires.
+          <div>
             <p className="text-xs text-gray-500">
               This is your variation. Points land when someone else clears it with a clip.
             </p>
-          ) : mine && mine.video_url ? (
-            <p className="text-xs text-sage-700 font-medium">You've cleared this one ✓</p>
-          ) : (
-            <div className="space-y-2 rounded-xl border border-gray-200 p-2.5">
-              {mine && (
-                <p className="text-xs text-gray-500">
-                  You've ticked this. Only clears with a clip earn points.
-                </p>
-              )}
-              <input value={video} onChange={e => setVideo(e.target.value)}
-                placeholder="Video of your clear (optional link)"
-                className="w-full text-xs text-gray-700 focus:outline-none placeholder:text-gray-400" />
-              <button type="button" onClick={submit} disabled={clear.isPending}
-                className="w-full rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                {clear.isPending ? 'Saving…' : mine ? 'Add my clip' : 'I cleared it'}
+            <div className="mt-2 flex items-center gap-2">
+              <label htmlFor="variation-regrade" className="sr-only">Regrade this variation</label>
+              <select id="variation-regrade" value={gradeDraft} onChange={e => setGradeDraft(e.target.value)}
+                className="flex-1 border rounded-lg px-2.5 py-2 text-sm">
+                <option value="">No grade</option>
+                {grades.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <button type="button" onClick={saveGrade} disabled={updateGrade.isPending}
+                className="rounded-lg bg-sage-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                {updateGrade.isPending ? 'Saving…' : 'Save grade'}
               </button>
             </div>
-          )
+          </div>
+        ) : readOnly ? null : mine && mine.video_url ? (
+          <p className="text-xs text-sage-700 font-medium">You've cleared this one ✓</p>
+        ) : (
+          <div className="space-y-2 rounded-xl border border-gray-200 p-2.5">
+            {mine && (
+              <p className="text-xs text-gray-500">
+                You've ticked this. Only clears with a clip earn points.
+              </p>
+            )}
+            <input value={video} onChange={e => setVideo(e.target.value)}
+              placeholder="Video of your clear (optional link)"
+              className="w-full text-xs text-gray-700 focus:outline-none placeholder:text-gray-400" />
+            <button type="button" onClick={submit} disabled={clear.isPending}
+              className="w-full rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+              {clear.isPending ? 'Saving…' : mine ? 'Add my clip' : 'I cleared it'}
+            </button>
+          </div>
         )}
       </div>
     </BottomSheet>
@@ -192,17 +257,25 @@ function VariationSheet({ variation, onClose, gymProblemId, readOnly }: {
 }
 
 /** Set one. Only reachable if you've sent the boulder; RLS enforces the same rule. */
-function SetVariationSheet({ open, onClose, gymProblemId }: {
+function SetVariationSheet({ open, onClose, gymProblemId, boulderGrade }: {
   open: boolean
   onClose: () => void
   gymProblemId: string
+  boulderGrade: string | null
 }) {
   const create = useCreateVariation()
   const { data: tags = [] } = useChallengeTags()
+  const { data: profile } = useProfile()
+  // A new variation has no existing grade, so this offers the boulder's own
+  // scale when it has one — that's the scale the "harder or softer" hint
+  // below is actually asking about — and falls back to the viewer's
+  // preference only when the boulder itself is ungraded.
+  const grades = gradeOptions(null, boulderGrade, profile?.grade_preference)
   const [title, setTitle] = useState('')
   const [detail, setDetail] = useState('')
   const [video, setVideo] = useState('')
   const [picked, setPicked] = useState<string[]>([])
+  const [grade, setGrade] = useState('')
 
   const toggle = (name: string) =>
     setPicked(prev => prev.includes(name) ? prev.filter(t => t !== name) : [...prev, name])
@@ -217,11 +290,12 @@ function SetVariationSheet({ open, onClose, gymProblemId }: {
         description: detail.trim() || null,
         videoUrl: video.trim() || null,
         tags: picked,
+        grade: grade || null,
       },
       {
         onSuccess: () => {
           toast.success('Variation set 🧩')
-          setTitle(''); setDetail(''); setVideo(''); setPicked([])
+          setTitle(''); setDetail(''); setVideo(''); setPicked([]); setGrade('')
           onClose()
         },
         onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not set it'),
@@ -244,6 +318,19 @@ function SetVariationSheet({ open, onClose, gymProblemId }: {
           <input value={detail} onChange={e => setDetail(e.target.value)}
             placeholder="e.g. the crimp is off, everything else is on"
             className="w-full border rounded-lg px-3 py-2.5" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Grade (optional)</label>
+          <select value={grade} onChange={e => setGrade(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2.5">
+            <option value="">No grade</option>
+            {grades.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+          <p className="mt-1 text-xs text-gray-400">
+            {boulderGrade
+              ? `Harder or softer than the boulder's ${boulderGrade}? Say so.`
+              : 'Grade the variation itself, if you can.'}
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Demo video (optional link)</label>
