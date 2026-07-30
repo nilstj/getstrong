@@ -33,14 +33,14 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-3">
-      <div className="flex items-center justify-between">
-        {!readOnly && canSet && (
+      {!readOnly && canSet && (
+        <div className="flex justify-end">
           <button type="button" onClick={() => setNewVariationOpen(true)}
             className="inline-flex items-center gap-1 text-xs font-semibold text-sage-700">
             <Plus size={13} strokeWidth={2.5} /> Set a variation
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {variations.length === 0 ? (
         <p className="mt-1.5 text-xs text-gray-400">
