@@ -16,6 +16,7 @@ import { useSessions, useCreateSession } from '../hooks/useSessions'
 import { useAddProblem } from '../hooks/useProblems'
 import { BottomSheet } from '../components/BottomSheet'
 import { VideoBadge } from '../components/VideoBadge'
+import { BoulderVariations } from '../components/BoulderVariations'
 import {
   useBoulderBetaThread,
   useAddBoulderBeta,
@@ -582,6 +583,11 @@ export function CrewPage() {
         {/* BETA (beta thread + comments + reactions) */}
         {tab === 'beta' && (
           <div className="space-y-4">
+            <BoulderVariations
+              gymProblemId={id}
+              readOnly={boulder.status !== 'active' || left < 0}
+            />
+
             {/* Beta exchange overview */}
             <div className="rounded-2xl bg-gray-50 p-3 space-y-3">
               <div>
