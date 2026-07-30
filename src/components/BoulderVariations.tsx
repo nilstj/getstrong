@@ -10,9 +10,9 @@ import {
 } from '../hooks/useVariations'
 
 /**
- * Variations on a shared boulder: the same wall with altered rules. Sits at the
- * top of the boulder page's Beta tab, because a variation is beta with a
- * constraint. Compact by design — that page is a hero screen.
+ * Variations on a shared boulder: the same wall with altered rules. Rendered
+ * under the boulder page's own Variations tab, because a variation is beta
+ * with a constraint. Compact by design — that page is a hero screen.
  */
 export function BoulderVariations({ gymProblemId, readOnly = false }: {
   gymProblemId: string
@@ -34,7 +34,6 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-500">🧩 Variations</p>
         {!readOnly && canSet && (
           <button type="button" onClick={() => setNewVariationOpen(true)}
             className="inline-flex items-center gap-1 text-xs font-semibold text-sage-700">

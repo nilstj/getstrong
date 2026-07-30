@@ -10,7 +10,7 @@
  */
 /** The boulder page's tabs. Lives here so a caller passing `openTab` and the page
  *  reading it cannot drift apart. */
-export type BoulderTab = 'beta' | 'sendtrain'
+export type BoulderTab = 'beta' | 'sendtrain' | 'variations'
 
 export interface BoulderNavState {
   /** Absent when the boulder wasn't opened from a browsable list — then prev/next
