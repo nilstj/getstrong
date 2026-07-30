@@ -86,6 +86,11 @@ export function ChallengesPage() {
               ? <span className="flex items-center gap-0.5 text-[10px] text-sage-700 font-medium"><Globe size={10} strokeWidth={2} />Public</span>
               : <span className="flex items-center gap-0.5 text-[10px] text-gray-400 font-medium"><Lock size={10} strokeWidth={2} />Friends</span>
           )}
+          {challenge.gym_problem_id && (
+            <span className="text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px">
+              🧩 Variation
+            </span>
+          )}
           {challenge.tags?.map(tag => (
             <span key={tag} className="text-[11px] bg-gray-50 text-sage-800 border border-gray-200 rounded-full px-1.5 py-px">{tag}</span>
           ))}
