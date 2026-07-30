@@ -716,7 +716,7 @@ export function CrewPage() {
         )}
 
         {activeTab === 'variations' && (
-          <BoulderVariations gymProblemId={id} readOnly={variationsReadOnly} />
+          <BoulderVariations gymProblemId={id} readOnly={variationsReadOnly} boulderGrade={displayGrade} />
         )}
 
         </div>
