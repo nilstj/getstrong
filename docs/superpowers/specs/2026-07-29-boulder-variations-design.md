@@ -125,8 +125,9 @@ Migrations are applied by hand, so the live database may already have a policy
 that no migration file records. **Verify in the Supabase dashboard before
 applying**, and drop this statement if it's already there.
 
-**`beta_points.challenge_id`** alongside the existing `beta_id`, so the two new
-awards can be deduped per variation:
+**`beta_points.challenge_id`** alongside the existing `beta_id`, recording which
+variation each award came from (both awards are still capped per boulder, not
+per variation — see the uniqueness guards below):
 
 ```sql
 alter table beta_points
@@ -138,7 +139,7 @@ alter table beta_points add constraint beta_points_reason_check
 create unique index if not exists beta_points_variation_taught_uniq
   on beta_points (user_id, gym_problem_id) where reason = 'variation_taught';
 create unique index if not exists beta_points_variation_cleared_uniq
-  on beta_points (user_id, challenge_id) where reason = 'variation_cleared';
+  on beta_points (user_id, gym_problem_id) where reason = 'variation_cleared';
 ```
 
 ### Points
@@ -146,10 +147,13 @@ create unique index if not exists beta_points_variation_cleared_uniq
 | award | pts | earned by | when | guard |
 |---|---|---|---|---|
 | `variation_taught` | 5 | the **setter** | first time **someone else** clears their variation with a video | unique `(user_id, gym_problem_id)` — 5 max per boulder, same cap and shape as `beta_posted_uniq` in migration 074 |
-| `variation_cleared` | 1 | the **clearer** | clearing a variation with a video | unique `(user_id, challenge_id)` |
+| `variation_cleared` | 1 | the **clearer** | clearing **someone else's** variation with a video | unique `(user_id, gym_problem_id)` — 1 max per boulder, same cap and shape as `beta_posted_uniq` in migration 074 |
 
 The values sit on the existing scale from migration 074: 5 means *you taught
-someone something*, 1 means *you took part*.
+someone something*, 1 means *you took part*. Both awards require the attempt's
+user to differ from the variation's creator, so neither can be self-minted —
+without that, sending a boulder once and then looping create-a-variation /
+clear-it-yourself would mint the clearer's point without limit.
 
 Both awards land in **one `SECURITY DEFINER` trigger** on `challenge_attempts`,
 firing `after insert or update`. Update matters as much as insert: an attempt can
@@ -164,7 +168,8 @@ Trigger conditions, all required:
   nothing, as today.
 - `gym` is read from `gym_problems` (the `challenges` table has no gym column),
   exactly as `award_beta_posted` does.
-- the setter award additionally requires `attempt.user_id <> challenge.creator_id`.
+- both awards additionally require `attempt.user_id <> challenge.creator_id` —
+  clearing your own variation pays neither award and sends no notification.
 
 `beta_points` has no insert policy, so this must be a trigger or an RPC, and a
 trigger keeps the client write path untouched. Both inserts use
@@ -234,8 +239,8 @@ ring, after the proposed grade.
   is absent on one you haven't; tick a clear without a video and confirm no
   points; add the video afterwards and confirm the update *persists* (the policy
   fix) and that it then pays 1 point to the clearer and 5 to the setter; re-tick
-  and confirm no second award; clear your own variation and confirm the setter
-  award doesn't fire; check the strip label and the setter's notification.
+  and confirm no second award; clear your own variation and confirm neither
+  award fires; check the strip label and the setter's notification.
 
 ## Release gate
 
