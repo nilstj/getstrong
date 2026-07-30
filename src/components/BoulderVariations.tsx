@@ -217,6 +217,7 @@ function SetVariationSheet({ open, onClose, gymProblemId }: {
         description: detail.trim() || null,
         videoUrl: video.trim() || null,
         tags: picked,
+        grade: null,
       },
       {
         onSuccess: () => {

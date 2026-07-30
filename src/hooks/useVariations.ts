@@ -17,6 +17,10 @@ export interface Variation {
   title: string
   description: string | null
   video_url: string | null
+  /** The setter's grade for the variation itself, which may be harder or softer
+   *  than the boulder's. Free text in the setter's own scale; compare only
+   *  within one scale (see utils/gradeDelta). */
+  grade: string | null
   creator_id: string
   creator_name: string | null
   created_at: string
@@ -39,7 +43,7 @@ export function useVariations(gymProblemId: string) {
     queryFn: async (): Promise<Variation[]> => {
       const { data: rows, error } = await supabase
         .from('challenges')
-        .select('id, title, description, video_url, creator_id, created_at')
+        .select('id, title, description, video_url, grade, creator_id, created_at')
         .eq('gym_problem_id', gymProblemId)
         .order('created_at', { ascending: true })
       if (error) throw error
@@ -137,6 +141,7 @@ export function useCreateVariation() {
       description: string | null
       videoUrl: string | null
       tags: string[]
+      grade: string | null
     }) => {
       if (!user) throw new Error('Not authenticated')
       const { error } = await supabase.from('challenges').insert({
@@ -146,6 +151,7 @@ export function useCreateVariation() {
         description: v.description,
         video_url: v.videoUrl,
         tags: v.tags,
+        grade: v.grade,
         is_public: true,
       })
       if (error) throw error
@@ -210,6 +216,29 @@ export function useClearVariation() {
       // The variation's card on /challenges shows its attempt count from this
       // same table — without this it stays stale after a clear from the boulder page.
       qc.invalidateQueries({ queryKey: ['challenge_attempts'] })
+    },
+  })
+}
+
+/**
+ * Change a variation's grade. The only field a setter can edit from the boulder
+ * page, and it exists because a variation has no delete path — without this, a
+ * mis-graded variation would be permanent. Relies on the `challenges` UPDATE
+ * policy added by migration 076; without it this silently affects zero rows.
+ */
+export function useUpdateVariationGrade() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { challengeId: string; gymProblemId: string; grade: string | null }) => {
+      const { error } = await supabase
+        .from('challenges')
+        .update({ grade: v.grade })
+        .eq('id', v.challengeId)
+      if (error) throw error
+    },
+    onSuccess: (_data, v) => {
+      qc.invalidateQueries({ queryKey: ['variations', v.gymProblemId] })
+      qc.invalidateQueries({ queryKey: ['challenges'] })
     },
   })
 }
