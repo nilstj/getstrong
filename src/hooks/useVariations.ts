@@ -175,9 +175,15 @@ export function useClearVariation() {
 
       const mine = (existing ?? []) as { id: string }[]
       if (mine.length > 0) {
+        const updatePayload: Record<string, unknown> = { completed: true }
+        if (v.videoUrl) {
+          // Re-tick without a new video must not erase an existing clip — the points
+          // award depends on the video link staying intact.
+          updatePayload.video_url = v.videoUrl
+        }
         const { error } = await supabase
           .from('challenge_attempts')
-          .update({ completed: true, video_url: v.videoUrl })
+          .update(updatePayload)
           .eq('id', mine[0].id)
         if (error) throw error
         return
