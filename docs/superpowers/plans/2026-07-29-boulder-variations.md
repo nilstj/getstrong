@@ -1093,6 +1093,8 @@ git commit -m "Render variation-cleared notifications and mark anchored challeng
 
 **Migration 076 must be applied by hand in the Supabase dashboard before this client is deployed.** Pushing `main` auto-deploys via Vercel, so a push is a release.
 
+**Ordering: 076 must be applied after 074 and 075, and must never be re-run (or have 074 re-run) out of that order.** 074 and 076 both drop and recreate `beta_points_reason_check`; 074's version does not include `variation_taught` / `variation_cleared`. If 074 runs after 076, the constraint reverts to the narrower list, and the award trigger — which has no exception handler — aborts the clearing statement outright instead of just failing to pay.
+
 Before applying, check in the dashboard whether `challenge_attempts` already has an UPDATE policy that no migration file records; the statement is idempotent (`drop policy if exists` first), so it is safe either way.
 
 The strip query degrades gracefully if the migration is late — no variation markers rather than a broken home page — but setting a variation will fail until the column and the policy exist.

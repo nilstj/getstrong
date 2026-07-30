@@ -1,3 +1,16 @@
+-- ══════════════════════════════════════════════════════════════════════════
+-- ORDERING WARNING: this migration must be applied AFTER 074 and 075, and must
+-- never be re-run (or have 074 re-run) out of that order.
+--
+-- Both this migration and 074 drop-and-recreate the same constraint,
+-- beta_points_reason_check — 074's version does not include 'variation_taught'
+-- / 'variation_cleared'. If 074 is applied (or merely re-run to check it took)
+-- after this file, the constraint reverts to 074's narrower list. The award
+-- trigger below has no exception handler, so the next clear's insert aborts
+-- the client's statement outright — marking a clear fails, it doesn't just go
+-- unpaid. Apply 074, then 075, then this one, and leave it at that.
+-- ══════════════════════════════════════════════════════════════════════════
+
 -- Boulder variations: a challenge can optionally anchor to a shared boulder.
 -- An anchored challenge is a "variation" — the same wall with altered rules
 -- (no heel hook, eliminate the crimp, static only, link into the red). It shows

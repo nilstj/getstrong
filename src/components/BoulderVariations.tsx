@@ -18,10 +18,16 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
   gymProblemId: string
   readOnly?: boolean
 }) {
-  const { data: variations = [] } = useVariations(gymProblemId)
+  const { data: variations = [], isError } = useVariations(gymProblemId)
   const { data: canSet = false } = useCanSetVariation(gymProblemId)
   const [newVariationOpen, setNewVariationOpen] = useState(false)
   const [selected, setSelected] = useState<Variation | null>(null)
+
+  // Migration 076 may not be applied yet, in which case the query above throws
+  // (gym_problem_id doesn't exist). Disappearing beats showing a "Set a
+  // variation" button that always fails — the boulder page is a hero screen and
+  // must stay clean if the client ships ahead of the migration.
+  if (isError) return null
 
   if (readOnly && variations.length === 0) return null
 
@@ -94,13 +100,14 @@ function VariationSheet({ variation, onClose, gymProblemId, readOnly }: {
 
   if (!variation) return null
   const mine = variation.clears.find(c => c.user_id === user?.id)
+  const isCreator = !!user?.id && variation.creator_id === user.id
 
   const submit = () => {
     clear.mutate(
       { challengeId: variation.id, gymProblemId, videoUrl: video.trim() || null },
       {
         onSuccess: () => {
-          toast.success(video.trim() ? 'Cleared — nice 🧩' : 'Cleared. Add a clip to earn points.')
+          toast.success(video.trim() ? 'Cleared — nice 🧩' : 'Cleared. Only clears with a clip earn points.')
           setVideo('')
           onClose()
         },
@@ -153,13 +160,20 @@ function VariationSheet({ variation, onClose, gymProblemId, readOnly }: {
         </div>
 
         {!readOnly && (
-          mine && mine.video_url ? (
+          isCreator ? (
+            // The setter can't earn from clearing their own variation — the
+            // trigger pays nothing and notifies nobody for that. Don't show them
+            // a form that promises otherwise; tell them what actually pays.
+            <p className="text-xs text-gray-500">
+              This is your variation. Points land when someone else clears it with a clip.
+            </p>
+          ) : mine && mine.video_url ? (
             <p className="text-xs text-sage-700 font-medium">You've cleared this one ✓</p>
           ) : (
             <div className="space-y-2 rounded-xl border border-gray-200 p-2.5">
               {mine && (
                 <p className="text-xs text-gray-500">
-                  You've ticked this. Add a clip to make it count for points.
+                  You've ticked this. Only clears with a clip earn points.
                 </p>
               )}
               <input value={video} onChange={e => setVideo(e.target.value)}

@@ -249,6 +249,13 @@ client that needs it is deployed.** Pushing `main` auto-deploys, so a push is a
 release. The strip query degrades gracefully if the migration is late, but
 setting a variation will fail until the column and policy exist.
 
+**Ordering: 076 must be applied after 074 and 075, and never out of order.**
+074 and 076 both drop and recreate `beta_points_reason_check`; 074's version
+does not include `variation_taught` / `variation_cleared`. If 074 is applied
+(or re-run to check it took) after 076, the constraint reverts to the
+narrower list and the award trigger's insert starts aborting the clearing
+statement outright, rather than merely not paying out.
+
 ## Follow-on slices (not this spec)
 
 1. **Crew gauntlet** — `battle_type = 'challenge'` on `crew_battles` pointing at

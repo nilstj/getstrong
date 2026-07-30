@@ -11,6 +11,7 @@ import {
   useNotificationsRealtime,
 } from '../hooks/useNotifications'
 import { useProfile } from '../hooks/useProfile'
+import type { BoulderNavState } from '../utils/boulderNav'
 import type { Notification } from '../types'
 import { BADGES } from '../types'
 import toast from 'react-hot-toast'
@@ -169,6 +170,11 @@ function describe(n: Notification, username: string): { text: string; detail?: s
         text: `${username} cleared your variation "${d.challenge_title ?? ''}"`,
         detail: d.video_url ? 'Watch their clip' : undefined,
       }
+    default:
+      // `notifications` is in the realtime publication, so a stale open tab can
+      // receive a type it doesn't know how to render yet. Degrade to a dull row
+      // instead of throwing when the caller destructures the result.
+      return { text: `${username} did something new` }
   }
 }
 
@@ -241,8 +247,14 @@ function NotificationRow({ notification, onClose }: { notification: Notification
     )
   }
   if (route) {
+    // CrewPage opens on the Sendtrain tab by default, but a variation's clip
+    // lives on the Beta tab — land there directly instead of leaving it three
+    // taps away. openTab only applies on mount, which is exactly right here.
+    const navState = notification.type === 'variation_cleared'
+      ? { state: { openTab: 'beta' } satisfies BoulderNavState }
+      : undefined
     return (
-      <button onClick={() => { navigate(route); onClose() }} className={className}>
+      <button onClick={() => { navigate(route, navState); onClose() }} className={className}>
         {body}
       </button>
     )

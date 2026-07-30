@@ -28,6 +28,10 @@ export interface Variation {
  * cleared it. Profiles come from a second `.in('id', ids)` query — there is no FK
  * embed between challenges and profiles.
  */
+// Migration 076 (the gym_problem_id column, its policies, the award trigger) is
+// applied by hand and is not guaranteed to be live yet. Until it is, this query
+// throws (the column doesn't exist), so callers must read `isError` and render
+// nothing rather than a block that can only ever fail.
 export function useVariations(gymProblemId: string) {
   return useQuery({
     queryKey: ['variations', gymProblemId],
@@ -149,6 +153,9 @@ export function useCreateVariation() {
     onSuccess: (_data, v) => {
       qc.invalidateQueries({ queryKey: ['variations', v.gymProblemId] })
       qc.invalidateQueries({ queryKey: ['discover_boulders'] })
+      // The /challenges page reads the same rows through useChallenges, so a
+      // variation set from the boulder page must show up there too in this session.
+      qc.invalidateQueries({ queryKey: ['challenges'] })
     },
   })
 }
@@ -170,6 +177,7 @@ export function useClearVariation() {
         .select('id')
         .eq('challenge_id', v.challengeId)
         .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
         .limit(1)
       if (e1) throw e1
 
@@ -199,6 +207,9 @@ export function useClearVariation() {
     onSuccess: (_data, v) => {
       qc.invalidateQueries({ queryKey: ['variations', v.gymProblemId] })
       qc.invalidateQueries({ queryKey: ['leaderboard'] })
+      // The variation's card on /challenges shows its attempt count from this
+      // same table — without this it stays stale after a clear from the boulder page.
+      qc.invalidateQueries({ queryKey: ['challenge_attempts'] })
     },
   })
 }
