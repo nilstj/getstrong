@@ -75,8 +75,13 @@ create unique index if not exists beta_points_variation_taught_uniq
 -- Clearer: capped at one award per boulder, not per variation — otherwise a user
 -- could send a boulder once, then set and clear variations on it without limit.
 -- Same shape and cap as beta_points_beta_posted_uniq in migration 074.
+drop index if exists beta_points_variation_cleared_uniq;
 create unique index if not exists beta_points_variation_cleared_uniq
   on beta_points (user_id, gym_problem_id) where reason = 'variation_cleared';
+-- The drop is needed: an earlier version of this migration defined the index over
+-- (user_id, challenge_id), which is weaker. In databases where that version was
+-- already run, create...if not exists matches by name alone and becomes a no-op,
+-- leaving the weaker definition in place. The drop ensures the new definition takes.
 
 -- ── 5. the award trigger ─────────────────────────────────────────────────────
 -- beta_points has no insert policy (046), so this is a SECURITY DEFINER trigger
@@ -106,11 +111,13 @@ begin
     return new;
   end if;
 
-  -- Clearing your own variation pays nothing and notifies nobody — the same
-  -- second-party requirement the setter award already had, now guarding the
-  -- clearer's award too. Without this, sending a boulder once and then looping
-  -- create-a-variation / clear-it-yourself would mint points without limit.
-  if v_creator = new.user_id then
+  -- Clearing a variation with no recorded creator, and clearing your own variation,
+  -- both pay nothing and notify nobody — the same second-party requirement the
+  -- setter award already had, now guarding the clearer's award too. Without this,
+  -- sending a boulder once and then looping create-a-variation / clear-it-yourself
+  -- would mint points without limit. The null-check makes the function self-evidently
+  -- safe if creator_id ever becomes nullable.
+  if v_creator is null or v_creator = new.user_id then
     return new;
   end if;
 
