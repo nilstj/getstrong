@@ -112,6 +112,8 @@ git commit -m "Add boulderStripLabel util for the variation marker"
 
 The whole database change in one file: the anchor column, the sent-it guard, the missing UPDATE policy, the two new ledger reasons with their uniqueness guards, and the award trigger. It is one file because it is applied atomically by hand.
 
+`challenges` turns out to have the same missing-UPDATE-policy gap as `challenge_attempts`, and it matters here: with the delete button gone for variations (their attempts cascade), editing is the only remedy for a mis-set one, so this migration adds that policy too, with a `with check` that repeats the sent-guard so an update can't repoint a variation onto a boulder the user hasn't sent.
+
 **Files:**
 - Create: `supabase/migrations/076_boulder_variations.sql`
 
@@ -142,10 +144,13 @@ Create `supabase/migrations/076_boulder_variations.sql`:
 -- Scheme added here (values sit on migration 074's scale):
 --    5  variation_taught   to the SETTER, the first time someone ELSE clears one
 --                          of their variations on this boulder with a video
---    1  variation_cleared  to the CLEARER, per variation, video required
+--    1  variation_cleared  to the CLEARER, capped per boulder (not per variation),
+--                          video required, and only for clearing someone ELSE's
+--                          variation
 --
--- Setting a variation pays nothing on its own: an award that needs a second
--- party can't be self-minted.
+-- Both awards need a second party and so can't be self-minted: clearing your own
+-- variation pays nothing at all, no matter how many variations you set on a
+-- boulder you sent yourself.
 
 -- ── 1. the anchor ────────────────────────────────────────────────────────────
 alter table challenges
@@ -205,9 +210,11 @@ alter table beta_points add constraint beta_points_reason_check
 create unique index if not exists beta_points_variation_taught_uniq
   on beta_points (user_id, gym_problem_id) where reason = 'variation_taught';
 
--- Clearer: one award per variation.
+-- Clearer: capped at one award per boulder, not per variation — otherwise a user
+-- could send a boulder once, then set and clear variations on it without limit.
+-- Same shape and cap as beta_points_beta_posted_uniq in migration 074.
 create unique index if not exists beta_points_variation_cleared_uniq
-  on beta_points (user_id, challenge_id) where reason = 'variation_cleared';
+  on beta_points (user_id, gym_problem_id) where reason = 'variation_cleared';
 
 -- ── 5. the award trigger ─────────────────────────────────────────────────────
 -- beta_points has no insert policy (046), so this is a SECURITY DEFINER trigger
@@ -216,11 +223,10 @@ create unique index if not exists beta_points_variation_cleared_uniq
 create or replace function public.award_variation_points()
 returns trigger as $$
 declare
-  v_creator     uuid;
-  v_gpid        uuid;
-  v_gym         text;
-  v_title       text;
-  v_clear_award uuid;
+  v_creator uuid;
+  v_gpid    uuid;
+  v_gym     text;
+  v_title   text;
 begin
   -- Only an evidenced clear pays. An unevidenced tick is still recorded and
   -- still displayed on the boulder — it just earns nothing.
@@ -238,38 +244,50 @@ begin
     return new;
   end if;
 
+  -- Clearing your own variation pays nothing and notifies nobody — the same
+  -- second-party requirement the setter award already had, now guarding the
+  -- clearer's award too. Without this, sending a boulder once and then looping
+  -- create-a-variation / clear-it-yourself would mint points without limit.
+  if v_creator = new.user_id then
+    return new;
+  end if;
+
   select gym into v_gym from public.gym_problems where id = v_gpid;
   if v_gym is null then
     return new;
   end if;
 
-  -- The clearer's row is the idempotency key for the whole event: one per
-  -- (user, variation). If it was already there, this is a re-tick or an edit,
-  -- so there is nothing new to award and nobody new to tell.
+  -- Clearer: capped per boulder, not per variation — beta_points_variation_cleared_uniq
+  -- is (user_id, gym_problem_id). A re-tick, a re-upload, or a second variation on
+  -- the same boulder all no-op here.
   insert into public.beta_points
     (user_id, gym, gym_problem_id, challenge_id, points, reason, cycle_month)
   values
     (new.user_id, v_gym, v_gpid, new.challenge_id, 1, 'variation_cleared',
      to_char((now() at time zone 'utc'), 'YYYY-MM'))
-  on conflict do nothing
-  returning id into v_clear_award;
+  on conflict do nothing;
 
-  if v_clear_award is null then
-    return new;
-  end if;
+  -- Setter: 5 points the first time someone else clears a variation of theirs on
+  -- this boulder. Guarded purely by its own unique index now — there is no
+  -- shared idempotency flag between the two awards.
+  insert into public.beta_points
+    (user_id, gym, gym_problem_id, challenge_id, points, reason, cycle_month)
+  values
+    (v_creator, v_gym, v_gpid, new.challenge_id, 5, 'variation_taught',
+     to_char((now() at time zone 'utc'), 'YYYY-MM'))
+  on conflict do nothing;
 
-  -- Setter: 5 points the first time SOMEONE ELSE clears a variation of theirs on
-  -- this boulder, plus the notification that brings them back to watch the clip.
-  -- create_notification (037) already skips self-notification, but the guard here
-  -- keeps the points award honest too.
-  if v_creator is not null and v_creator <> new.user_id then
-    insert into public.beta_points
-      (user_id, gym, gym_problem_id, challenge_id, points, reason, cycle_month)
-    values
-      (v_creator, v_gym, v_gpid, new.challenge_id, 5, 'variation_taught',
-       to_char((now() at time zone 'utc'), 'YYYY-MM'))
-    on conflict do nothing;
-
+  -- The notification gets its own idempotency check rather than riding on
+  -- either points insert: the clearer's award can no-op (a second variation on
+  -- a boulder already capped) while the setter still deserves to be told about
+  -- this specific clear.
+  if not exists (
+    select 1 from public.notifications
+     where recipient_id = v_creator
+       and type = 'variation_cleared'
+       and actor_id = new.user_id
+       and data->>'challenge_id' = new.challenge_id::text
+  ) then
     perform public.create_notification(
       v_creator, new.user_id, 'variation_cleared', v_gpid,
       jsonb_build_object(
@@ -294,8 +312,8 @@ create trigger on_variation_clear_award
 
 No local database exists, so this step is a careful read-through, not a run. Confirm by eye:
 
-1. **Nothing self-mints.** The only inserts into `beta_points` are inside a `SECURITY DEFINER` function; both carry `on conflict do nothing`; the setter award additionally requires `v_creator <> new.user_id`.
-2. **Re-firing is inert.** Editing an attempt's notes re-runs the trigger, `v_clear_award` comes back null, and the function returns before the setter award and the notification.
+1. **Nothing self-mints.** The only inserts into `beta_points` are inside a `SECURITY DEFINER` function; both carry `on conflict do nothing` and are guarded by their own unique index; the `v_creator = new.user_id` check returns before either insert and before the notification, so a self-clear never pays and a solo create-then-clear loop can't mint points without limit.
+2. **Re-firing is inert.** Editing an attempt's notes re-runs the trigger; both `on conflict do nothing` inserts no-op against the existing rows, and the `not exists` check against `notifications` finds the earlier row and skips the notification too.
 3. **Portable challenges are untouched.** `v_gpid is null` returns early, so `/challenges` behaviour and its existing points are unchanged.
 
 - [ ] **Step 4: Commit**
@@ -715,8 +733,8 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
 }) {
   const { data: variations = [] } = useVariations(gymProblemId)
   const { data: canSet = false } = useCanSetVariation(gymProblemId)
-  const [setOpen, setSetOpen] = useState(false)
-  const [open, setOpen] = useState<Variation | null>(null)
+  const [newVariationOpen, setNewVariationOpen] = useState(false)
+  const [selected, setSelected] = useState<Variation | null>(null)
 
   if (readOnly && variations.length === 0) return null
 
@@ -725,7 +743,7 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-500">🧩 Variations</p>
         {!readOnly && canSet && (
-          <button type="button" onClick={() => setSetOpen(true)}
+          <button type="button" onClick={() => setNewVariationOpen(true)}
             className="inline-flex items-center gap-1 text-xs font-semibold text-sage-700">
             <Plus size={13} strokeWidth={2.5} /> Set a variation
           </button>
@@ -741,7 +759,7 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
       ) : (
         <div className="mt-2 space-y-1.5">
           {variations.map(v => (
-            <button key={v.id} type="button" onClick={() => setOpen(v)}
+            <button key={v.id} type="button" onClick={() => setSelected(v)}
               className="w-full text-left rounded-xl bg-gray-50 px-2.5 py-2 hover:bg-gray-100">
               <p className="text-sm font-medium text-gray-800 leading-snug">{v.title}</p>
               <div className="mt-1 flex items-center gap-2">
@@ -770,8 +788,8 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
         </div>
       )}
 
-      <SetVariationSheet open={setOpen} onClose={() => setSetOpen(false)} gymProblemId={gymProblemId} />
-      <VariationSheet variation={open} onClose={() => setOpen(null)} gymProblemId={gymProblemId} readOnly={readOnly} />
+      <SetVariationSheet open={newVariationOpen} onClose={() => setNewVariationOpen(false)} gymProblemId={gymProblemId} />
+      <VariationSheet variation={selected} onClose={() => setSelected(null)} gymProblemId={gymProblemId} readOnly={readOnly} />
     </div>
   )
 }
@@ -1077,6 +1095,8 @@ git commit -m "Render variation-cleared notifications and mark anchored challeng
 
 **Migration 076 must be applied by hand in the Supabase dashboard before this client is deployed.** Pushing `main` auto-deploys via Vercel, so a push is a release.
 
+**Ordering: 076 must be applied after 074 and 075, and must never be re-run (or have 074 re-run) out of that order.** 074 and 076 both drop and recreate `beta_points_reason_check`; 074's version does not include `variation_taught` / `variation_cleared`. If 074 runs after 076, the constraint reverts to the narrower list, and the award trigger — which has no exception handler — aborts the clearing statement outright instead of just failing to pay.
+
 Before applying, check in the dashboard whether `challenge_attempts` already has an UPDATE policy that no migration file records; the statement is idempotent (`drop policy if exists` first), so it is safe either way.
 
 The strip query degrades gracefully if the migration is late — no variation markers rather than a broken home page — but setting a variation will fail until the column and the policy exist.
@@ -1091,6 +1111,6 @@ Do this on a boulder you have logged, after applying the migration:
 - [ ] As a **second user**, clear the variation with no video. It shows in "Cleared it"; check `beta_points` — no new row.
 - [ ] Re-open and add a clip. The update **persists** (this is the policy fix). Now `beta_points` has one `variation_cleared` row (1 pt, the clearer) and one `variation_taught` row (5 pts, the setter), and the setter has a notification that opens the boulder page.
 - [ ] Edit that attempt again. No second award, no second notification.
-- [ ] Clear **your own** variation with a video: 1 point to you, no `variation_taught` row, no notification.
-- [ ] Set a second variation on the same boulder and have the other user clear it with a video: they get another 1 point; you get **no** second 5 (capped per boulder).
+- [ ] Clear **your own** variation with a video: **no** points to you, no `variation_taught` row, no notification.
+- [ ] Set a second variation on the same boulder and have the other user clear it with a video: they get **no** second 1 (capped per boulder, not per variation); you get **no** second 5 either (also capped per boulder). The setter notification still fires for this second clear.
 - [ ] On an archived boulder, existing variations render read-only with no Set button and no clear form.

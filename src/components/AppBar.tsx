@@ -11,6 +11,7 @@ import {
   useNotificationsRealtime,
 } from '../hooks/useNotifications'
 import { useProfile } from '../hooks/useProfile'
+import type { BoulderNavState } from '../utils/boulderNav'
 import type { Notification } from '../types'
 import { BADGES } from '../types'
 import toast from 'react-hot-toast'
@@ -117,6 +118,7 @@ const ICONS: Record<Notification['type'], string> = {
   badge_earned: '🏅',
   crew_send: '🧗',
   crew_stripped: '🧹',
+  variation_cleared: '🧩',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
@@ -163,6 +165,16 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       const badge = BADGES.find(b => b.key === d.badge)
       return { text: `You earned the “${badge?.label ?? 'Helper'}” badge! ${badge?.emoji ?? '🏅'}` }
     }
+    case 'variation_cleared':
+      return {
+        text: `${username} cleared your variation "${d.challenge_title ?? ''}"`,
+        detail: d.video_url ? 'Watch their clip' : undefined,
+      }
+    default:
+      // `notifications` is in the realtime publication, so a stale open tab can
+      // receive a type it doesn't know how to render yet. Degrade to a dull row
+      // instead of throwing when the caller destructures the result.
+      return { text: `${username} did something new` }
   }
 }
 
@@ -190,6 +202,8 @@ function routeFor(n: Notification): string | null {
     case 'crew_send':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     case 'crew_stripped':
+      return n.entity_id ? `/gym-problems/${n.entity_id}` : null
+    case 'variation_cleared':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     default:
       return null
@@ -233,8 +247,14 @@ function NotificationRow({ notification, onClose }: { notification: Notification
     )
   }
   if (route) {
+    // CrewPage opens on the Sendtrain tab by default, but a variation's clip
+    // lives on the Beta tab — land there directly instead of leaving it three
+    // taps away. openTab only applies on mount, which is exactly right here.
+    const navState = notification.type === 'variation_cleared'
+      ? { state: { openTab: 'beta' } satisfies BoulderNavState }
+      : undefined
     return (
-      <button onClick={() => { navigate(route); onClose() }} className={className}>
+      <button onClick={() => { navigate(route, navState); onClose() }} className={className}>
         {body}
       </button>
     )

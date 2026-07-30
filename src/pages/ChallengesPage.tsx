@@ -86,6 +86,11 @@ export function ChallengesPage() {
               ? <span className="flex items-center gap-0.5 text-[10px] text-sage-700 font-medium"><Globe size={10} strokeWidth={2} />Public</span>
               : <span className="flex items-center gap-0.5 text-[10px] text-gray-400 font-medium"><Lock size={10} strokeWidth={2} />Friends</span>
           )}
+          {challenge.gym_problem_id && (
+            <span className="text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px">
+              🧩 Variation
+            </span>
+          )}
           {challenge.tags?.map(tag => (
             <span key={tag} className="text-[11px] bg-gray-50 text-sage-800 border border-gray-200 rounded-full px-1.5 py-px">{tag}</span>
           ))}
@@ -97,12 +102,17 @@ export function ChallengesPage() {
           <button
             onClick={e => { e.stopPropagation(); setEditing(challenge) }}
             className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            title="Edit challenge" aria-label="Edit challenge"
+            title={challenge.gym_problem_id ? 'Edit variation' : 'Edit challenge'}
+            aria-label={challenge.gym_problem_id ? 'Edit variation' : 'Edit challenge'}
           >
             <Pencil size={14} strokeWidth={1.75} />
           </button>
         )}
-        {(challenge.creator_id === user?.id || (isAdmin && challenge.is_public)) && (
+        {/* A variation's clears belong to other climbers, not the setter — and
+            challenge_attempts.challenge_id cascades on delete (migration 003), so
+            deleting the variation would destroy their clips too. Editing is still
+            fine; deleting is not offered for anchored challenges. */}
+        {!challenge.gym_problem_id && (challenge.creator_id === user?.id || (isAdmin && challenge.is_public)) && (
           <button
             onClick={e => {
               e.stopPropagation()
@@ -235,7 +245,7 @@ export function ChallengesPage() {
         <ChallengeForm onClose={() => setCreateOpen(false)} />
       </BottomSheet>
 
-      <BottomSheet open={!!editing} onClose={() => setEditing(null)} title="Edit Challenge">
+      <BottomSheet open={!!editing} onClose={() => setEditing(null)} title={editing?.gym_problem_id ? 'Edit Variation' : 'Edit Challenge'}>
         {editing && (
           <ChallengeForm existing={editing} onClose={() => setEditing(null)} />
         )}
@@ -292,7 +302,7 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
       updateChallenge.mutate(
         { id: existing.id, ...payload },
         {
-          onSuccess: () => { toast.success('Challenge updated'); onClose() },
+          onSuccess: () => { toast.success(existing.gym_problem_id ? 'Variation updated' : 'Challenge updated'); onClose() },
           onError: () => toast.error('Failed to update challenge'),
         },
       )
@@ -317,34 +327,39 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
           className="w-full border rounded-lg px-3 py-2.5"
         />
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>
-        <div className="flex rounded-xl overflow-hidden border border-gray-200">
-          <button
-            type="button"
-            onClick={() => setIsPublic(true)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
-              isPublic ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
-            }`}
-          >
-            <Globe size={14} strokeWidth={1.75} />
-            Public
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsPublic(false)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
-              !isPublic ? 'bg-gray-700 text-white' : 'bg-white text-gray-500'
-            }`}
-          >
-            <Lock size={14} strokeWidth={1.75} />
-            Friends only
-          </button>
+      {/* A variation is always public — the boulder page lists it to every
+          authenticated user regardless of is_public — so offering "Friends only"
+          here would be a control the database ignores. */}
+      {!existing?.gym_problem_id && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>
+          <div className="flex rounded-xl overflow-hidden border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setIsPublic(true)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
+                isPublic ? 'bg-sage-700 text-white' : 'bg-white text-gray-500'
+              }`}
+            >
+              <Globe size={14} strokeWidth={1.75} />
+              Public
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPublic(false)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
+                !isPublic ? 'bg-gray-700 text-white' : 'bg-white text-gray-500'
+              }`}
+            >
+              <Lock size={14} strokeWidth={1.75} />
+              Friends only
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1.5">
+            {isPublic ? 'Visible to all users' : 'Only visible to you and your friends'}
+          </p>
         </div>
-        <p className="text-xs text-gray-400 mt-1.5">
-          {isPublic ? 'Visible to all users' : 'Only visible to you and your friends'}
-        </p>
-      </div>
+      )}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
         <textarea

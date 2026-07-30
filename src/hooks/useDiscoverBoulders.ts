@@ -100,6 +100,19 @@ export function useDiscoverBoulders() {
         { gym_problem_id: string; user_id: string; note: string | null; created_at: string }[]
       const helpWantedIds = new Set(openHelp.map(h => h.gym_problem_id))
 
+      // Boulders carrying at least one variation (an anchored challenge). Non-fatal
+      // like the help query above: before migration 076 is applied the column isn't
+      // there, and no variation markers beats no home page.
+      const { data: variationRows } = await supabase
+        .from('challenges')
+        .select('gym_problem_id')
+        .in('gym_problem_id', ids)
+      const variationIds = new Set(
+        ((variationRows ?? []) as { gym_problem_id: string | null }[])
+          .map(r => r.gym_problem_id)
+          .filter((gid): gid is string => !!gid),
+      )
+
       const summaries: BoulderSummary[] = list.map(b => ({
         id: b.id,
         title: boulderTitle(b),
@@ -111,6 +124,7 @@ export function useDiscoverBoulders() {
         beta_video_url: b.beta_video_url,
         set_at: b.set_at,
         helpWanted: helpWantedIds.has(b.id),
+        hasVariation: variationIds.has(b.id),
         expires_at: b.expires_at,
         crewCount: counts[b.id] ?? 0,
         claimed: myClaimedIds.has(b.id),
