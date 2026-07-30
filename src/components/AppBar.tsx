@@ -117,6 +117,7 @@ const ICONS: Record<Notification['type'], string> = {
   badge_earned: '🏅',
   crew_send: '🧗',
   crew_stripped: '🧹',
+  variation_cleared: '✅',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
@@ -163,6 +164,8 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       const badge = BADGES.find(b => b.key === d.badge)
       return { text: `You earned the “${badge?.label ?? 'Helper'}” badge! ${badge?.emoji ?? '🏅'}` }
     }
+    case 'variation_cleared':
+      return { text: `${username} cleared your variation "${d.challenge_title ?? 'a boulder'}"` }
   }
 }
 
@@ -190,6 +193,7 @@ function routeFor(n: Notification): string | null {
     case 'crew_send':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     case 'crew_stripped':
+    case 'variation_cleared':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     default:
       return null

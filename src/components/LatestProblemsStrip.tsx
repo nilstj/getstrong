@@ -7,6 +7,7 @@ import { useProfile } from '../hooks/useProfile'
 import { StoryRing } from './StoryRing'
 import { AddGymBoulderSheet } from './AddGymBoulderSheet'
 import type { BoulderNavState } from '../utils/boulderNav'
+import { boulderStripLabel } from '../utils/boulderStripLabel'
 
 /**
  * The "Latest Gym Problems" story strip: your boulders + the ones in your gyms,
@@ -32,20 +33,23 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
       <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">{heading}</h2>
       <div className="flex gap-3 overflow-x-auto -mx-1 px-1">
         <AddBoulderTile onClick={() => setAddOpen(true)} />
-        {stories.map(b => (
-          <StoryRing
-            key={b.id}
-            label={b.community_grade ?? ''}
-            ariaLabel={b.community_grade ? `${b.title} (${b.community_grade})` : b.title}
-            imageUrl={b.image_url}
-            fallbackGym={b.gym}
-            color={b.color}
-            helpWanted={b.helpWanted}
-            hasVideo={!!b.beta_video_url}
-            seen={seen?.has(b.id) ?? false}
-            onClick={() => navigate(`/gym-problems/${b.id}`, { state: { boulderIds: storyIds } satisfies BoulderNavState })}
-          />
-        ))}
+        {stories.map(b => {
+          const label = boulderStripLabel(b.community_grade, b.hasVariation)
+          return (
+            <StoryRing
+              key={b.id}
+              label={label}
+              ariaLabel={label ? `${b.title} (${label})` : b.title}
+              imageUrl={b.image_url}
+              fallbackGym={b.gym}
+              color={b.color}
+              helpWanted={b.helpWanted}
+              hasVideo={!!b.beta_video_url}
+              seen={seen?.has(b.id) ?? false}
+              onClick={() => navigate(`/gym-problems/${b.id}`, { state: { boulderIds: storyIds } satisfies BoulderNavState })}
+            />
+          )
+        })}
       </div>
 
       {addOpen && <AddGymBoulderSheet open onClose={() => setAddOpen(false)} />}

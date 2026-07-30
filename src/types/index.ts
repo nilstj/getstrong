@@ -68,6 +68,8 @@ export interface Challenge {
   video_url: string | null
   tags: string[]
   is_public: boolean
+  /** Set when this challenge is a *variation* anchored to a shared boulder. */
+  gym_problem_id: string | null
   created_at: string
 }
 
@@ -170,6 +172,7 @@ export type NotificationType =
   | 'badge_earned'
   | 'crew_send'
   | 'crew_stripped'
+  | 'variation_cleared'
 
 export interface Notification {
   id: string
@@ -289,7 +292,7 @@ export interface CrewProblemRow {
   created_at: string
 }
 
-export type BetaPointReason = 'bounty_won' | 'helpful' | 'first_logger' | 'beta_posted' | 'engagement'
+export type BetaPointReason = 'bounty_won' | 'helpful' | 'first_logger' | 'beta_posted' | 'engagement' | 'variation_taught' | 'variation_cleared'
 
 export interface BetaPointRow {
   user_id: string
@@ -315,6 +318,8 @@ export interface BoulderSummary {
   beta_video_url: string | null
   set_at: string
   helpWanted: boolean
+  /** At least one variation (an anchored challenge) has been set on this boulder. */
+  hasVariation: boolean
   expires_at: string
   crewCount: number
   /** The user has this boulder on a session — on the sendtrain, sent or not. */

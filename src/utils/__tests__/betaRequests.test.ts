@@ -7,6 +7,7 @@ function boulder(id: string): BoulderSummary {
     id, title: 'Shared boulder', gym: 'Boulders Oslo', color: 'Blue',
     hold_color: 'Red', community_grade: '6C', image_url: null,
     beta_video_url: null, set_at: '2026-07-01', helpWanted: true,
+    hasVariation: false,
     expires_at: '2026-08-01', crewCount: 2, claimed: false, doneByMe: false,
   }
 }
