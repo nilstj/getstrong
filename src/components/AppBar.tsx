@@ -117,7 +117,7 @@ const ICONS: Record<Notification['type'], string> = {
   badge_earned: '🏅',
   crew_send: '🧗',
   crew_stripped: '🧹',
-  variation_cleared: '✅',
+  variation_cleared: '🧩',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
@@ -165,7 +165,10 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       return { text: `You earned the “${badge?.label ?? 'Helper'}” badge! ${badge?.emoji ?? '🏅'}` }
     }
     case 'variation_cleared':
-      return { text: `${username} cleared your variation "${d.challenge_title ?? 'a boulder'}"` }
+      return {
+        text: `${username} cleared your variation "${d.challenge_title ?? ''}"`,
+        detail: d.video_url ? 'Watch their clip' : undefined,
+      }
   }
 }
 
@@ -193,6 +196,7 @@ function routeFor(n: Notification): string | null {
     case 'crew_send':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     case 'crew_stripped':
+      return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     case 'variation_cleared':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     default:
