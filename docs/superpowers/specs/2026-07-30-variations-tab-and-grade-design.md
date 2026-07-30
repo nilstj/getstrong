@@ -224,6 +224,13 @@ after 076 — it recreates `beta_points_reason_check` without the two variation
 reasons, and the award trigger has no exception handler, so a clear would fail
 outright rather than merely go unpaid.
 
-The grade column is additive and independent of the award logic, so a client
-deployed with 076 applied but not 077 shows variations correctly and only fails
-when someone tries to set a grade.
+The grade column is not independent of visibility: `useVariations` selects
+`grade`, so with 076 applied but not 077 that query errors and the whole
+Variations tab disappears — on every boulder, not just ones with a grade set.
+Meanwhile `useDiscoverBoulders` selects only `gym_problem_id`, so the home
+strip's "· Variation" caption and the overview's 🧩 marker keep rendering and
+keep sending people to a tab that isn't there, and the page falls back to
+Beta. That is a visible regression against the currently deployed client,
+which shows variations at the top of the Beta tab as soon as 076 lands. So 076
+and 077 should be applied together, in the same window, rather than treating
+077 as safe to defer.

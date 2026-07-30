@@ -219,7 +219,8 @@ export function CrewPage() {
   const claim = useClaimGymProblem()
   // Same ['variations', id] query key as BoulderVariations, so this costs no
   // extra request — React Query serves both from one cached result.
-  const { data: variations = [], isError: variationsError } = useVariations(id)
+  const { data: variationsData, isError: variationsError, isPending: variationsPending } = useVariations(id)
+  const variations = variationsData ?? []
 
   // Opening the page is what marks the problem "seen" — its home-page ring goes
   // from blue to grey. Fire-and-forget: a failure here must not block the page.
@@ -369,13 +370,22 @@ export function CrewPage() {
   const variationsReadOnly = boulder.status !== 'active' || left < 0
   // The tab exists only when its panel has something to render, so tab and
   // content can never disagree: the query fails until migrations 076/077 are
-  // applied, and an archived boulder with no variations renders nothing.
-  const showVariationsTab = !variationsError && !(variationsReadOnly && variations.length === 0)
+  // applied, and an archived boulder with no variations renders nothing. But
+  // React Query retries and refetches on window focus, so a reader can hit a
+  // transient error on flaky gym wifi while a good list is still cached —
+  // only treat the error as fatal (never-succeeded) when there's no data.
+  const showVariationsTab = !(variationsError && variationsData === undefined)
+    && !(variationsReadOnly && variations.length === 0)
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'beta', label: 'Beta' },
     { key: 'sendtrain', label: 'Sendtrain' },
-    ...(showVariationsTab ? [{ key: 'variations' as Tab, label: `Variations (${variations.length})` }] : []),
+    // No count while the first fetch is still in flight — asserting "(0)"
+    // before the query has answered reads as "definitely none" on a boulder
+    // that may have three.
+    ...(showVariationsTab
+      ? [{ key: 'variations' as Tab, label: variationsPending ? 'Variations' : `Variations (${variations.length})` }]
+      : []),
   ]
 
   // A notification can carry openTab: 'variations' while the tab is hidden.

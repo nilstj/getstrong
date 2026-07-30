@@ -6,8 +6,8 @@ import { BottomSheet } from './BottomSheet'
 import { Chip } from './Chip'
 import { useChallengeTags } from '../hooks/useChallengeTags'
 import { useProfile } from '../hooks/useProfile'
-import { FONT_GRADES_ORDERED, V_GRADES } from '../utils/grades'
 import { gradeDelta } from '../utils/gradeDelta'
+import { gradeOptions } from '../utils/gradeOptions'
 import {
   useVariations, useCanSetVariation, useCreateVariation, useClearVariation, useUpdateVariationGrade,
   type Variation,
@@ -23,7 +23,8 @@ export function BoulderVariations({ gymProblemId, readOnly = false, boulderGrade
   readOnly?: boolean
   boulderGrade: string | null
 }) {
-  const { data: variations = [], isError } = useVariations(gymProblemId)
+  const { data: variationsData, isError } = useVariations(gymProblemId)
+  const variations = variationsData ?? []
   const { data: canSet = false } = useCanSetVariation(gymProblemId)
   const [newVariationOpen, setNewVariationOpen] = useState(false)
   const [selected, setSelected] = useState<Variation | null>(null)
@@ -36,8 +37,13 @@ export function BoulderVariations({ gymProblemId, readOnly = false, boulderGrade
   // Migration 076 may not be applied yet, in which case the query above throws
   // (gym_problem_id doesn't exist). Disappearing beats showing a "Set a
   // variation" button that always fails — the boulder page is a hero screen and
-  // must stay clean if the client ships ahead of the migration.
-  if (isError) return null
+  // must stay clean if the client ships ahead of the migration. But only treat
+  // this as fatal when the query has never once succeeded (`variationsData` is
+  // still undefined) — React Query retries and refetches on window focus, so a
+  // reader who backgrounds the app on flaky gym wifi can hit a transient error
+  // while a good cached list still sits in `data`. Booting them off the tab for
+  // that would be worse than showing what's already known to be true.
+  if (isError && variationsData === undefined) return null
 
   if (readOnly && variations.length === 0) return null
 
@@ -115,9 +121,11 @@ function VariationSheet({ variation, onClose, gymProblemId, readOnly, boulderGra
   const clear = useClearVariation()
   const [video, setVideo] = useState('')
   const { data: profile } = useProfile()
-  const grades = profile?.grade_preference === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
   const updateGrade = useUpdateVariationGrade()
   const [gradeDraft, setGradeDraft] = useState(variation?.grade ?? '')
+  // The existing grade's own scale wins first, so a stored grade is never
+  // hidden from its own editor by a viewer's grade_preference switching scale.
+  const grades = gradeOptions(variation?.grade, boulderGrade, profile?.grade_preference)
 
   if (!variation) return null
   const mine = variation.clears.find(c => c.user_id === user?.id)
@@ -129,7 +137,11 @@ function VariationSheet({ variation, onClose, gymProblemId, readOnly, boulderGra
       { challengeId: variation.id, gymProblemId, grade: gradeDraft || null },
       {
         onSuccess: () => toast.success('Grade updated'),
-        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not save the grade'),
+        // Migration 076's UPDATE policy on `challenges` re-checks that the
+        // setter has sent the boulder, so deleting the session that held that
+        // send can turn this into an RLS violation. A climber at the wall
+        // doesn't need Postgres's wording for that.
+        onError: () => toast.error('Could not save the grade — you may need a send logged on this boulder to regrade it'),
       },
     )
   }
@@ -197,45 +209,47 @@ function VariationSheet({ variation, onClose, gymProblemId, readOnly, boulderGra
           )}
         </div>
 
-        {!readOnly && (
-          isCreator ? (
-            // The setter can't earn from clearing their own variation — the
-            // trigger pays nothing and notifies nobody for that. Don't show them
-            // a form that promises otherwise; tell them what actually pays.
-            <div>
-              <p className="text-xs text-gray-500">
-                This is your variation. Points land when someone else clears it with a clip.
-              </p>
-              <div className="mt-2 flex items-center gap-2">
-                <select value={gradeDraft} onChange={e => setGradeDraft(e.target.value)}
-                  className="flex-1 border rounded-lg px-2.5 py-2 text-sm">
-                  <option value="">No grade</option>
-                  {grades.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
-                <button type="button" onClick={saveGrade} disabled={updateGrade.isPending}
-                  className="rounded-lg bg-sage-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                  {updateGrade.isPending ? 'Saving…' : 'Save grade'}
-                </button>
-              </div>
-            </div>
-          ) : mine && mine.video_url ? (
-            <p className="text-xs text-sage-700 font-medium">You've cleared this one ✓</p>
-          ) : (
-            <div className="space-y-2 rounded-xl border border-gray-200 p-2.5">
-              {mine && (
-                <p className="text-xs text-gray-500">
-                  You've ticked this. Only clears with a clip earn points.
-                </p>
-              )}
-              <input value={video} onChange={e => setVideo(e.target.value)}
-                placeholder="Video of your clear (optional link)"
-                className="w-full text-xs text-gray-700 focus:outline-none placeholder:text-gray-400" />
-              <button type="button" onClick={submit} disabled={clear.isPending}
-                className="w-full rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                {clear.isPending ? 'Saving…' : mine ? 'Add my clip' : 'I cleared it'}
+        {isCreator ? (
+          // The setter can't earn from clearing their own variation — the
+          // trigger pays nothing and notifies nobody for that. Don't show them
+          // a form that promises otherwise; tell them what actually pays.
+          // Shown regardless of `readOnly`: a variation has no delete path, so
+          // regrading is the only way to fix a mistake, and that need doesn't
+          // go away the moment the boulder is stripped or expires.
+          <div>
+            <p className="text-xs text-gray-500">
+              This is your variation. Points land when someone else clears it with a clip.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <label htmlFor="variation-regrade" className="sr-only">Regrade this variation</label>
+              <select id="variation-regrade" value={gradeDraft} onChange={e => setGradeDraft(e.target.value)}
+                className="flex-1 border rounded-lg px-2.5 py-2 text-sm">
+                <option value="">No grade</option>
+                {grades.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <button type="button" onClick={saveGrade} disabled={updateGrade.isPending}
+                className="rounded-lg bg-sage-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                {updateGrade.isPending ? 'Saving…' : 'Save grade'}
               </button>
             </div>
-          )
+          </div>
+        ) : readOnly ? null : mine && mine.video_url ? (
+          <p className="text-xs text-sage-700 font-medium">You've cleared this one ✓</p>
+        ) : (
+          <div className="space-y-2 rounded-xl border border-gray-200 p-2.5">
+            {mine && (
+              <p className="text-xs text-gray-500">
+                You've ticked this. Only clears with a clip earn points.
+              </p>
+            )}
+            <input value={video} onChange={e => setVideo(e.target.value)}
+              placeholder="Video of your clear (optional link)"
+              className="w-full text-xs text-gray-700 focus:outline-none placeholder:text-gray-400" />
+            <button type="button" onClick={submit} disabled={clear.isPending}
+              className="w-full rounded-xl bg-sage-700 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+              {clear.isPending ? 'Saving…' : mine ? 'Add my clip' : 'I cleared it'}
+            </button>
+          </div>
         )}
       </div>
     </BottomSheet>
@@ -252,7 +266,11 @@ function SetVariationSheet({ open, onClose, gymProblemId, boulderGrade }: {
   const create = useCreateVariation()
   const { data: tags = [] } = useChallengeTags()
   const { data: profile } = useProfile()
-  const grades = profile?.grade_preference === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
+  // A new variation has no existing grade, so this offers the boulder's own
+  // scale when it has one — that's the scale the "harder or softer" hint
+  // below is actually asking about — and falls back to the viewer's
+  // preference only when the boulder itself is ungraded.
+  const grades = gradeOptions(null, boulderGrade, profile?.grade_preference)
   const [title, setTitle] = useState('')
   const [detail, setDetail] = useState('')
   const [video, setVideo] = useState('')
