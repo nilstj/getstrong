@@ -102,7 +102,8 @@ export function ChallengesPage() {
           <button
             onClick={e => { e.stopPropagation(); setEditing(challenge) }}
             className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            title="Edit challenge" aria-label="Edit challenge"
+            title={challenge.gym_problem_id ? 'Edit variation' : 'Edit challenge'}
+            aria-label={challenge.gym_problem_id ? 'Edit variation' : 'Edit challenge'}
           >
             <Pencil size={14} strokeWidth={1.75} />
           </button>
@@ -244,7 +245,7 @@ export function ChallengesPage() {
         <ChallengeForm onClose={() => setCreateOpen(false)} />
       </BottomSheet>
 
-      <BottomSheet open={!!editing} onClose={() => setEditing(null)} title="Edit Challenge">
+      <BottomSheet open={!!editing} onClose={() => setEditing(null)} title={editing?.gym_problem_id ? 'Edit Variation' : 'Edit Challenge'}>
         {editing && (
           <ChallengeForm existing={editing} onClose={() => setEditing(null)} />
         )}
@@ -301,7 +302,7 @@ function ChallengeForm({ existing, onClose }: { existing?: Challenge; onClose: (
       updateChallenge.mutate(
         { id: existing.id, ...payload },
         {
-          onSuccess: () => { toast.success('Challenge updated'); onClose() },
+          onSuccess: () => { toast.success(existing.gym_problem_id ? 'Variation updated' : 'Challenge updated'); onClose() },
           onError: () => toast.error('Failed to update challenge'),
         },
       )

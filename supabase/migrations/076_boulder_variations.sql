@@ -69,7 +69,41 @@ create policy "users update own challenge attempts"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- ── 4. ledger: challenge_id, the two new reasons, and their guards ───────────
+-- ── 4. the UPDATE policy challenges never had either ─────────────────────────
+-- Migration 003 gave this table select, insert (recreated above in section 2)
+-- and delete — no update, ever. With RLS on, that means useUpdateChallenge
+-- matches zero rows and, because it ends in .select().single(), raises
+-- PGRST116 rather than silently no-opping. That was survivable while a
+-- mis-set variation could just be deleted; now that deleting a variation is
+-- refused (challenge_attempts.challenge_id cascades, and it would destroy
+-- other climbers' clears and proof clips), editing is the only remedy, so this
+-- can no longer be left unfixed.
+--
+-- The with check repeats section 2's sent-the-boulder guard verbatim rather
+-- than only checking auth.uid() = creator_id: without it, a user could insert
+-- a challenge with a null anchor (which section 2 permits freely, since a
+-- portable challenge needs no send) and then UPDATE it to point at any
+-- gym_problem_id, planting a variation on a boulder they never sent. Using
+-- the identical exists (...) shape as the insert policy keeps the two from
+-- drifting apart.
+drop policy if exists "users update own challenges" on challenges;
+create policy "users update own challenges"
+  on challenges for update
+  using (auth.uid() = creator_id)
+  with check (
+    auth.uid() = creator_id
+    and (
+      gym_problem_id is null
+      or exists (
+        select 1 from public.problems p
+         where p.user_id = auth.uid()
+           and p.gym_problem_id = challenges.gym_problem_id
+           and p.sent
+      )
+    )
+  );
+
+-- ── 5. ledger: challenge_id, the two new reasons, and their guards ───────────
 alter table beta_points
   add column if not exists challenge_id uuid
     references challenges(id) on delete set null;
@@ -96,7 +130,7 @@ create unique index if not exists beta_points_variation_cleared_uniq
 -- already run, create...if not exists matches by name alone and becomes a no-op,
 -- leaving the weaker definition in place. The drop ensures the new definition takes.
 
--- ── 5. the award trigger ─────────────────────────────────────────────────────
+-- ── 6. the award trigger ─────────────────────────────────────────────────────
 -- beta_points has no insert policy (046), so this is a SECURITY DEFINER trigger
 -- rather than a client call. It fires on update as well as insert because an
 -- attempt can be ticked first and get its video later.

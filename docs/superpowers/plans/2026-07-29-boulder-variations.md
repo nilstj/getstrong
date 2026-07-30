@@ -112,6 +112,8 @@ git commit -m "Add boulderStripLabel util for the variation marker"
 
 The whole database change in one file: the anchor column, the sent-it guard, the missing UPDATE policy, the two new ledger reasons with their uniqueness guards, and the award trigger. It is one file because it is applied atomically by hand.
 
+`challenges` turns out to have the same missing-UPDATE-policy gap as `challenge_attempts`, and it matters here: with the delete button gone for variations (their attempts cascade), editing is the only remedy for a mis-set one, so this migration adds that policy too, with a `with check` that repeats the sent-guard so an update can't repoint a variation onto a boulder the user hasn't sent.
+
 **Files:**
 - Create: `supabase/migrations/076_boulder_variations.sql`
 

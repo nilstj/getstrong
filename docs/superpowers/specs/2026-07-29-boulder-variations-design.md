@@ -44,6 +44,11 @@ already looking.
 - The missing UPDATE policy on `challenge_attempts` — a latent bug that silently
   breaks editing an attempt today, and that this feature's award trigger depends
   on. See the data model section.
+- The missing UPDATE policy on `challenges` itself — the same latent bug on the
+  parent table. It matters here specifically because deleting a variation is
+  refused (its attempts cascade and would take other climbers' clears with it),
+  which makes editing the only way to fix a mis-set variation. See the data
+  model section.
 - Two new `beta_points` reasons: `variation_taught`, `variation_cleared`, both
   guarded by unique partial indexes.
 - A compact **Variations** block on the boulder page, with a set-a-variation
@@ -124,6 +129,16 @@ create policy "users update own challenge attempts"
 Migrations are applied by hand, so the live database may already have a policy
 that no migration file records. **Verify in the Supabase dashboard before
 applying**, and drop this statement if it's already there.
+
+**`challenges` has the same gap, and this feature is why it now matters.** The
+delete button for a variation was removed (its attempts cascade and would
+destroy other climbers' clears), which leaves editing as the only remedy for a
+mis-set variation — but `challenges` has no UPDATE policy either, so
+`useUpdateChallenge` also matches zero rows. Migration 076 adds one, with a
+`with check` that repeats section 2's sent-the-boulder guard verbatim: without
+that repeat, a user could update a challenge's `gym_problem_id` to any boulder,
+including one they never sent, sidestepping the guard the insert policy
+enforces.
 
 **`beta_points.challenge_id`** alongside the existing `beta_id`, recording which
 variation each award came from (both awards are still capped per boulder, not
