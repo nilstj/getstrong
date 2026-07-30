@@ -20,8 +20,8 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
 }) {
   const { data: variations = [] } = useVariations(gymProblemId)
   const { data: canSet = false } = useCanSetVariation(gymProblemId)
-  const [setSheetOpen, setSetSheetOpen] = useState(false)
-  const [open, setOpen] = useState<Variation | null>(null)
+  const [newVariationOpen, setNewVariationOpen] = useState(false)
+  const [selected, setSelected] = useState<Variation | null>(null)
 
   if (readOnly && variations.length === 0) return null
 
@@ -30,7 +30,7 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-500">🧩 Variations</p>
         {!readOnly && canSet && (
-          <button type="button" onClick={() => setSetSheetOpen(true)}
+          <button type="button" onClick={() => setNewVariationOpen(true)}
             className="inline-flex items-center gap-1 text-xs font-semibold text-sage-700">
             <Plus size={13} strokeWidth={2.5} /> Set a variation
           </button>
@@ -46,7 +46,7 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
       ) : (
         <div className="mt-2 space-y-1.5">
           {variations.map(v => (
-            <button key={v.id} type="button" onClick={() => setOpen(v)}
+            <button key={v.id} type="button" onClick={() => setSelected(v)}
               className="w-full text-left rounded-xl bg-gray-50 px-2.5 py-2 hover:bg-gray-100">
               <p className="text-sm font-medium text-gray-800 leading-snug">{v.title}</p>
               <div className="mt-1 flex items-center gap-2">
@@ -75,8 +75,8 @@ export function BoulderVariations({ gymProblemId, readOnly = false }: {
         </div>
       )}
 
-      <SetVariationSheet open={setSheetOpen} onClose={() => setSetSheetOpen(false)} gymProblemId={gymProblemId} />
-      <VariationSheet variation={open} onClose={() => setOpen(null)} gymProblemId={gymProblemId} readOnly={readOnly} />
+      <SetVariationSheet open={newVariationOpen} onClose={() => setNewVariationOpen(false)} gymProblemId={gymProblemId} />
+      <VariationSheet variation={selected} onClose={() => setSelected(null)} gymProblemId={gymProblemId} readOnly={readOnly} />
     </div>
   )
 }
