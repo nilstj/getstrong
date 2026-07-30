@@ -28,6 +28,11 @@ export function BoulderVariations({ gymProblemId, readOnly = false, boulderGrade
   const [newVariationOpen, setNewVariationOpen] = useState(false)
   const [selected, setSelected] = useState<Variation | null>(null)
 
+  // `selected` is a snapshot from the clicked row. Re-read it from the live query
+  // so a regrade (or a new clear) shows in the open sheet instead of only in the
+  // list behind it — a save that changes nothing on screen reads as a failure.
+  const selectedLive = selected ? variations.find(v => v.id === selected.id) ?? selected : null
+
   // Migration 076 may not be applied yet, in which case the query above throws
   // (gym_problem_id doesn't exist). Disappearing beats showing a "Set a
   // variation" button that always fails — the boulder page is a hero screen and
@@ -93,7 +98,7 @@ export function BoulderVariations({ gymProblemId, readOnly = false, boulderGrade
       )}
 
       <SetVariationSheet open={newVariationOpen} onClose={() => setNewVariationOpen(false)} gymProblemId={gymProblemId} boulderGrade={boulderGrade} />
-      <VariationSheet key={selected?.id ?? 'none'} variation={selected} onClose={() => setSelected(null)} gymProblemId={gymProblemId} readOnly={readOnly} boulderGrade={boulderGrade} />
+      <VariationSheet key={selected?.id ?? 'none'} variation={selectedLive} onClose={() => setSelected(null)} gymProblemId={gymProblemId} readOnly={readOnly} boulderGrade={boulderGrade} />
     </div>
   )
 }
