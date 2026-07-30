@@ -11,10 +11,13 @@ import type { BoulderNavState } from '../utils/boulderNav'
 
 function BoulderRow({ b, boulderIds, archived = false }: { b: BoulderSummary; boulderIds: string[]; archived?: boolean }) {
   const left = daysUntil(b.expires_at, new Date())
+  const navState: BoulderNavState = b.hasVariation
+    ? { boulderIds, openTab: 'variations' }
+    : { boulderIds }
   return (
     <Link
       to={`/gym-problems/${b.id}`}
-      state={{ boulderIds } satisfies BoulderNavState}
+      state={navState}
       className={`flex items-center gap-3 px-2.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 ${archived ? 'opacity-75' : ''}`}
     >
       {b.image_url ? (
@@ -31,6 +34,9 @@ function BoulderRow({ b, boulderIds, archived = false }: { b: BoulderSummary; bo
       <ProblemColorIcons color={b.color} holdColor={b.hold_color} size={14} className="flex-shrink-0" />
       {b.helpWanted && (
         <span title="Help wanted" aria-label="Help wanted" className="text-sm leading-none flex-shrink-0">🆘</span>
+      )}
+      {b.hasVariation && (
+        <span title="Has a variation" aria-label="Has a variation" className="text-sm leading-none flex-shrink-0">🧩</span>
       )}
       <span className="inline-flex items-center gap-1 text-xs text-gray-500">
         <Users size={12} strokeWidth={2} /> {b.crewCount}

@@ -35,6 +35,12 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
         <AddBoulderTile onClick={() => setAddOpen(true)} />
         {stories.map(b => {
           const label = boulderStripLabel(b.community_grade, b.hasVariation)
+          // The caption already says "· Variation" — honour what drew the tap
+          // and land on that tab. openTab applies on mount, which is always the
+          // case arriving from the dashboard.
+          const navState: BoulderNavState = b.hasVariation
+            ? { boulderIds: storyIds, openTab: 'variations' }
+            : { boulderIds: storyIds }
           return (
             <StoryRing
               key={b.id}
@@ -46,7 +52,7 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
               helpWanted={b.helpWanted}
               hasVideo={!!b.beta_video_url}
               seen={seen?.has(b.id) ?? false}
-              onClick={() => navigate(`/gym-problems/${b.id}`, { state: { boulderIds: storyIds } satisfies BoulderNavState })}
+              onClick={() => navigate(`/gym-problems/${b.id}`, { state: navState })}
             />
           )
         })}
