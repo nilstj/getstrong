@@ -131,8 +131,14 @@ export function useDeleteGymProblem() {
       // Migration 078 takes the setter's own variations with the boulder, so
       // /challenges (and the invitation a variation may have been sent through)
       // must drop them too, for the mirror-image reason useCreateVariation
-      // invalidates ['challenges'] when a variation is set.
+      // invalidates ['challenges'] when a variation is set. ['challenge_invitations']
+      // is the key useReceivedChallenges reads — challenge_invitations.challenge_id
+      // cascades on delete (migration 005), so the invitation row is gone
+      // server-side the instant 078 deletes the variation, and without this the
+      // recipient's client keeps listing it for up to 60 seconds, now carrying
+      // gym and colour identity that makes it look more real than before.
       queryClient.invalidateQueries({ queryKey: ['challenges'] })
+      queryClient.invalidateQueries({ queryKey: ['challenge_invitations'] })
       queryClient.invalidateQueries({ queryKey: ['variations', gymProblemId] })
     },
   })

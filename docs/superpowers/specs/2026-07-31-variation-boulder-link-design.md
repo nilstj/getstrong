@@ -98,6 +98,20 @@ CLAUDE.md's no-embed rule is specifically about `problems`↔`profiles`; this is
 plain to-one embed on a real foreign key. `Challenge` gains the matching optional
 field, which is `null` for a portable challenge.
 
+**The embed is attempted, not assumed.** Migration 076 (`challenges.gym_problem_id`)
+is applied by hand and is not guaranteed to be live when this client ships. Until
+it is, `gym_problems(...)` isn't a real relationship, so a select carrying that
+embed fails PostgREST-wide with `PGRST200` ("Could not find a relationship…") —
+and a throw here would take down every *pre-existing* portable challenge on
+`/challenges`, a regression that predates this feature entirely. So both queries
+in `useChallenges`, and the nested `challenges(...)` select in
+`useReceivedChallenges`, try the embed first and, on a `PGRST200` specifically,
+retry the same query with the embed (and, in `useReceivedChallenges`'s case, the
+`gym_problem_id` column that 076 itself adds) dropped. Every render site already
+guards on `gym_problems` being present, so a fallback row renders exactly as a
+portable challenge does. This is the same degrade-rather-than-break call
+`useVariations` and `useDiscoverBoulders` already make for this identical column.
+
 **On the card** ([ChallengesPage.tsx](../../../src/pages/ChallengesPage.tsx),
 `renderChallengeCard`): the bare `🧩 Variation` span becomes a chip carrying the
 gym name then `ProblemColorIcons`, in the same wrap row as the tags. It stays a
@@ -227,3 +241,10 @@ applied together (see the 2026-07-30 spec for why), and 074 never re-run after
 078 is independent of the client: it only tightens a function the client already
 calls with the same signature. Applying it early is harmless; applying it late
 means a delete can still orphan a variation until it lands.
+
+The client itself does not gate on 076/077 landing first: the `PGRST200` embed
+fallback in `useChallenges` and `useReceivedChallenges` means this branch can
+ship and deploy ahead of that pair without breaking any pre-existing portable
+challenge. Until 076 is applied, every variation-specific surface (the chip, the
+detail-sheet link) simply has nothing to show — the same "disappear rather than
+show a broken control" call `useVariations` already makes on the boulder page.

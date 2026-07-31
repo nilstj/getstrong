@@ -191,7 +191,7 @@ In `src/types/index.ts`, in the `Challenge` interface, after `gym_problem_id`:
   gym_problems?: { gym: string; color: string | null; hold_color: string | null } | null
 ```
 
-- [ ] **Step 2: Embed the boulder in both challenge queries**
+- [ ] **Step 2: Embed the boulder in both challenge queries, tolerant of migration 076 being unapplied**
 
 In `src/hooks/useChallenges.ts`, `useChallenges` runs two queries in a `Promise.all`. Change both selects from `'*'` to:
 
@@ -203,6 +203,22 @@ so the public query reads `.select('*, gym_problems(gym, color, hold_color)').eq
 
 `challenges.gym_problem_id` is a real foreign key to `gym_problems.id`, so PostgREST resolves this as a to-one embed and returns an object or `null`, not an array. If the manual pass shows an array arriving instead, the type and the two render sites are what need adjusting — nothing else.
 
+**Migration 076 is applied by hand and is not guaranteed to be live yet.** Until
+it is, `gym_problems(...)` isn't a real relationship, so a select carrying that
+embed fails PostgREST-wide with `PGRST200` ("Could not find a relationship…") —
+and letting that throw would take down every *pre-existing* portable challenge
+on `/challenges`, a regression this feature must not cause. So both queries
+attempt the embed first and, on a `PGRST200` specifically, retry the identical
+query with the embed dropped; every render site already guards on `gym_problems`
+being present, so a fallback row renders exactly as a portable challenge does.
+The same tolerance is needed one level deeper in `useReceivedChallenges`'s
+nested `challenges(...)` select — there the retry select must also drop
+`gym_problem_id` itself (the column 076 adds), not just the `gym_problems`
+embed, or the retry still fails, just with a different Postgres error code
+(`42703`, "column does not exist") that nothing catches. This is the same
+degrade-rather-than-break call `useVariations` and `useDiscoverBoulders` already
+make for this identical column.
+
 - [ ] **Step 3: Show gym and colours on the card**
 
 In `src/pages/ChallengesPage.tsx`, add the imports you will need for this step and the next:
@@ -210,13 +226,18 @@ In `src/pages/ChallengesPage.tsx`, add the imports you will need for this step a
 ```ts
 import { Link } from 'react-router-dom'
 import { ProblemColorIcons } from '../components/Chip'
+import type { BoulderNavState } from '../utils/boulderNav'
 ```
 
 Then, in `renderChallengeCard`, replace the existing variation marker — the block that renders `🧩 Variation` inside the flex-wrap row that also holds the badge and the tags — with:
 
 ```tsx
           {challenge.gym_problems && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px">
+            <span
+              title={`Variation on ${challenge.gym_problems.gym}`}
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px"
+            >
+              <span className="sr-only">Variation on </span>
               🧩 {challenge.gym_problems.gym}
               <ProblemColorIcons
                 color={challenge.gym_problems.color}
@@ -231,6 +252,16 @@ Gym name first, colours after: the question this answers while scrolling is "can
 
 It stays a `<span>`. The card is a `<button>`, so a nested `<button>` or `<a>` here would be invalid markup — and it costs nothing, because tapping the card already opens the detail sheet, which is where the link lives. Do not add an `onClick` to this chip.
 
+`aria-label` on a plain `<span>` is ignored by browsers' accessibility trees — a
+`span` has no role that permits author naming — so it would deliver nothing on a
+screen reader, and `title` alone only surfaces as a hover tooltip, absent on a
+phone. The `sr-only` text node is what actually gets the word "variation" read
+aloud, ahead of the gym name, while the visible content stays the compact
+`🧩 {gym}`. The `title` is kept too, for a mouse-and-hover reader, and is worded
+for *this* chip — the card the climber is looking at *is* the variation, not a
+boulder that merely *has* one, so it must not borrow `CrewsSection`'s "Has a
+variation" wording.
+
 - [ ] **Step 4: Link to the boulder from the detail sheet**
 
 In `ChallengeDetail`, insert this directly above the existing `<TagPills tags={challenge.tags} />` line, so the boulder identity reads before the tags:
@@ -239,6 +270,11 @@ In `ChallengeDetail`, insert this directly above the existing `<TagPills tags={c
       {challenge.gym_problems && challenge.gym_problem_id && (
         <Link
           to={`/gym-problems/${challenge.gym_problem_id}`}
+          // Land straight on the Variations tab — this is the variation the
+          // climber arrived from, and the boulder page's default (Sendtrain)
+          // wouldn't show it. Matches AppBar, LatestProblemsStrip and
+          // CrewsSection's own navigation to a boulder from its variation.
+          state={{ openTab: 'variations' } satisfies BoulderNavState}
           className="inline-flex items-center gap-1.5 rounded-xl border border-sage-200 bg-sage-50 px-2.5 py-1.5 text-sm font-medium text-sage-700 hover:bg-sage-100"
         >
           🧩 On {challenge.gym_problems.gym}
@@ -252,7 +288,7 @@ In `ChallengeDetail`, insert this directly above the existing `<TagPills tags={c
       )}
 ```
 
-Both conditions are needed: `gym_problems` supplies the label, `gym_problem_id` supplies the route.
+Both conditions are needed: `gym_problems` supplies the label, `gym_problem_id` supplies the route. The `state` prop needs `BoulderNavState` imported from `../utils/boulderNav`, and lands the climber directly on the Variations tab rather than the boulder page's default tab, matching how `AppBar`, `LatestProblemsStrip` and `CrewsSection` already navigate to a boulder from its variation.
 
 - [ ] **Step 5: Verify build and lint**
 

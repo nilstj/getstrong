@@ -298,13 +298,22 @@ export function useReceivedChallenges() {
         .select('*, challenges(id, title, description, video_url, creator_id, gym_problem_id, gym_problems(gym, color, hold_color)), profiles!sender_id(username)')
         .eq('recipient_id', session.user.id)
         .order('created_at', { ascending: false })
-      // Same migration-076-not-applied-yet tolerance as useChallenges above: the
-      // nested gym_problems embed is the part that can 404 as a relationship, so
-      // only it is dropped on retry — the rest of the nested select is unaffected.
+      // Same migration-076-not-applied-yet tolerance as useChallenges above, but
+      // the retry select must drop BOTH gym_problem_id and the gym_problems embed,
+      // not just the embed. gym_problem_id is itself the column 076 adds, so
+      // before 076 is applied `PGRST200` fires at relationship-resolution time
+      // (correctly triggering this retry), but a retry select that still names
+      // gym_problem_id then fails at Postgres with 42703 ("column does not
+      // exist") instead — a different code, so withEmbedFallback can't catch it
+      // and `if (error) throw error` below empties the whole "Sent to me"
+      // section for every user with a pending invitation. Every render site
+      // guards on `gym_problems` *and* `gym_problem_id` being present, so a
+      // fallback row lacking both still renders as a portable challenge — which
+      // is correct, since pre-076 no variation can exist at all.
       const { data, error } = await withEmbedFallback(embedded, () =>
         supabase
           .from('challenge_invitations')
-          .select('*, challenges(id, title, description, video_url, creator_id, gym_problem_id), profiles!sender_id(username)')
+          .select('*, challenges(id, title, description, video_url, creator_id), profiles!sender_id(username)')
           .eq('recipient_id', session.user.id)
           .order('created_at', { ascending: false }))
       if (error) throw error

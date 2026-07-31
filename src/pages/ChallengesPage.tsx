@@ -91,10 +91,10 @@ export function ChallengesPage() {
           )}
           {challenge.gym_problems && (
             <span
-              title="Has a variation"
-              aria-label="Has a variation"
+              title={`Variation on ${challenge.gym_problems.gym}`}
               className="inline-flex items-center gap-1 text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px"
             >
+              <span className="sr-only">Variation on </span>
               🧩 {challenge.gym_problems.gym}
               <ProblemColorIcons
                 color={challenge.gym_problems.color}
