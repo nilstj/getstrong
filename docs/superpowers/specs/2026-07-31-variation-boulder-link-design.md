@@ -60,8 +60,8 @@ variations, anchored and readable, read-only.
 ## Scope
 
 **In scope:**
-- The boulder chip on the `/challenges` card and in the challenge detail sheet,
-  tapping through to `/gym-problems/:id`.
+- The boulder chip on the `/challenges` card (display only) and in the challenge
+  detail sheet (linking through to `/gym-problems/:id`).
 - One FK embed in `useChallenges` to carry the boulder's gym and colours.
 - Migration 078: `delete_gym_problem` gains a variation guard and explicitly
   deletes the setter's own variations rather than orphaning them.
@@ -93,14 +93,21 @@ field, which is `null` for a portable challenge.
 
 **On the card** ([ChallengesPage.tsx](../../../src/pages/ChallengesPage.tsx),
 `renderChallengeCard`): the bare `🧩 Variation` span becomes a chip carrying the
-gym name then `ProblemColorIcons`, in the same wrap row as the tags. The card
-itself is a `<button>`, so the chip cannot be an anchor — it becomes a `<button>`
-that calls `e.stopPropagation()` and navigates, exactly as the card's existing
-edit and delete buttons already do.
+gym name then `ProblemColorIcons`, in the same wrap row as the tags. It stays a
+plain `<span>` — **display only, not tappable.** The card is itself a `<button>`,
+and a `<button>` nested inside a `<button>` is invalid markup for the same reason
+an anchor is; the card's existing edit and delete buttons dodge this only by
+living outside the card button as absolutely-positioned siblings, which is the
+wrong place for identity that belongs beside the tags.
 
-**In the detail sheet** (`ChallengeDetail`): the same identity, but here it can be
-a real `Link`, since the sheet is not nested inside a button. This is where a
-climber reads the variation properly, so it belongs here more than on the card.
+That is enough for what the card is for: answering "can I do this where I am?" at
+a glance, while scrolling. It costs nothing, because tapping the card already
+opens the detail sheet.
+
+**In the detail sheet** (`ChallengeDetail`): the same identity as a real `Link` to
+`/gym-problems/:id`, since the sheet is not nested inside a button. This is where
+a climber reads the variation properly, and it is where the link requirement is
+actually met — one tap from the card.
 
 A challenge with no `gym_problem_id` renders exactly as it does today.
 
@@ -153,9 +160,13 @@ verification is `npm run build` plus the manual pass below.
 
 - **Lint:** measure the baseline first; add zero.
 - **Manual pass:**
-  - A variation's card shows its gym then its colours, and tapping the chip opens
-    the boulder while tapping the rest of the card still opens the challenge.
-  - The detail sheet shows the same identity and links through.
+  - A variation's card shows its gym then its colours, and tapping anywhere on the
+    card still opens the challenge as before.
+  - The detail sheet shows the same identity and its link opens the boulder.
+  - Confirm the embed's actual shape: PostgREST returns an object for a to-one
+    foreign key, but if `gym_problems` arrives as a single-element array the chip
+    renders nothing and the type is wrong. This cannot be checked without a live
+    database, so check it here.
   - A portable challenge's card and sheet are unchanged.
   - As the setter, on a boulder with one of your own variations and no outside
     clears, delete it: the boulder and the variation both go, and no context-free
