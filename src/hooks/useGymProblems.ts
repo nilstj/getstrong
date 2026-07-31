@@ -125,9 +125,15 @@ export function useDeleteGymProblem() {
       const { error } = await supabase.rpc('delete_gym_problem', { p_gym_problem_id: gymProblemId })
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_data, gymProblemId) => {
       queryClient.invalidateQueries({ queryKey: ['gym_problems'] })
       queryClient.invalidateQueries({ queryKey: ['discover_boulders'] })
+      // Migration 078 takes the setter's own variations with the boulder, so
+      // /challenges (and the invitation a variation may have been sent through)
+      // must drop them too, for the mirror-image reason useCreateVariation
+      // invalidates ['challenges'] when a variation is set.
+      queryClient.invalidateQueries({ queryKey: ['challenges'] })
+      queryClient.invalidateQueries({ queryKey: ['variations', gymProblemId] })
     },
   })
 }

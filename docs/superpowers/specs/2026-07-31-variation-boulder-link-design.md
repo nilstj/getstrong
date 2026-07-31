@@ -47,22 +47,29 @@ variations, anchored and readable, read-only.
 - **A missing gym is meaningful, not missing information.** Only a variation has
   a gym; a portable challenge has none, and that absence says "anywhere". So a
   portable challenge's card is unchanged — no empty chip, no placeholder.
-- **Block the delete only when someone else has cleared a variation, and take
-  the setter's own variations with the boulder otherwise.** The naive rule —
-  block whenever any variation exists — deadlocks: there is no delete path for a
-  variation either, so a boulder you published and varied by mistake would be
-  permanently undeletable. The rejected alternatives were cascading
-  unconditionally (destroys other climbers' clips, the same reason the
-  `/challenges` delete button is hidden for variations) and snapshotting the
-  boulder's identity onto the challenge so an orphan stays legible (more schema,
-  and it preserves a challenge nobody can climb).
+- **Block the delete only when another climber has touched a variation, and
+  take the setter's own untouched variations with the boulder otherwise.** The
+  guard refuses when a variation here was set by someone else, or when anyone
+  else has cleared one, commented on one, added beta to one, or marked one of
+  its beta entries helpful — all of which cascade off `challenges` and would
+  otherwise be destroyed silently. The naive rule — block whenever any
+  variation exists — deadlocks: there is no delete path for a variation either,
+  so a boulder you published and varied by mistake would be permanently
+  undeletable. The rejected alternatives were cascading unconditionally
+  (destroys other climbers' clips, the same reason the `/challenges` delete
+  button is hidden for variations) and snapshotting the boulder's identity onto
+  the challenge so an orphan stays legible (more schema, and it preserves a
+  challenge nobody can climb).
 
 ## Scope
 
 **In scope:**
 - The boulder chip on the `/challenges` card (display only) and in the challenge
   detail sheet (linking through to `/gym-problems/:id`).
-- One FK embed in `useChallenges` to carry the boulder's gym and colours.
+- One FK embed in `useChallenges` to carry the boulder's gym and colours. The
+  same embed, nested one level deeper, on `useReceivedChallenges`'s
+  `challenges(...)` select — a variation sent as an invitation needs the same
+  identity, both on the "Sent to me" row and in the detail sheet it opens.
 - Migration 078: `delete_gym_problem` gains a variation guard and explicitly
   deletes the setter's own variations rather than orphaning them.
 - The delete confirmation copy on the boulder page, which currently promises only
@@ -123,21 +130,44 @@ The two real changes, after the existing authentication, ownership and
 "others have logged this" checks:
 
 ```sql
-  -- A variation someone else has cleared carries their proof clips. Never
-  -- destroy those — strip archives the boulder and keeps everything.
+  -- Never destroy another climber's work. Refuse if any variation here was set by
+  -- someone else, or if anyone else has cleared one, commented on one, added
+  -- beta to one, or marked one of its beta entries helpful -- all of which
+  -- cascade off challenges. Strip archives the boulder instead and keeps every
+  -- one of those.
   if exists (
-    select 1 from public.challenge_attempts a
-      join public.challenges c on c.id = a.challenge_id
+    select 1 from public.challenges c
      where c.gym_problem_id = p_gym_problem_id
-       and a.user_id <> v_user
+       and (
+         c.creator_id <> v_user
+         or exists (
+           select 1 from public.challenge_attempts a
+            where a.challenge_id = c.id and a.user_id <> v_user
+         )
+         or exists (
+           select 1 from public.challenge_comments m
+            where m.challenge_id = c.id and m.user_id <> v_user
+         )
+         or exists (
+           select 1 from public.challenge_betas b
+            where b.challenge_id = c.id and b.user_id <> v_user
+         )
+         or exists (
+           select 1 from public.challenge_betas b
+             join public.beta_helpful h on h.beta_id = b.id
+            where b.challenge_id = c.id and h.user_id <> v_user
+         )
+       )
   ) then
-    raise exception 'Others have cleared a variation on this boulder — mark it stripped instead';
+    raise exception 'Other climbers are on a variation of this boulder — mark it stripped instead';
   end if;
 
-  -- Otherwise every variation here is the setter's own with no outside clears, so
-  -- take them with the boulder. Without this, gym_problem_id's ON DELETE SET NULL
-  -- (076) would leave them as context-free portable challenges.
-  -- challenge_attempts cascades off challenges (003).
+  -- Otherwise every variation here is guaranteed to be the setter's own and
+  -- untouched by anyone else -- the guard above just proved it -- so take them
+  -- with the boulder rather than letting ON DELETE SET NULL orphan them.
+  -- challenge_attempts, challenge_comments and challenge_betas all cascade off
+  -- challenges (003, 009, 018), and beta_helpful cascades off challenge_betas
+  -- in turn (018), so one delete here is enough.
   delete from public.challenges where gym_problem_id = p_gym_problem_id;
 ```
 
@@ -146,10 +176,19 @@ The `delete from gym_problems` that ends the function is unchanged and still las
 ### The confirmation copy
 
 The boulder page's delete confirm ([CrewPage.tsx:527](../../../src/pages/CrewPage.tsx))
-says "Only works if no one else has logged it." It now also removes the setter's
-own variations, and can also be refused because of a variation, so the copy has to
-say both. The error message from the new guard reaches the user through the
-existing `onError` toast and reads as a sentence, so no client-side error handling
+said "Only works if no one else has logged it." It now also removes the setter's
+own variations, and can also be refused because another climber set, cleared,
+commented on, added beta to, or marked beta helpful on one, so the copy has to
+say both:
+
+```
+Delete this boulder for everyone? Removes its beta, reviews, comments and any
+variations you set on it. Your own logged sends stay in your sessions. Refused
+if anyone else has logged it, set a variation on it, or touched one of yours.
+```
+
+The error message from the guard reaches the user through the existing
+`onError` toast and reads as a sentence, so no client-side error handling
 changes.
 
 ## Testing
@@ -164,15 +203,17 @@ verification is `npm run build` plus the manual pass below.
     card still opens the challenge as before.
   - The detail sheet shows the same identity and its link opens the boulder.
   - Confirm the embed's actual shape: PostgREST returns an object for a to-one
-    foreign key, but if `gym_problems` arrives as a single-element array the chip
-    renders nothing and the type is wrong. This cannot be checked without a live
-    database, so check it here.
+    foreign key, but if `gym_problems` arrives as a single-element array instead,
+    an array is truthy, so the chip renders with an empty gym name — visibly
+    broken, not absent, which is the easier failure to spot. Check one variation
+    card actually shows its gym name (not just the emoji) before trusting this.
   - A portable challenge's card and sheet are unchanged.
   - As the setter, on a boulder with one of your own variations and no outside
-    clears, delete it: the boulder and the variation both go, and no context-free
-    challenge is left in `/challenges`.
+    clears, comments, beta, or beta-helpful marks, delete it: the boulder and the
+    variation both go, and no context-free challenge is left in `/challenges`.
   - As the setter, on a boulder whose variation another climber has cleared,
-    delete it: refused, with the "mark it stripped instead" message in a toast.
+    commented on, added beta to, or marked beta helpful on, delete it: refused,
+    with the "mark it stripped instead" message in a toast.
   - Strip that same boulder instead: it archives, and the variation stays listed
     and read-only.
 

@@ -24,6 +24,7 @@ import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useAuth } from '../providers/AuthProvider'
 import type { Challenge } from '../types'
+import type { BoulderNavState } from '../utils/boulderNav'
 
 function TagPills({ tags }: { tags: string[] }) {
   if (!tags || tags.length === 0) return null
@@ -89,7 +90,11 @@ export function ChallengesPage() {
               : <span className="flex items-center gap-0.5 text-[10px] text-gray-400 font-medium"><Lock size={10} strokeWidth={2} />Friends</span>
           )}
           {challenge.gym_problems && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px">
+            <span
+              title="Has a variation"
+              aria-label="Has a variation"
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px"
+            >
               🧩 {challenge.gym_problems.gym}
               <ProblemColorIcons
                 color={challenge.gym_problems.color}
@@ -190,6 +195,20 @@ export function ChallengesPage() {
               >
                 <p className="font-semibold text-sm text-gray-900">{inv.challenges.title}</p>
                 <p className="text-xs text-gray-400">from {inv.profiles?.username ?? 'someone'}</p>
+                {/* A variation sent this way carried no boulder identity at all — the
+                    exact gap this branch exists to close, so give this row the same
+                    identity the card shows. Plain text/span, not the card's chip:
+                    this row is itself a <button>, so no nested button or anchor. */}
+                {inv.challenges.gym_problems && (
+                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                    🧩 {inv.challenges.gym_problems.gym}
+                    <ProblemColorIcons
+                      color={inv.challenges.gym_problems.color}
+                      holdColor={inv.challenges.gym_problems.hold_color}
+                      size={10}
+                    />
+                  </p>
+                )}
               </button>
             ))}
           </div>
@@ -444,6 +463,11 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
       {challenge.gym_problems && challenge.gym_problem_id && (
         <Link
           to={`/gym-problems/${challenge.gym_problem_id}`}
+          // Land straight on the Variations tab — this is the variation the
+          // climber arrived from, and the boulder page's default (Sendtrain)
+          // wouldn't show it. Matches AppBar, LatestProblemsStrip and
+          // CrewsSection's own navigation to a boulder from its variation.
+          state={{ openTab: 'variations' } satisfies BoulderNavState}
           className="inline-flex items-center gap-1.5 rounded-xl border border-sage-200 bg-sage-50 px-2.5 py-1.5 text-sm font-medium text-sage-700 hover:bg-sage-100"
         >
           🧩 On {challenge.gym_problems.gym}

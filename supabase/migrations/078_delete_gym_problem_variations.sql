@@ -37,9 +37,10 @@ begin
   end if;
 
   -- Never destroy another climber's work. Refuse if any variation here was set by
-  -- someone else, or if anyone else has cleared one, commented on one, or added
-  -- beta to one -- all of which cascade off challenges. Strip archives the
-  -- boulder instead and keeps every one of those.
+  -- someone else, or if anyone else has cleared one, commented on one, added
+  -- beta to one, or marked one of its beta entries helpful -- all of which
+  -- cascade off challenges. Strip archives the boulder instead and keeps every
+  -- one of those.
   if exists (
     select 1 from public.challenges c
      where c.gym_problem_id = p_gym_problem_id
@@ -57,6 +58,11 @@ begin
            select 1 from public.challenge_betas b
             where b.challenge_id = c.id and b.user_id <> v_user
          )
+         or exists (
+           select 1 from public.challenge_betas b
+             join public.beta_helpful h on h.beta_id = b.id
+            where b.challenge_id = c.id and h.user_id <> v_user
+         )
        )
   ) then
     raise exception 'Other climbers are on a variation of this boulder — mark it stripped instead';
@@ -66,7 +72,8 @@ begin
   -- untouched by anyone else -- the guard above just proved it -- so take them
   -- with the boulder rather than letting ON DELETE SET NULL orphan them.
   -- challenge_attempts, challenge_comments and challenge_betas all cascade off
-  -- challenges (003, 009, 018).
+  -- challenges (003, 009, 018), and beta_helpful cascades off challenge_betas
+  -- in turn (018), so one delete here is enough.
   delete from public.challenges where gym_problem_id = p_gym_problem_id;
 
   delete from public.gym_problems where id = p_gym_problem_id;

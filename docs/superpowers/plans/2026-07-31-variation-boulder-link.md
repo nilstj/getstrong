@@ -4,7 +4,7 @@
 
 **Goal:** Make a variation seen in `/challenges` say which gym and which boulder it belongs to and link through to it, and stop a boulder delete from silently leaving its variations orphaned.
 
-**Architecture:** One FK embed carries the boulder's gym and colours onto the challenge rows the Challenges tab already fetches; the card displays them and the detail sheet links through. One migration reproduces `delete_gym_problem` with a guard that refuses when another climber has cleared a variation, and an explicit delete of the setter's own variations so `on delete set null` can never orphan them.
+**Architecture:** One FK embed carries the boulder's gym and colours onto the challenge rows the Challenges tab already fetches (and, nested one level deeper, onto the invitation rows `useReceivedChallenges` fetches); the card and the "Sent to me" row display them and the detail sheet links through. One migration reproduces `delete_gym_problem` with a guard that refuses when a variation here was set by someone else, or when another climber has cleared, commented on, added beta to, or marked beta helpful on one, and an explicit delete of the setter's own untouched variations so `on delete set null` can never orphan them.
 
 **Tech Stack:** React 18 + TypeScript, Vite, React Query, Supabase (Postgres + RLS), Tailwind (`sage` palette), `react-hot-toast`, `react-router-dom`.
 
@@ -81,20 +81,44 @@ begin
     raise exception 'Others have logged this boulder — mark it stripped instead';
   end if;
 
-  -- A variation someone else has cleared carries their proof clips. Never destroy
-  -- those -- strip archives the boulder and keeps everything.
+  -- Never destroy another climber's work. Refuse if any variation here was set by
+  -- someone else, or if anyone else has cleared one, commented on one, added
+  -- beta to one, or marked one of its beta entries helpful -- all of which
+  -- cascade off challenges. Strip archives the boulder instead and keeps every
+  -- one of those.
   if exists (
-    select 1 from public.challenge_attempts a
-      join public.challenges c on c.id = a.challenge_id
+    select 1 from public.challenges c
      where c.gym_problem_id = p_gym_problem_id
-       and a.user_id <> v_user
+       and (
+         c.creator_id <> v_user
+         or exists (
+           select 1 from public.challenge_attempts a
+            where a.challenge_id = c.id and a.user_id <> v_user
+         )
+         or exists (
+           select 1 from public.challenge_comments m
+            where m.challenge_id = c.id and m.user_id <> v_user
+         )
+         or exists (
+           select 1 from public.challenge_betas b
+            where b.challenge_id = c.id and b.user_id <> v_user
+         )
+         or exists (
+           select 1 from public.challenge_betas b
+             join public.beta_helpful h on h.beta_id = b.id
+            where b.challenge_id = c.id and h.user_id <> v_user
+         )
+       )
   ) then
-    raise exception 'Others have cleared a variation on this boulder — mark it stripped instead';
+    raise exception 'Other climbers are on a variation of this boulder — mark it stripped instead';
   end if;
 
-  -- Otherwise every variation here is the setter's own with no outside clears, so
-  -- take them with the boulder rather than letting ON DELETE SET NULL orphan them.
-  -- challenge_attempts cascades off challenges (003).
+  -- Otherwise every variation here is guaranteed to be the setter's own and
+  -- untouched by anyone else -- the guard above just proved it -- so take them
+  -- with the boulder rather than letting ON DELETE SET NULL orphan them.
+  -- challenge_attempts, challenge_comments and challenge_betas all cascade off
+  -- challenges (003, 009, 018), and beta_helpful cascades off challenge_betas
+  -- in turn (018), so one delete here is enough.
   delete from public.challenges where gym_problem_id = p_gym_problem_id;
 
   delete from public.gym_problems where id = p_gym_problem_id;
@@ -110,10 +134,10 @@ In `src/pages/CrewPage.tsx`, the delete confirm currently reads:
 'Delete this boulder for everyone? Removes its beta, reviews and comments. Your own logged sends stay in your sessions. Only works if no one else has logged it.'
 ```
 
-It is now also true that your own variations go with the boulder, and that the delete can be refused because of a variation. Replace it with exactly:
+It is now also true that your own variations go with the boulder, and that the delete can be refused because another climber set, cleared, commented on, added beta to, or marked beta helpful on one. Replace it with exactly:
 
 ```
-'Delete this boulder for everyone? Removes its beta, reviews, comments and any variations you set on it. Your own logged sends stay in your sessions. Only works if no one else has logged it or cleared one of your variations.'
+'Delete this boulder for everyone? Removes its beta, reviews, comments and any variations you set on it. Your own logged sends stay in your sessions. Refused if anyone else has logged it, set a variation on it, or touched one of yours.'
 ```
 
 This keeps the original's shape and its two existing facts, and adds the two new ones. Do not change any other part of that button or its handler — the new guard's message reaches the user through the existing `onError` toast and already reads as a sentence.
@@ -122,8 +146,8 @@ This keeps the original's shape and its two existing facts, and adds the two new
 
 There is no local database, so this step is a careful read, not a run. Confirm by eye that each of these behaves as intended, and record the reasoning in your report:
 
-1. Setter deletes a boulder with **one of their own variations, no clears by anyone else** → both guards pass, the `delete from public.challenges` removes the variation, its `challenge_attempts` cascade, the boulder goes. No orphan.
-2. Setter deletes a boulder whose variation **another climber has cleared** → the new guard raises, nothing is deleted, and the message names stripping as the alternative.
+1. Setter deletes a boulder with **one of their own variations, untouched by anyone else** → both guards pass, the `delete from public.challenges` removes the variation, its `challenge_attempts`, `challenge_comments` and `challenge_betas` cascade (and `beta_helpful` in turn off those), the boulder goes. No orphan.
+2. Setter deletes a boulder whose variation **another climber has cleared, commented on, added beta to, or marked beta helpful on** → the new guard raises, nothing is deleted, and the message names stripping as the alternative.
 3. Setter deletes a boulder with **no variations at all** → both new statements are no-ops and behaviour is identical to migration 070.
 
 Also confirm the ordering point: the variation delete must come **before** the `delete from public.gym_problems`, or the FK's `set null` fires first and the subsequent delete matches nothing.
@@ -248,6 +272,15 @@ git add src/types/index.ts src/hooks/useChallenges.ts src/pages/ChallengesPage.t
 git commit -m "Show a variation's gym and boulder on the Challenges tab"
 ```
 
+**Follow-on, added after this task landed:** a variation sent as an invitation
+(`useReceivedChallenges`'s nested `challenges(...)` select) carried no boulder
+identity either — the same gap, reached through the "Sent to me" row instead of
+the card. `useReceivedChallenges` gained the same `gym_problems(gym, color,
+hold_color)` embed nested inside its `challenges(...)` select, and the
+"Sent to me" row on `ChallengesPage` gained the same gym-and-colours identity
+as the card, as plain text rather than the card's chip — that row is itself a
+`<button>`, so no nested button or anchor.
+
 ---
 
 ## Release gate
@@ -261,8 +294,9 @@ git commit -m "Show a variation's gym and boulder on the Challenges tab"
 - [ ] A variation's card in `/challenges` shows `🧩 <gym>` and the boulder's colour icons; tapping anywhere on the card opens the challenge detail exactly as before.
 - [ ] The detail sheet shows the same identity and its link opens `/gym-problems/:id`.
 - [ ] A portable challenge's card and detail sheet are unchanged — no chip, no empty space where one would be.
-- [ ] **Confirm the embed's shape.** PostgREST should return `gym_problems` as an object for this to-one foreign key. If it arrives as a single-element array the chip silently renders nothing — check one variation card actually shows its gym before trusting this.
-- [ ] As the setter, delete a boulder carrying one of your own variations that nobody else has cleared: both go, and no context-free challenge is left behind in `/challenges`.
-- [ ] As the setter, delete a boulder whose variation another climber has cleared: refused, with the "mark it stripped instead" message in a toast.
+- [ ] **Confirm the embed's shape.** PostgREST should return `gym_problems` as an object for this to-one foreign key. If it arrives as a single-element array instead, an array is truthy, so the chip renders with an empty gym name — visibly broken, not absent, which is easier to spot. Check one variation card actually shows its gym name (not just the emoji) before trusting this.
+- [ ] A variation sent as an invitation shows the same gym-and-colours identity on its "Sent to me" row, and the row is still valid markup (no nested button or anchor).
+- [ ] As the setter, delete a boulder carrying one of your own variations, untouched by anyone else: both go, and no context-free challenge is left behind in `/challenges`.
+- [ ] As the setter, delete a boulder whose variation another climber has cleared, commented on, added beta to, or marked beta helpful on: refused, with the "mark it stripped instead" message in a toast.
 - [ ] Strip that same boulder instead: it archives, and the variation stays listed and read-only on the Variations tab.
-- [ ] The delete confirmation text mentions that your own variations go with the boulder.
+- [ ] The delete confirmation text mentions that your own variations go with the boulder, and that the delete is refused if anyone else touched one.
