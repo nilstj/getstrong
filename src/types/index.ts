@@ -70,6 +70,9 @@ export interface Challenge {
   is_public: boolean
   /** Set when this challenge is a *variation* anchored to a shared boulder. */
   gym_problem_id: string | null
+  /** The anchored boulder's identity, from the FK embed in useChallenges. Null on
+   *  a portable challenge — and that absence means "anywhere", not "unknown". */
+  gym_problems?: { gym: string; color: string | null; hold_color: string | null } | null
   created_at: string
 }
 

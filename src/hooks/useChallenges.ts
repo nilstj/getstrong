@@ -3,16 +3,57 @@ import { supabase } from '../lib/supabase'
 import type { Challenge, ChallengeAttempt, ChallengeInvitation, ChallengeComment } from '../types'
 import { useAuth } from '../providers/AuthProvider'
 
+type QueryResult<T> = { data: T | null; error: { code?: string; message?: string } | null }
+
+// Migration 076 (challenges.gym_problem_id) is applied by hand and is not
+// guaranteed to be live yet. Until it is, `gym_problems(...)` isn't a real
+// relationship, so a select carrying that embed fails PostgREST-wide with
+// PGRST200 ("Could not find a relationship…"). Unlike useVariations, which can
+// afford to just throw because it only ever renders the Variations tab, a
+// throw here would take down every *pre-existing* portable challenge on
+// /challenges and in the add-to-session picker in SessionDetailPage — a
+// regression that predates this feature entirely. So: try the embed, and on a
+// relationship error specifically, retry the same query without it. Every
+// render site already guards on `gym_problems` being present, so the fallback
+// rows (which lack that key) render exactly as a portable challenge does.
+// Same "degrade rather than break while a migration is late" call
+// useVariations and useDiscoverBoulders make for this identical column.
+//
+// Checked by error code rather than by swallowing any failure: a genuine
+// network failure, a timeout, or an RLS rejection carries a different code (or
+// none), so `result.error.code !== 'PGRST200'` is false-y for those and they
+// fall through to `return result` — still an error, still thrown by the
+// caller, never silently retried into a second, unrelated failure.
+async function withEmbedFallback<T>(
+  result: QueryResult<T>,
+  retry: () => PromiseLike<QueryResult<T>>,
+): Promise<QueryResult<T>> {
+  if (!result.error || result.error.code !== 'PGRST200') return result
+  return retry()
+}
+
 export function useChallenges(followingIds: string[] = []) {
   const { user } = useAuth()
   return useQuery({
     queryKey: ['challenges', user?.id, [...followingIds].sort().join(',')],
     queryFn: async () => {
       const userId = user!.id
+      // Both queries fire together whether or not either needs the fallback
+      // retry — the retry (when triggered) also fires in parallel, so this
+      // never serializes into up to four sequential round trips.
+      const [publicEmbedded, privateEmbedded] = await Promise.all([
+        supabase.from('challenges').select('*, gym_problems(gym, color, hold_color)')
+          .eq('is_public', true).order('created_at', { ascending: false }),
+        supabase.from('challenges').select('*, gym_problems(gym, color, hold_color)')
+          .eq('is_public', false).in('creator_id', [userId, ...followingIds]).order('created_at', { ascending: false }),
+      ])
       const [{ data: publicData, error: e1 }, { data: privateData, error: e2 }] = await Promise.all([
-        supabase.from('challenges').select('*').eq('is_public', true).order('created_at', { ascending: false }),
-        supabase.from('challenges').select('*').eq('is_public', false)
-          .in('creator_id', [userId, ...followingIds]).order('created_at', { ascending: false }),
+        withEmbedFallback(publicEmbedded, () =>
+          supabase.from('challenges').select('*')
+            .eq('is_public', true).order('created_at', { ascending: false })),
+        withEmbedFallback(privateEmbedded, () =>
+          supabase.from('challenges').select('*')
+            .eq('is_public', false).in('creator_id', [userId, ...followingIds]).order('created_at', { ascending: false })),
       ])
       if (e1) throw e1
       if (e2) throw e2
@@ -250,11 +291,31 @@ export function useReceivedChallenges() {
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
-      const { data, error } = await supabase
+      const embedded = await supabase
         .from('challenge_invitations')
-        .select('*, challenges(id, title, description, video_url, creator_id), profiles!sender_id(username)')
+        // include gym_problem_id and gym_problems embed so received variations have boulder identity;
+        // this nested object is handed straight to the detail sheet, so it needs the same boulder fields
+        .select('*, challenges(id, title, description, video_url, creator_id, gym_problem_id, gym_problems(gym, color, hold_color)), profiles!sender_id(username)')
         .eq('recipient_id', session.user.id)
         .order('created_at', { ascending: false })
+      // Same migration-076-not-applied-yet tolerance as useChallenges above, but
+      // the retry select must drop BOTH gym_problem_id and the gym_problems embed,
+      // not just the embed. gym_problem_id is itself the column 076 adds, so
+      // before 076 is applied `PGRST200` fires at relationship-resolution time
+      // (correctly triggering this retry), but a retry select that still names
+      // gym_problem_id then fails at Postgres with 42703 ("column does not
+      // exist") instead — a different code, so withEmbedFallback can't catch it
+      // and `if (error) throw error` below empties the whole "Sent to me"
+      // section for every user with a pending invitation. Every render site
+      // guards on `gym_problems` *and* `gym_problem_id` being present, so a
+      // fallback row lacking both still renders as a portable challenge — which
+      // is correct, since pre-076 no variation can exist at all.
+      const { data, error } = await withEmbedFallback(embedded, () =>
+        supabase
+          .from('challenge_invitations')
+          .select('*, challenges(id, title, description, video_url, creator_id), profiles!sender_id(username)')
+          .eq('recipient_id', session.user.id)
+          .order('created_at', { ascending: false }))
       if (error) throw error
       return data as (ChallengeInvitation & {
         challenges: Challenge
