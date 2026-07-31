@@ -524,7 +524,7 @@ export function CrewPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (!confirm('Delete this boulder for everyone? Removes its beta, reviews, comments and any variations you set on it. Your own logged sends stay in your sessions. Only works if no one else has logged it or cleared one of your variations.')) return
+                  if (!confirm('Delete this boulder for everyone? Removes its beta, reviews, comments and any variations you set on it. Your own logged sends stay in your sessions. Only works if no one else has logged it, or touched one of your variations by clearing it, commenting on it or adding beta to it.')) return
                   del.mutate(boulder.id, {
                     onSuccess: () => { toast.success('Boulder deleted'); navigate('/gym-problems') },
                     onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to delete'),

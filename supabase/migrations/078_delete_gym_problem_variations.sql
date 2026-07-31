@@ -36,20 +36,37 @@ begin
     raise exception 'Others have logged this boulder — mark it stripped instead';
   end if;
 
-  -- A variation someone else has cleared carries their proof clips. Never destroy
-  -- those -- strip archives the boulder and keeps everything.
+  -- Never destroy another climber's work. Refuse if any variation here was set by
+  -- someone else, or if anyone else has cleared one, commented on one, or added
+  -- beta to one -- all of which cascade off challenges. Strip archives the
+  -- boulder instead and keeps every one of those.
   if exists (
-    select 1 from public.challenge_attempts a
-      join public.challenges c on c.id = a.challenge_id
+    select 1 from public.challenges c
      where c.gym_problem_id = p_gym_problem_id
-       and a.user_id <> v_user
+       and (
+         c.creator_id <> v_user
+         or exists (
+           select 1 from public.challenge_attempts a
+            where a.challenge_id = c.id and a.user_id <> v_user
+         )
+         or exists (
+           select 1 from public.challenge_comments m
+            where m.challenge_id = c.id and m.user_id <> v_user
+         )
+         or exists (
+           select 1 from public.challenge_betas b
+            where b.challenge_id = c.id and b.user_id <> v_user
+         )
+       )
   ) then
-    raise exception 'Others have cleared a variation on this boulder — mark it stripped instead';
+    raise exception 'Other climbers are on a variation of this boulder — mark it stripped instead';
   end if;
 
-  -- Otherwise every variation here is the setter's own with no outside clears, so
-  -- take them with the boulder rather than letting ON DELETE SET NULL orphan them.
-  -- challenge_attempts cascades off challenges (003).
+  -- Otherwise every variation here is guaranteed to be the setter's own and
+  -- untouched by anyone else -- the guard above just proved it -- so take them
+  -- with the boulder rather than letting ON DELETE SET NULL orphan them.
+  -- challenge_attempts, challenge_comments and challenge_betas all cascade off
+  -- challenges (003, 009, 018).
   delete from public.challenges where gym_problem_id = p_gym_problem_id;
 
   delete from public.gym_problems where id = p_gym_problem_id;
