@@ -10,8 +10,8 @@ export function useChallenges(followingIds: string[] = []) {
     queryFn: async () => {
       const userId = user!.id
       const [{ data: publicData, error: e1 }, { data: privateData, error: e2 }] = await Promise.all([
-        supabase.from('challenges').select('*').eq('is_public', true).order('created_at', { ascending: false }),
-        supabase.from('challenges').select('*').eq('is_public', false)
+        supabase.from('challenges').select('*, gym_problems(gym, color, hold_color)').eq('is_public', true).order('created_at', { ascending: false }),
+        supabase.from('challenges').select('*, gym_problems(gym, color, hold_color)').eq('is_public', false)
           .in('creator_id', [userId, ...followingIds]).order('created_at', { ascending: false }),
       ])
       if (e1) throw e1

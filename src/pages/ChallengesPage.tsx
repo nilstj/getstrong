@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Pencil, Trash2, Globe, Lock, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { ProblemColorIcons } from '../components/Chip'
 import {
   useChallenges,
   useCreateChallenge,
@@ -86,9 +88,14 @@ export function ChallengesPage() {
               ? <span className="flex items-center gap-0.5 text-[10px] text-sage-700 font-medium"><Globe size={10} strokeWidth={2} />Public</span>
               : <span className="flex items-center gap-0.5 text-[10px] text-gray-400 font-medium"><Lock size={10} strokeWidth={2} />Friends</span>
           )}
-          {challenge.gym_problem_id && (
-            <span className="text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px">
-              🧩 Variation
+          {challenge.gym_problems && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-sage-700 bg-sage-50 border border-sage-200 rounded-full px-1.5 py-px">
+              🧩 {challenge.gym_problems.gym}
+              <ProblemColorIcons
+                color={challenge.gym_problems.color}
+                holdColor={challenge.gym_problems.hold_color}
+                size={10}
+              />
             </span>
           )}
           {challenge.tags?.map(tag => (
@@ -433,6 +440,20 @@ function ChallengeDetail({ challenge, currentUserId }: { challenge: Challenge; c
     <div className="space-y-4">
       {challenge.description && (
         <p className="text-gray-600 text-sm">{challenge.description}</p>
+      )}
+      {challenge.gym_problems && challenge.gym_problem_id && (
+        <Link
+          to={`/gym-problems/${challenge.gym_problem_id}`}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-sage-200 bg-sage-50 px-2.5 py-1.5 text-sm font-medium text-sage-700 hover:bg-sage-100"
+        >
+          🧩 On {challenge.gym_problems.gym}
+          <ProblemColorIcons
+            color={challenge.gym_problems.color}
+            holdColor={challenge.gym_problems.hold_color}
+            size={14}
+          />
+          <span className="text-xs text-sage-600">→ open the boulder</span>
+        </Link>
       )}
       <TagPills tags={challenge.tags} />
       {challenge.video_url && (
