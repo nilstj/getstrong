@@ -252,7 +252,9 @@ export function useReceivedChallenges() {
       if (!session) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('challenge_invitations')
-        .select('*, challenges(id, title, description, video_url, creator_id), profiles!sender_id(username)')
+        // include gym_problem_id and gym_problems embed so received variations have boulder identity;
+        // this nested object is handed straight to the detail sheet, so it needs the same boulder fields
+        .select('*, challenges(id, title, description, video_url, creator_id, gym_problem_id, gym_problems(gym, color, hold_color)), profiles!sender_id(username)')
         .eq('recipient_id', session.user.id)
         .order('created_at', { ascending: false })
       if (error) throw error
