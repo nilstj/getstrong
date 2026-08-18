@@ -84,7 +84,7 @@ export function RateSessionSheet({
                           { roundId, subjectId: p.user_id, tag: t.key },
                           { onError: () => toast.error('Could not tag') },
                         )}
-                        className={`min-h-9 inline-flex items-center px-3 rounded-full text-[13px] font-semibold border ${
+                        className={`min-h-11 inline-flex items-center px-3 rounded-full text-[13px] font-semibold border ${
                           on
                             ? 'bg-sage-50 border-sage-300 text-sage-800'
                             : 'bg-white border-gray-200 text-gray-500'
