@@ -4,7 +4,7 @@
 
 **Goal:** Make the crew page's headline streak count weeks the crew **posted beta** instead of weeks its members merely showed up.
 
-**Architecture:** The streak's arithmetic is already a tested-shaped pure function that takes a bag of ISO dates; only its *input* changes. A new hook supplies `boulder_beta` timestamps in place of session timestamps, and two labels change so the number explains itself. No migration.
+**Architecture:** The streak's arithmetic is already a tested pure function that takes a bag of ISO dates; only its *input* changes. (Task 1 below is superseded — see its note.) A new hook supplies `boulder_beta` timestamps in place of session timestamps, and two labels change so the number explains itself. No migration.
 
 **Tech Stack:** React 18 + TypeScript, Vite, React Query (array query keys), Supabase, `date-fns`, Tailwind, Vitest for pure utils.
 
@@ -22,86 +22,21 @@
 
 ---
 
-### Task 1: Cover `crewStreak` before repurposing it
+### Task 1: ~~Cover `crewStreak` before repurposing it~~ — SUPERSEDED, do not execute
 
-`src/utils/crewStreak.ts` is the only pure util in `src/utils/` with no test file, and this plan changes what it measures. Lock its behaviour in first.
+**This task was based on a false premise and must not be run.** It claimed
+`src/utils/crewStreak.ts` was the only pure util in `src/utils/` with no test
+file, and instructed creating `src/utils/crewStreak.test.ts` with eight cases.
 
-**Note on TDD here:** the function already exists and is **not** being modified, so these tests should **pass on their first run**. That is expected — they are characterization tests adding missing coverage, not red-green. If one fails, you have found a real bug in existing code: stop and report it rather than editing the test to match.
+The function was already covered, by **`src/utils/__tests__/crewStreak.test.ts`**.
+The check that missed it listed only the flat `src/utils/*.test.ts` names; that
+subdirectory holds fourteen more. **This repo uses both test-file conventions** —
+check both before concluding anything is untested.
 
-**Files:**
-- Test: `src/utils/crewStreak.test.ts` (create)
-
-**Interfaces:**
-- Consumes: `weeklyStreak(dates: string[], now: Date): number` from `src/utils/crewStreak.ts`.
-- Produces: nothing consumed by Task 2.
-
-- [ ] **Step 1: Read the function you are covering**
-
-Run: `cat src/utils/crewStreak.ts`
-
-Note two things its doc comment promises, because both are tested below: the current week counts as **in-progress** (activity last week but not this week is still a streak, not a break), and dates in the future are ignored.
-
-- [ ] **Step 2: Write the test file**
-
-Create `src/utils/crewStreak.test.ts`:
-
-```ts
-import { describe, it, expect } from 'vitest'
-import { subWeeks, addWeeks } from 'date-fns'
-import { weeklyStreak } from './crewStreak'
-
-// Fixed reference point so the assertions never depend on the day the suite runs.
-// subWeeks keeps the same weekday, so differenceInCalendarWeeks is exactly n.
-const NOW = new Date('2026-07-31T12:00:00Z')
-const weeksAgo = (n: number) => subWeeks(NOW, n).toISOString()
-
-describe('weeklyStreak', () => {
-  it('is zero with nothing to count', () => {
-    expect(weeklyStreak([], NOW)).toBe(0)
-  })
-
-  it('counts this week alone as one', () => {
-    expect(weeklyStreak([weeksAgo(0)], NOW)).toBe(1)
-  })
-
-  it('counts consecutive weeks back from this one', () => {
-    expect(weeklyStreak([weeksAgo(0), weeksAgo(1), weeksAgo(2)], NOW)).toBe(3)
-  })
-
-  it('treats the current week as in progress rather than a break', () => {
-    // Nothing yet this week, but last week and the one before were active.
-    expect(weeklyStreak([weeksAgo(1), weeksAgo(2)], NOW)).toBe(2)
-  })
-
-  it('is zero when the most recent activity is too old to be in progress', () => {
-    expect(weeklyStreak([weeksAgo(2), weeksAgo(3)], NOW)).toBe(0)
-  })
-
-  it('stops at the first gap', () => {
-    expect(weeklyStreak([weeksAgo(0), weeksAgo(2), weeksAgo(3)], NOW)).toBe(1)
-  })
-
-  it('counts a week once however many dates land in it', () => {
-    expect(weeklyStreak([weeksAgo(0), weeksAgo(0), weeksAgo(0)], NOW)).toBe(1)
-  })
-
-  it('ignores dates in the future', () => {
-    expect(weeklyStreak([addWeeks(NOW, 1).toISOString()], NOW)).toBe(0)
-  })
-})
-```
-
-- [ ] **Step 3: Run the tests**
-
-Run: `npx vitest run src/utils/crewStreak.test.ts`
-Expected: PASS, 8 tests. A failure means existing behaviour differs from the doc comment — report it, do not adjust the expectations to match.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add src/utils/crewStreak.test.ts
-git commit -m "Cover crewStreak, the last untested pure util"
-```
+Executing this task recreates a duplicate test file for one function. It was
+created and then deleted on this branch; the deletion and the reasoning are in
+commit `8143331`. Existing coverage was reviewed and found complete, so no test
+work remains. Skip to Task 2.
 
 ---
 
@@ -209,7 +144,7 @@ Run: `npm run build`
 Expected: exit 0. An unused-variable error on `feed` means Step 2 removed the activity-feed call it was told to keep.
 
 Run: `npx vitest run`
-Expected: all pass, including Task 1's 8 — the util's behaviour did not change, only its comment.
+Expected: all pass — the util's behaviour did not change, only its comment.
 
 Run: `npm run lint 2>&1 | grep problems`
 Expected: the count you measured before starting.

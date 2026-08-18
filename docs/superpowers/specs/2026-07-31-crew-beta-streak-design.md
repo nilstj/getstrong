@@ -45,15 +45,20 @@ screen; the same pixel starts telling the truth.
   because that directory holds fourteen test files and only the flat
   `src/utils/*.test.ts` names were listed. Note the repo uses **both**
   conventions. Since this change repurposes what the function measures, its
-  coverage was reviewed and the one behaviour its doc comment promises but no
-  test exercised — future dates being ignored — was added there.
+  coverage was reviewed and found complete; no test was added. A claim in an
+  earlier draft — that the function ignores future dates and that no test covered
+  it — was wrong twice over: a date in the same calendar week counts even if it
+  is slightly ahead of `now`, and the guard that drops further-future dates
+  cannot affect the result anyway, since negative week buckets are never read.
+  The function's doc comment now records that.
 
 ## Scope
 
 **In scope:**
 - A new `useCrewBetaWeeks(memberIds)` hook.
 - `CrewGroupPage` feeds the streak from it, and both labels change.
-- One added case in the existing `src/utils/__tests__/crewStreak.test.ts`.
+- A doc-comment correction in `src/utils/crewStreak.ts`. No test changes: the
+  existing coverage in `src/utils/__tests__/crewStreak.test.ts` is complete.
 
 **Out of scope:**
 - Any change to `weeklyStreak`'s **logic**. Its doc comment is corrected,
@@ -104,9 +109,9 @@ is why the label must explain itself on the same line.
 
 ## Testing
 
-- **Unit (vitest), `src/utils/__tests__/crewStreak.test.ts`:** the six behaviours
-  the doc comment promises were already covered there. The seventh — future-dated
-  input being ignored — was missing and is added.
+- **Unit (vitest):** no new tests. `src/utils/__tests__/crewStreak.test.ts`
+  already covers every behaviour `weeklyStreak` actually has, and the function's
+  logic is untouched by this change.
 - **Build:** `npm run build`.
 - **Lint:** measure the baseline first; add zero.
 - **Manual pass:** on a crew whose members have posted beta in consecutive weeks,
