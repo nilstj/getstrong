@@ -172,12 +172,13 @@ Only `src/utils/` is tested here, so the logic worth testing gets extracted:
 
 - `awardTally(votes)` → `{ winners, counts }`. **A tie awards everyone tied** —
   a "split verdict" — rather than picking arbitrarily by timestamp.
-- `awardsUnlocked({ participants, voters, closesAt, now })` → boolean. Mirrors
-  the RPC gate so the client can render the right card without a round-trip;
-  the RPC stays the authority.
 - `tagTally(rows)` → per-subject tags sorted by count then label.
 - `donkeyStreak(rounds, userId)` → consecutive weeks as donkey, counted in weeks
   of rounds, not weeks of attendance (same shape as `crewStreak`).
+
+There is no client-side mirror of the unlock gate: both call sites already
+have `get_award_round`'s response in hand, so they read `round.unlocked`
+straight from the server instead of recomputing it.
 
 Hooks, sheets and pages are verified by `npm run build` plus a manual pass, per
 the project's testing constraint.

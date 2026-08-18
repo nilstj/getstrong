@@ -44,25 +44,6 @@ export function awardTally(votes: AwardVoteRow[], kind: 'goat' | 'donkey'): Awar
   return { winners: order.filter(id => counts[id] === topCount), counts, topCount }
 }
 
-/**
- * Whether a round's results may be shown. Mirrors get_award_round's gate so the
- * client can pick the right card without a round-trip; the RPC stays the
- * authority — it is what actually withholds the rows.
- *
- * `voted` counts participants with a GOAT vote in. A round with no participants
- * never unlocks, so a stale or empty round cannot render a verdict.
- */
-export function awardsUnlocked(input: {
-  participants: number
-  voted: number
-  closesAt: string
-  now: Date
-}): boolean {
-  if (input.participants <= 0) return false
-  if (input.voted >= input.participants) return true
-  return input.now.getTime() > new Date(input.closesAt).getTime()
-}
-
 /** Props per climber, most-tagged first, ties broken alphabetically by tag. */
 export function tagTally(rows: AwardTagRow[]): Record<string, { tag: AwardTag; count: number }[]> {
   const bySubject: Record<string, Record<string, number>> = {}

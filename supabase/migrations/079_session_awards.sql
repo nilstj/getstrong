@@ -285,8 +285,13 @@ end; $$;
 -- in exactly one place.
 --
 -- A participant counts as having voted on their GOAT vote; the donkey vote is
--- optional, so an abstainer cannot hold the round hostage. A zero-participant
--- round never unlocks. `coalesce(..., false)` also makes this total for a
+-- optional, so an abstainer cannot hold the round hostage. The two branches of
+-- the unlock predicate are independent: the vote-completion branch
+-- (`v_participants > 0 and v_voted >= v_participants`) requires at least one
+-- participant, but the deadline branch (`now() > v_closes`) unlocks
+-- regardless of participant count — so a zero-participant round still
+-- unlocks once closes_at passes, it just does so via the deadline branch, not
+-- the vote-completion one. `coalesce(..., false)` also makes this total for a
 -- round id that does not exist at all (v_closes is null there, which would
 -- otherwise make `now() > v_closes` — and thus the whole expression — NULL,
 -- turning "is it unlocked" into an existence oracle).
@@ -441,28 +446,39 @@ begin
 end; $$;
 
 -- ── Closing the helper functions to clients ─────────────────────────────────
--- award_round_unlocked and assert_award_voter are SECURITY DEFINER internals:
--- every caller of theirs (cast_award_vote, toggle_award_tag, set_award_note,
--- get_award_round, crew_award_history) is itself a SECURITY DEFINER function,
--- so the nested call is permission-checked against that function's owner, not
--- against the client role — revoking these two from anon/authenticated closes
--- them off from being called directly over PostgREST without touching any
--- caller above.
+-- award_round_unlocked, assert_award_voter and award_round_status are
+-- SECURITY DEFINER internals: every caller of theirs (cast_award_vote,
+-- toggle_award_tag, set_award_note, get_award_round, crew_award_history) is
+-- itself a SECURITY DEFINER function, so the nested call is
+-- permission-checked against that function's owner, not against the client
+-- role — none of the three needs to be callable directly over PostgREST.
 --
--- is_award_round_member is deliberately NOT revoked here, unlike the other
--- two: it is invoked directly inside RLS policy USING/WITH CHECK expressions
--- on crew_award_participants, crew_award_messages and crew_award_reactions,
--- and those expressions run as the querying client role, not as the
--- function's definer. A function call inside a policy still needs EXECUTE
--- granted to the role running the query — SECURITY DEFINER only changes what
--- happens once execution starts (e.g. bypassing RLS on crew_award_rounds
--- inside its own body), not whether the invoking role may call it at all.
--- Revoking it here would make every read of those three tables fail with
--- "permission denied for function is_award_round_member" for real
--- anon/authenticated clients, breaking the feature outright.
+-- CREATE FUNCTION grants EXECUTE to PUBLIC by default, and grants are
+-- cumulative: revoking only `from anon, authenticated` leaves the PUBLIC
+-- grant standing, so anon/authenticated could still execute these three via
+-- their PUBLIC privilege and the revoke would be a no-op in practice. Each
+-- one must also be revoked `from public` to actually close it off. The
+-- `from anon, authenticated` revokes are kept too, redundant but explicit
+-- about which roles this is defending against.
 revoke execute on function public.award_round_unlocked(uuid) from anon, authenticated;
+revoke execute on function public.award_round_unlocked(uuid) from public;
 revoke execute on function public.assert_award_voter(uuid, uuid, text) from anon, authenticated;
+revoke execute on function public.assert_award_voter(uuid, uuid, text) from public;
 -- award_round_status is new in this file and has the same shape of internal
 -- use as award_round_unlocked (only called from other SECURITY DEFINER
 -- functions), so it gets the same treatment.
 revoke execute on function public.award_round_status(uuid) from anon, authenticated;
+revoke execute on function public.award_round_status(uuid) from public;
+
+-- is_award_round_member is deliberately NOT revoked here, unlike the other
+-- three: it is invoked directly inside RLS policy USING/WITH CHECK
+-- expressions on crew_award_participants, crew_award_messages and
+-- crew_award_reactions, and those expressions run as the querying client
+-- role, not as the function's definer. A function call inside a policy still
+-- needs EXECUTE granted to the role running the query — SECURITY DEFINER
+-- only changes what happens once execution starts (e.g. bypassing RLS on
+-- crew_award_rounds inside its own body), not whether the invoking role may
+-- call it at all. Revoking it (from anon/authenticated or from public) would
+-- make every read of those three tables fail with "permission denied for
+-- function is_award_round_member" for real anon/authenticated clients,
+-- breaking the feature outright.

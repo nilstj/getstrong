@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
-import { awardTally, awardsUnlocked, tagTally, donkeyStreak } from '../sessionAwards'
+import { awardTally, tagTally, donkeyStreak } from '../sessionAwards'
 import type { AwardVoteRow, AwardHistoryRow } from '../sessionAwards'
 
 const vote = (kind: 'goat' | 'donkey', voter: string, subject: string): AwardVoteRow =>
@@ -31,28 +31,6 @@ describe('awardTally', () => {
   it('orders tied winners by who was voted for first, which is the order they display in', () => {
     const votes = [vote('goat', 'a', 'thea'), vote('goat', 'b', 'ida')]
     expect(awardTally(votes, 'goat').winners).toEqual(['thea', 'ida'])
-  })
-})
-
-describe('awardsUnlocked', () => {
-  const now = new Date('2026-08-18T12:00:00Z')
-  const later = '2026-08-19T06:00:00Z'
-  const past = '2026-08-18T06:00:00Z'
-
-  it('is locked while someone has not voted', () => {
-    expect(awardsUnlocked({ participants: 5, voted: 4, closesAt: later, now })).toBe(false)
-  })
-
-  it('unlocks when every participant has voted', () => {
-    expect(awardsUnlocked({ participants: 5, voted: 5, closesAt: later, now })).toBe(true)
-  })
-
-  it('unlocks on time even with votes missing', () => {
-    expect(awardsUnlocked({ participants: 5, voted: 1, closesAt: past, now })).toBe(true)
-  })
-
-  it('stays locked with no participants, so an empty round never shows a verdict', () => {
-    expect(awardsUnlocked({ participants: 0, voted: 0, closesAt: later, now })).toBe(false)
   })
 })
 

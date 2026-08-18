@@ -63,14 +63,27 @@ export function SessionAwardsCard({ crewId }: { crewId: string }) {
   if (!primaryCandidate) return null
 
   const unlocked = primaryRound?.unlocked ?? false
-  // Before a round exists there is no round-level signal yet, so fall back to
-  // the candidate row's own am_participant — the same underlying check, just
-  // computed ahead of open_award_round ever having been called.
-  const amParticipant = primaryRound?.am_participant ?? primaryCandidate.am_participant
+  // primaryCandidate.am_participant is the live truth (recomputed from
+  // `sessions` on every fetch); primaryRound.am_participant is a snapshot
+  // taken when the round was opened, only re-taken by open_award_round on
+  // each call until the first vote is cast. They are the same *condition*
+  // evaluated at different points in time, not the same check — someone who
+  // logs their session after a round has already opened has
+  // primaryRound.am_participant stuck at `false` (never `undefined`, so `??`
+  // can never fall through to the candidate's answer) even though the
+  // candidate row already says `true`. Trust the candidate's `true` over the
+  // round's stale `false`; a genuine non-participant has both flags `false`.
+  const amParticipant = primaryCandidate.am_participant || !!primaryRound?.am_participant
+  // A round exists, the candidate row says the caller was there, but the
+  // round's snapshot hasn't caught up yet — e.g. the caller logged their
+  // session after someone else already opened the round. start() re-calls
+  // open_award_round in this case so the server can re-snapshot and add the
+  // caller to crew_award_participants before the sheet opens.
+  const participantSnapshotStale = !!primaryRound && primaryCandidate.am_participant && !primaryRound.am_participant
   const iVoted = !!primaryRound?.mine.votes.some(v => v.kind === 'goat')
 
   const start = () => {
-    if (primaryCandidate.round_id) { setSheetRoundId(primaryCandidate.round_id); return }
+    if (primaryCandidate.round_id && !participantSnapshotStale) { setSheetRoundId(primaryCandidate.round_id); return }
     openRound.mutate(
       { crewId, date: primaryCandidate.round_date, gym: primaryCandidate.gym },
       {

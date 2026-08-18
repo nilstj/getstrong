@@ -1771,11 +1771,14 @@ Run: `npm run dev`, then walk this list. Hooks, components and pages have no aut
 - [ ] In the Supabase dashboard, hand-edit a round's `closes_at` into the past (the only practical way to exercise
   the 24h timeout without waiting) — confirm `/crews/:crewId/awards/:roundId` unlocks and shows the verdict even
   with votes outstanding.
+- [ ] On an unlocked round's verdict page, react to the GOAT card with an emoji — the chip's count increments and
+  your own chip is visibly highlighted. Do the same on the donkey card. Tap your chip again — the count decrements
+  and the highlight clears. Reload the page — the chip you left in place survives; the one you removed stays gone.
 
 - [ ] **Step 4: Confirm no points were minted**
 
 Run: `grep -rn "beta_points" src/hooks/useSessionAwards.ts src/components/SessionAwardsCard.tsx src/components/RateSessionSheet.tsx src/pages/SessionAwardsPage.tsx supabase/migrations/079_session_awards.sql`
-Expected: no matches. This feature pays nothing, by design.
+Expected: exactly 2 matches, both in `079_session_awards.sql`, both explanatory comments (the file header and the note above `crew_award_reactions`) stating that this feature mints no points — no match in any of the four `src/` files, and no actual code reference (function call, insert, trigger) to `beta_points` anywhere. This feature pays nothing, by design; do not delete the two comments to "fix" this grep.
 
 - [ ] **Step 5: Commit any fixes and finish the branch**
 
