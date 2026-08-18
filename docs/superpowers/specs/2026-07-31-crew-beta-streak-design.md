@@ -39,16 +39,21 @@ screen; the same pixel starts telling the truth.
 - **Still hidden at zero.** The header already renders the streak only when
   `streak > 0`. A crew with no beta streak shows nothing rather than a shaming
   zero.
-- **The missing tests get written.** `src/utils/crewStreak.ts` is the only pure
-  util in `src/utils/` with no test file. Since this change repurposes what it
-  measures, covering it is part of the job.
+- **`weeklyStreak`'s existing tests get one gap closed.** An earlier draft of
+  this spec claimed `crewStreak.ts` had no test file; that was wrong — it is
+  covered by `src/utils/__tests__/crewStreak.test.ts`, which the check missed
+  because that directory holds fourteen test files and only the flat
+  `src/utils/*.test.ts` names were listed. Note the repo uses **both**
+  conventions. Since this change repurposes what the function measures, its
+  coverage was reviewed and the one behaviour its doc comment promises but no
+  test exercised — future dates being ignored — was added there.
 
 ## Scope
 
 **In scope:**
 - A new `useCrewBetaWeeks(memberIds)` hook.
 - `CrewGroupPage` feeds the streak from it, and both labels change.
-- `src/utils/crewStreak.test.ts`, new.
+- One added case in the existing `src/utils/__tests__/crewStreak.test.ts`.
 
 **Out of scope:**
 - Any change to `weeklyStreak`'s **logic**. Its doc comment is corrected,
@@ -99,11 +104,9 @@ is why the label must explain itself on the same line.
 
 ## Testing
 
-- **Unit (vitest), new file `src/utils/crewStreak.test.ts`:** cover the behaviour
-  the doc comment already promises — an empty input is 0; activity this week
-  extends the streak; activity last week but not this week still counts (the
-  current week is in-progress, not a break); a gap two weeks back ends the streak;
-  several dates in one week count once; future-dated input is ignored.
+- **Unit (vitest), `src/utils/__tests__/crewStreak.test.ts`:** the six behaviours
+  the doc comment promises were already covered there. The seventh — future-dated
+  input being ignored — was missing and is added.
 - **Build:** `npm run build`.
 - **Lint:** measure the baseline first; add zero.
 - **Manual pass:** on a crew whose members have posted beta in consecutive weeks,

@@ -35,4 +35,8 @@ describe('weeklyStreak', () => {
   it('does not double-count multiple sessions in the same week', () => {
     expect(weeklyStreak([daysAgo(1), daysAgo(2), daysAgo(3)], now)).toBe(1)
   })
+
+  it('ignores dates in the future', () => {
+    expect(weeklyStreak([daysAgo(-8)], now)).toBe(0)
+  })
 })

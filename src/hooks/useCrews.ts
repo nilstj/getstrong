@@ -268,9 +268,10 @@ export function useCrewActivityFeed(memberIds: string[]) {
 /**
  * The weeks a crew posted beta, as raw timestamps for weeklyStreak to bucket.
  *
- * Bounded to the last 26 weeks for two reasons: a streak can only ever use recent
- * weeks, and boulder_beta is indexed on (gym_problem_id, created_at desc) rather
- * than on user_id, so an unbounded member filter would scan the table.
+ * Bounded to the last 26 weeks for two reasons: it is the display ceiling — an
+ * unbroken run longer than that reads as 26, which no crew is likely to reach —
+ * and boulder_beta is indexed on (gym_problem_id, created_at desc) rather than on
+ * user_id, so an unbounded member filter would scan the table.
  */
 export function useCrewBetaWeeks(memberIds: string[]) {
   return useQuery({
