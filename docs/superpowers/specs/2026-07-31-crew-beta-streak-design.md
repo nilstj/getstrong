@@ -51,7 +51,9 @@ screen; the same pixel starts telling the truth.
 - `src/utils/crewStreak.test.ts`, new.
 
 **Out of scope:**
-- Any change to `weeklyStreak` itself.
+- Any change to `weeklyStreak`'s **logic**. Its doc comment is corrected,
+  because it currently names the input as "crew activity (member sessions)",
+  which this change falsifies — but the arithmetic and the signature stand.
 - Counting variation teaching or `challenge_betas` toward the streak.
 - The other four crew badges (`crew_send`, `flash_mob`, `first_blood`,
   `deep_bench`), which remain send-shaped. Reshaping those is a separate slice.
