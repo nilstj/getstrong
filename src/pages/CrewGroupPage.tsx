@@ -8,7 +8,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useFollowing } from '../hooks/useFollows'
 import {
   useCrewGroup, useCrewMembers, useCrewPendingInvites, useCrewLeaderboard,
-  useCrewActivityFeed, useInviteToCrew, useLeaveCrew, useDeleteCrew,
+  useCrewActivityFeed, useCrewBetaWeeks, useInviteToCrew, useLeaveCrew, useDeleteCrew,
   useCrewBattles, useCrewBattleScore, useRespondCrewBattle, type CrewBattle,
   useCrewMessages, usePostCrewMessage, useDeleteCrewMessage,
   useCrewPlans, useCreateCrewPlan, useRsvpCrewPlan, useDeleteCrewPlan, type CrewPlan,
@@ -25,7 +25,7 @@ const CREW_BADGES: { key: keyof CrewBadgeFlags | 'on_fire'; emoji: string; label
   { key: 'flash_mob', emoji: '⚡', label: 'Flash Mob', desc: 'Everyone flashed one boulder' },
   { key: 'first_blood', emoji: '🩸', label: 'First Blood', desc: 'All-cleared a battle boulder' },
   { key: 'deep_bench', emoji: '🏋️', label: 'Deep Bench', desc: '5 or more members' },
-  { key: 'on_fire', emoji: '🔥', label: 'On Fire', desc: '4-week active streak' },
+  { key: 'on_fire', emoji: '🔥', label: 'On Fire', desc: '4 weeks running with beta' },
 ]
 
 export function CrewGroupPage() {
@@ -39,6 +39,7 @@ export function CrewGroupPage() {
   const memberIds = members.map(m => m.user_id)
   const { data: standings = [] } = useCrewLeaderboard(memberIds, month)
   const { data: feed = [] } = useCrewActivityFeed(memberIds)
+  const { data: betaWeeks = [] } = useCrewBetaWeeks(memberIds)
   const { data: battles = [] } = useCrewBattles(crewId)
   const { data: plans = [] } = useCrewPlans(crewId)
   const { data: badgeFlags } = useCrewBadges(crewId)
@@ -56,7 +57,7 @@ export function CrewGroupPage() {
   if (!crew) return <div className="p-5 text-sm text-gray-400">This crew no longer exists.</div>
 
   const monthLabel = new Date(`${month}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })
-  const streak = weeklyStreak(feed.map(f => f.date), new Date())
+  const streak = weeklyStreak(betaWeeks, new Date())
   const earnedBadges = CREW_BADGES.filter(b => (b.key === 'on_fire' ? streak >= 4 : !!badgeFlags?.[b.key]))
 
   const leave = () => {
@@ -81,7 +82,7 @@ export function CrewGroupPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate leading-tight">{crew.name}</h1>
           <p className="text-xs text-gray-500 truncate">
-            {members.length} {members.length === 1 ? 'member' : 'members'}{crew.home_gym ? ` · ${crew.home_gym}` : ''}{streak > 0 ? ` · 🔥 ${streak}-week streak` : ''}
+            {members.length} {members.length === 1 ? 'member' : 'members'}{crew.home_gym ? ` · ${crew.home_gym}` : ''}{streak > 0 ? ` · 🔥 ${streak}-week beta streak` : ''}
           </p>
         </div>
         {amMember && (

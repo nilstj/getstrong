@@ -265,6 +265,33 @@ export function useCrewActivityFeed(memberIds: string[]) {
   })
 }
 
+/**
+ * The weeks a crew posted beta, as raw timestamps for weeklyStreak to bucket.
+ *
+ * Bounded to the last 26 weeks for two reasons: it is the display ceiling — an
+ * unbroken run longer than that reads as 26, which no crew is likely to reach —
+ * and boulder_beta is indexed on (gym_problem_id, created_at desc) rather than on
+ * user_id, so an unbounded member filter would scan the table.
+ */
+export function useCrewBetaWeeks(memberIds: string[]) {
+  return useQuery({
+    queryKey: ['crew_beta_weeks', [...memberIds].sort().join(',')],
+    enabled: memberIds.length > 0,
+    queryFn: async (): Promise<string[]> => {
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - 26 * 7)
+      const { data, error } = await supabase
+        .from('boulder_beta')
+        .select('created_at')
+        .in('user_id', memberIds)
+        .gte('created_at', cutoff.toISOString())
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return ((data ?? []) as { created_at: string }[]).map(r => r.created_at)
+    },
+  })
+}
+
 export interface CrewStanding {
   crew_id: string
   name: string

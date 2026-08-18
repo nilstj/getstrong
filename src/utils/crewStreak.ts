@@ -2,10 +2,15 @@ import { differenceInCalendarWeeks } from 'date-fns'
 
 /**
  * How many weeks in a row a crew has been active, counting back from now.
- * `dates` are ISO timestamps of crew activity (member sessions). The current
- * week counts as in-progress: if there's activity this week the streak includes
- * it; if not, the streak is measured ending last week (0 if last week was also
- * quiet).
+ * `dates` are ISO timestamps of the activity being counted — the crew's beta
+ * posts. The current week counts as in-progress: if there's activity this week
+ * the streak includes it; if not, the streak is measured ending last week (0 if
+ * last week was also quiet).
+ *
+ * A timestamp slightly ahead of `now` still counts, because it buckets into the
+ * same calendar week; only one a full week or more ahead is dropped. That is
+ * fine here — `boulder_beta.created_at` is server-stamped, so only a skewed
+ * device clock can produce one.
  */
 export function weeklyStreak(dates: string[], now: Date): number {
   if (dates.length === 0) return 0
