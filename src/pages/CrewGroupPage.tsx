@@ -15,6 +15,7 @@ import {
   useCrewBadges, type CrewBadgeFlags,
 } from '../hooks/useCrews'
 import { SetterBadge } from '../components/SetterBadge'
+import { SessionAwardsCard } from '../components/SessionAwardsCard'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { BottomSheet } from '../components/BottomSheet'
 import { cycleMonth } from '../utils/leaderboard'
@@ -102,6 +103,9 @@ export function CrewGroupPage() {
           ))}
         </div>
       )}
+
+      {/* Session awards */}
+      {amMember && <SessionAwardsCard crewId={crewId} />}
 
       {/* Standings */}
       <div>
