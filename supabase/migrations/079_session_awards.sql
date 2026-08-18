@@ -165,7 +165,7 @@ create policy "award reactions delete own" on crew_award_reactions for delete
 -- with the round id if one has already been opened. SECURITY DEFINER because a
 -- climber cannot read another climber's `sessions` rows directly.
 create or replace function public.crew_award_candidates(p_crew uuid)
-returns table (round_date date, gym text, climbers integer, round_id uuid)
+returns table (round_date date, gym text, climbers integer, round_id uuid, am_participant boolean)
 language plpgsql security definer stable set search_path = public as $$
 begin
   if not is_crew_member(p_crew) then raise exception 'Not your crew'; end if;
@@ -173,7 +173,15 @@ begin
     -- sessions.location is untrimmed free text; trim it here so the gym we
     -- advertise is exactly the value open_award_round will canonicalise to,
     -- otherwise a padded location can never be re-matched to its session.
-    select s.date, trim(s.location), count(distinct s.user_id)::integer, r.id
+    select s.date, trim(s.location), count(distinct s.user_id)::integer, r.id,
+           -- Every row folded into this group already shares the same
+           -- trim(s.location) (that's the group-by key), so asking whether
+           -- one of them belongs to the caller needs no separate trimmed
+           -- comparison of its own — it's the same match open_award_round
+           -- uses to build its participant snapshot. Reports on auth.uid()
+           -- only, never on any other member, so this stays an aggregate
+           -- that discloses nothing about who else was there.
+           bool_or(s.user_id = auth.uid())
       from sessions s
       join crew_members m on m.user_id = s.user_id and m.crew_id = p_crew
       left join crew_award_rounds r

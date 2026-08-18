@@ -746,7 +746,7 @@ Expected: PASS, 18 tests.
 - [ ] **Step 6: Run the whole suite and the build**
 
 Run: `npx vitest run && npm run build`
-Expected: all tests pass (180 existing + 18 new = 198), build succeeds with no `noUnusedLocals` errors.
+Expected: all tests pass (181 existing + 18 new = 199), build succeeds with no `noUnusedLocals` errors.
 
 - [ ] **Step 7: Commit**
 
@@ -1712,7 +1712,7 @@ Expected: the route exists in `App.tsx`, and `SessionAwardsCard` links to it. Th
 - [ ] **Step 4: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build succeeds; 198 tests pass; lint reports **16 problems**.
+Expected: build succeeds; 199 tests pass; lint reports **16 problems**.
 
 - [ ] **Step 5: Commit**
 
@@ -1739,7 +1739,7 @@ Expected: succeeds (0 rows is fine). If it errors, migration 079 was never appli
 - [ ] **Step 2: Full automated check**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean, 198 tests pass, lint **16 problems** — the same number measured before this branch started. Any increase is yours to fix.
+Expected: build clean, 199 tests pass, lint **16 problems** — the same number measured before this branch started. Any increase is yours to fix.
 
 - [ ] **Step 3: Manual pass on a phone-width viewport (375px)**
 

@@ -63,7 +63,10 @@ export function SessionAwardsCard({ crewId }: { crewId: string }) {
   if (!primaryCandidate) return null
 
   const unlocked = primaryRound?.unlocked ?? false
-  const amParticipant = primaryRound?.am_participant ?? true
+  // Before a round exists there is no round-level signal yet, so fall back to
+  // the candidate row's own am_participant — the same underlying check, just
+  // computed ahead of open_award_round ever having been called.
+  const amParticipant = primaryRound?.am_participant ?? primaryCandidate.am_participant
   const iVoted = !!primaryRound?.mine.votes.some(v => v.kind === 'goat')
 
   const start = () => {
@@ -132,7 +135,7 @@ export function SessionAwardsCard({ crewId }: { crewId: string }) {
         </>
       )}
 
-      {primaryRound && !amParticipant && !unlocked && (
+      {!amParticipant && !unlocked && (
         <p className="text-xs text-gray-500 mt-3">
           You weren't at this one, so no vote from you — the crew's got it covered.
         </p>

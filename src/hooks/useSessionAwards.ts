@@ -11,6 +11,9 @@ export interface AwardCandidate {
   gym: string
   climbers: number
   round_id: string | null
+  /** Whether you logged a session that day at that gym — the caller only,
+   *  same condition open_award_round uses to build its participant snapshot. */
+  am_participant: boolean
 }
 
 export interface AwardRoundState {
