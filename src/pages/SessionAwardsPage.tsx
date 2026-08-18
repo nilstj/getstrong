@@ -1,30 +1,56 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Check } from 'lucide-react'
+import { useParams, Link } from 'react-router-dom'
+import { ArrowLeft, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { GoatIcon, DonkeyIcon } from '../components/AwardIcons'
 import { AWARD_TAGS, type AwardTag } from '../types'
 import {
   useAwardRound, useAwardParticipants, useAwardMessages,
-  usePostAwardMessage, useCrewAwardHistory,
+  usePostAwardMessage, useCrewAwardHistory, useAwardReactions, useToggleAwardReaction,
 } from '../hooks/useSessionAwards'
-import { awardTally, tagTally, donkeyStreak, awardsUnlocked } from '../utils/sessionAwards'
+import { awardTally, tagTally, donkeyStreak } from '../utils/sessionAwards'
 
 const tagMeta = (tag: AwardTag) => AWARD_TAGS.find(t => t.key === tag)
 
+/** The emoji set for digging at a GOAT or donkey verdict. Same vocabulary as
+ *  ReactionDigBar's picker, but this surface has its own reactions table and
+ *  toggle shape, so it gets its own small chip UI rather than reusing that
+ *  component's like/comment/save-shaped props. */
+const DIG_EMOJIS = ['🔥', '💪', '😂', '🐒', '🪨']
+
 export function SessionAwardsPage() {
   const { crewId = '', roundId = '' } = useParams<{ crewId: string; roundId: string }>()
-  const { data: round, isLoading } = useAwardRound(roundId)
-  const { data: participants = [] } = useAwardParticipants(roundId)
+  const { data: round, isLoading: roundLoading } = useAwardRound(roundId)
+  const { data: participants = [], isLoading: participantsLoading } = useAwardParticipants(roundId)
   const { data: history = [] } = useCrewAwardHistory(crewId)
 
-  if (isLoading) return <div className="p-5 text-sm text-gray-400">Loading the verdict…</div>
-  if (!round) return <div className="p-5 text-sm text-gray-400">This round no longer exists.</div>
+  const backLink = (
+    <Link to={`/crews/${crewId}`} aria-label="Back" className="text-gray-400 hover:text-gray-700 inline-block mb-3">
+      <ArrowLeft size={20} />
+    </Link>
+  )
 
-  const unlocked = awardsUnlocked({
-    participants: round.participants, voted: round.voted,
-    closesAt: round.closes_at, now: new Date(),
-  })
+  if (roundLoading || participantsLoading) {
+    return (
+      <div className="p-4 pb-32 lg:max-w-2xl lg:mx-auto">
+        {backLink}
+        <div className="text-sm text-gray-400">Loading the verdict…</div>
+      </div>
+    )
+  }
+  if (!round) {
+    return (
+      <div className="p-4 pb-32 lg:max-w-2xl lg:mx-auto">
+        {backLink}
+        <div className="text-sm text-gray-400">This round no longer exists.</div>
+      </div>
+    )
+  }
+
+  // The RPC is the authority on unlock, not the device clock — a fast phone
+  // must not render tags/notes/votes as if they'd arrived when the payload
+  // was actually withheld.
+  const unlocked = round.unlocked
 
   const nameOf = (id: string) =>
     participants.find(p => p.user_id === id)?.username ?? 'Someone'
@@ -32,10 +58,11 @@ export function SessionAwardsPage() {
   if (!unlocked) {
     return (
       <div className="p-4 pb-32 lg:max-w-2xl lg:mx-auto">
+        {backLink}
         <h1 className="text-lg font-bold tracking-tight">Session awards</h1>
         <p className="text-sm text-gray-500 mt-1 tabular-nums">
           {round.voted} of {round.participants} have voted. The verdict unlocks when
-          everyone is in, or 24h after the session.
+          everyone is in, or 24h after voting opened.
         </p>
       </div>
     )
@@ -45,15 +72,29 @@ export function SessionAwardsPage() {
   const donkey = awardTally(round.votes ?? [], 'donkey')
   const tags = tagTally((round.tags ?? []).map(t => ({ subject_id: t.subject_id, tag: t.tag })))
   const notes = round.notes ?? []
+  const nobodyVoted = goat.winners.length === 0 && donkey.winners.length === 0
 
   return (
     <div className="p-4 pb-32 lg:max-w-2xl lg:mx-auto space-y-5">
+      {backLink}
       <div>
         <h1 className="text-lg font-bold tracking-tight leading-tight">Session awards</h1>
-        <span className="inline-flex items-center gap-1 rounded-full bg-sage-50 text-sage-700 text-[11px] font-semibold px-2.5 py-1 mt-2">
-          <Check size={12} strokeWidth={2.25} /> Votes in · {round.voted} of {round.participants}
-        </span>
+        {round.voted > 0 ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-sage-50 text-sage-700 text-[11px] font-semibold px-2.5 py-1 mt-2">
+            <Check size={12} strokeWidth={2.25} /> Votes in · {round.voted} of {round.participants}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-[11px] font-semibold px-2.5 py-1 mt-2">
+            Time ran out before anyone voted
+          </span>
+        )}
       </div>
+
+      {nobodyVoted && (
+        <p className="text-sm text-gray-400">
+          Nobody voted this time — the awards go unclaimed. Bold strategy.
+        </p>
+      )}
 
       <AwardWinner
         kind="goat"
@@ -61,8 +102,9 @@ export function SessionAwardsPage() {
         winners={goat.winners.map(nameOf)}
         count={goat.topCount}
         total={round.participants}
-        note={notes.find(n => goat.winners.includes(n.subject_id))}
+        note={goat.winners.length === 1 ? notes.find(n => n.subject_id === goat.winners[0]) : undefined}
         nameOf={nameOf}
+        roundId={roundId}
       />
 
       <AwardWinner
@@ -71,8 +113,9 @@ export function SessionAwardsPage() {
         winners={donkey.winners.map(nameOf)}
         count={donkey.topCount}
         total={round.participants}
-        note={notes.find(n => donkey.winners.includes(n.subject_id))}
+        note={donkey.winners.length === 1 ? notes.find(n => n.subject_id === donkey.winners[0]) : undefined}
         nameOf={nameOf}
+        roundId={roundId}
         streak={donkey.winners.length === 1 ? donkeyStreak(history, donkey.winners[0], new Date()) : 0}
       />
 
@@ -125,7 +168,7 @@ export function SessionAwardsPage() {
 }
 
 function AwardWinner({
-  kind, label, winners, count, total, note, nameOf, streak = 0,
+  kind, label, winners, count, total, note, nameOf, roundId, streak = 0,
 }: {
   kind: 'goat' | 'donkey'
   label: string
@@ -134,10 +177,12 @@ function AwardWinner({
   total: number
   note?: { voter_id: string; body: string }
   nameOf: (id: string) => string
+  roundId: string
   streak?: number
 }) {
   if (winners.length === 0) return null
   const goat = kind === 'goat'
+  const split = winners.length > 1
   return (
     <div className={goat
       ? 'bg-sage-50 border border-sage-100 rounded-2xl p-3.5'
@@ -153,12 +198,18 @@ function AwardWinner({
           <p className="text-[17px] font-extrabold tracking-tight leading-snug truncate">
             {winners.join(' & ')}
           </p>
-          {winners.length > 1 && <p className="text-[11px] text-gray-500">Split verdict</p>}
+          {split && <p className="text-[11px] text-gray-500">Split verdict</p>}
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <span className={`text-[15px] font-extrabold tabular-nums ${goat ? 'text-sage-700' : 'text-khaki-700'}`}>
-            {count}<span className="text-[11px] font-semibold text-gray-400">/{total}</span>
-          </span>
+          {split ? (
+            <span className={`text-[15px] font-extrabold tabular-nums ${goat ? 'text-sage-700' : 'text-khaki-700'}`}>
+              {count} each
+            </span>
+          ) : (
+            <span className={`text-[15px] font-extrabold tabular-nums ${goat ? 'text-sage-700' : 'text-khaki-700'}`}>
+              {count}<span className="text-[11px] font-semibold text-gray-400">/{total}</span>
+            </span>
+          )}
           {streak > 1 && <span className="text-[10px] font-semibold text-khaki-600">{streak} weeks running 🏅</span>}
         </div>
       </div>
@@ -168,6 +219,65 @@ function AwardWinner({
           <p className="text-[11px] text-gray-400 mt-1">— {nameOf(note.voter_id)}</p>
         </div>
       )}
+      <AwardDigChips roundId={roundId} kind={kind} />
+    </div>
+  )
+}
+
+/** Dig chips on a GOAT/donkey verdict card. Same visual vocabulary and emoji
+ *  set as ReactionDigBar (rounded-full pill, sage when it's yours), but its
+ *  own component: ReactionDigBar's props are shaped for a like/comment/save
+ *  post, not a two-way toggle on a round's verdict. */
+function AwardDigChips({ roundId, kind }: { roundId: string; kind: 'goat' | 'donkey' }) {
+  const { data } = useAwardReactions(roundId)
+  const toggle = useToggleAwardReaction()
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const reactions = data?.[kind] ?? []
+
+  const dig = (emoji: string) => {
+    toggle.mutate({ roundId, kind, emoji }, {
+      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not dig'),
+    })
+    setPickerOpen(false)
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 mt-3">
+      {reactions.map(r => (
+        <button
+          key={r.emoji}
+          type="button"
+          aria-pressed={r.mine}
+          onClick={() => dig(r.emoji)}
+          className={`min-h-11 inline-flex items-center gap-1 rounded-full px-3 text-xs font-semibold ${
+            r.mine ? 'bg-sage-200 text-sage-800' : 'bg-white/70 text-gray-600'
+          }`}
+        >
+          <span aria-hidden>{r.emoji}</span> {r.count}
+        </button>
+      ))}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setPickerOpen(o => !o)}
+          aria-label="Add a dig"
+          className="min-w-11 min-h-11 inline-flex items-center justify-center rounded-full bg-white/70 text-gray-500 text-sm px-3"
+        >
+          +
+        </button>
+        {pickerOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setPickerOpen(false)} />
+            <div className="absolute z-20 bottom-full mb-1 left-0 flex gap-1 rounded-full bg-white shadow-lg border border-gray-200 px-2 py-1">
+              {DIG_EMOJIS.map(e => (
+                <button key={e} type="button" onClick={() => dig(e)} className="text-lg hover:scale-125 transition-transform">
+                  {e}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -211,6 +321,7 @@ function SessionThread({ roundId }: { roundId: string }) {
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
             placeholder="Say something…"
+            aria-label="Say something about the session"
             className="flex-1 text-sm border rounded-lg px-2.5 py-1.5"
           />
           <button

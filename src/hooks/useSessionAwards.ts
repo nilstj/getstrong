@@ -100,6 +100,7 @@ export function useAwardParticipants(roundId: string | null) {
         .from('crew_award_participants')
         .select('user_id')
         .eq('round_id', roundId)
+        .order('user_id')
       if (error) throw error
       const ids = (data ?? []).map(r => r.user_id as string)
       const byId = await profilesByIds(ids)

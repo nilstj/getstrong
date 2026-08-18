@@ -36,9 +36,13 @@ Four screens, all mobile-first and reachable from the crew page (`/crews/:crewId
 
 ### 1. Awards open — a card on the crew page
 
-Sits directly under the crew header, above Upcoming sessions, while a round is
-open. Once the results unlock it becomes a `See the verdict` link, and it leaves
-the crew page seven days after the round date.
+Sits under the Badges block on the crew page (still above the fold), while a
+round is open. Once the results unlock it becomes a `See the verdict` link, and
+it leaves the crew page seven days after the round date. A crew that climbs
+more than once a week can have a newer round open while an older one has
+already unlocked; when that happens the card also shows a second, quieter row
+linking to that older verdict, so it stays reachable rather than falling off
+the page the moment a new round opens.
 
 - Overlapping GOAT + donkey marks, headline, `Tue 18 Aug · 5 of you climbed`.
 - Voter avatars, filled for those who voted, faded for those who have not, plus
@@ -69,8 +73,11 @@ card per other participant:
 
 ### 4. The verdict — `/crews/:crewId/awards/:roundId`
 
-- GOAT card (sage) and donkey card (khaki): winner, `3/5`, voter avatars, the
-  top-voted comment with attribution, and `ReactionDigBar` dig chips.
+- GOAT card (sage) and donkey card (khaki): winner, `3/5` (`2 each` on a split
+  verdict), a highlighted comment about the winner — shown only when there is
+  a single winner, since a joint award has no single comment to attribute —
+  and dig chips in the same visual style as `ReactionDigBar`'s (its own
+  component and reactions table, not that one reused).
 - Donkey card shows a repeat-offender streak (`3rd week 🏅`) — weeks in a row as
   donkey, not weeks of attendance.
 - **The verdicts** — one row per participant with their tag tallies and the

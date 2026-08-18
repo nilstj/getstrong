@@ -1755,6 +1755,22 @@ Run: `npm run dev`, then walk this list. Hooks, components and pages have no aut
 - [ ] Vote as every participant — the card flips to `See the verdict` and the page shows GOAT, donkey, tag tallies and attributed comments.
 - [ ] Post in the session thread — it appears immediately and survives a reload.
 - [ ] Nothing on any of these screens shows a grade or an attempt count.
+- [ ] **Privacy property, on a locked (not-yet-unlocked) round, as an authenticated crew member:** in the browser console run
+  `await supabase.from('crew_award_votes').select('*')` and the same for `crew_award_tags` and `crew_award_notes` —
+  expect **zero rows** from each. Then open the Network tab, find the `get_award_round` response, and confirm the
+  `votes` / `tags` / `notes` keys are **absent from the payload entirely**, not merely present-and-empty. This is the
+  property the whole feature's "signed but hidden until unlock" premise depends on.
+- [ ] A crew member who did **not** log that session opens the crew page: no `Cast your votes` / `Change my verdict`
+  button and no vote-progress framing that implies they can act; once the round unlocks, they still get the link to
+  the verdict and can post in the thread.
+- [ ] Vote on day 1's round, then log a session on day 2 at the same gym (a new candidate). Confirm day 1's round is
+  still reachable from the crew page — either as the primary card (if still open) or as the secondary "The verdict
+  is in · <date>" row (if it already unlocked).
+- [ ] A round with six or more participants, viewed at a 375px viewport: the GOAT/donkey avatar picker wraps (or
+  scrolls) instead of overflowing the screen, and avatar order stays stable across a refetch.
+- [ ] In the Supabase dashboard, hand-edit a round's `closes_at` into the past (the only practical way to exercise
+  the 24h timeout without waiting) — confirm `/crews/:crewId/awards/:roundId` unlocks and shows the verdict even
+  with votes outstanding.
 
 - [ ] **Step 4: Confirm no points were minted**
 
@@ -1784,7 +1800,7 @@ Then use the `superpowers:finishing-a-development-branch` skill. **Do not push b
 | One vote each way, no self-GOAT, self-donkey allowed | 1 (PK + check constraint) |
 | One tag of each kind, one note per climber | 1 (PKs) |
 | Tag vocabulary constrained | 1 (`check (tag in ...)`) + 2 (`AWARD_TAGS`) |
-| Votes/tags/notes unreadable by clients | 1 (RLS on, no SELECT policy) + Step 3 grep |
+| Votes/tags/notes unreadable by clients | 1 (RLS on, no SELECT policy) + 7 Step 3 privacy check (console queries + Network tab, not a grep — there is no source-level check for a runtime access-control property) |
 | Unlock gate: all voted or 24h | 1 (`get_award_round`) + 2 (`awardsUnlocked`) |
 | GOAT vote counts as voted; donkey optional | 1 (`kind = 'goat'` in the count) + 2 (tests) |
 | Thread open to whole crew, not just participants | 1 (`is_award_round_member` policies) |

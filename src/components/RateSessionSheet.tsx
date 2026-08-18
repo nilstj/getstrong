@@ -20,11 +20,38 @@ export function RateSessionSheet({
   const castVote = useCastAwardVote()
   const toggleTag = useToggleAwardTag()
   const setNote = useSetAwardNote()
+  const [editingAwards, setEditingAwards] = useState(false)
 
-  const myGoat = round?.mine.votes.find(v => v.kind === 'goat')?.subject_id ?? null
-  const myDonkey = round?.mine.votes.find(v => v.kind === 'donkey')?.subject_id ?? null
-  const myTags = new Set((round?.mine.tags ?? []).map(t => `${t.subject_id}:${t.tag}`))
+  // Wait for the round before rendering the form at all — mounting it early
+  // (before `round.mine.notes` has arrived) is what let a note field open
+  // empty and then blank out a saved comment on blur.
+  if (!round) {
+    return (
+      <BottomSheet open={open} onClose={onClose} title="Rate the session">
+        <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+      </BottomSheet>
+    )
+  }
+
+  if (!round.am_participant) {
+    return (
+      <BottomSheet open={open} onClose={onClose} title="Rate the session">
+        <p className="text-sm text-gray-600">
+          You weren't logged in for this session, so there's no vote from you here — check back for the
+          verdict once it's in, and feel free to rib whoever was.
+        </p>
+      </BottomSheet>
+    )
+  }
+
+  const myGoat = round.mine.votes.find(v => v.kind === 'goat')?.subject_id ?? null
+  const myDonkey = round.mine.votes.find(v => v.kind === 'donkey')?.subject_id ?? null
+  const myTags = new Set(round.mine.tags.map(t => `${t.subject_id}:${t.tag}`))
   const others = participants.filter(p => p.user_id !== user?.id)
+  const bothPicked = !!myGoat && !!myDonkey
+  const showFullPickers = !bothPicked || editingAwards
+  const goatPerson = participants.find(p => p.user_id === myGoat)
+  const donkeyPerson = participants.find(p => p.user_id === myDonkey)
 
   const vote = (kind: 'goat' | 'donkey', subjectId: string) => {
     castVote.mutate({ roundId, kind, subjectId }, {
@@ -34,26 +61,65 @@ export function RateSessionSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Rate the session">
-      <div className="space-y-5">
-        <AwardPicker
-          label="GOAT of the session"
-          hint="Who taught you the most. One vote."
-          icon={<GoatIcon size={17} />}
-          accent="sage"
-          people={others}
-          picked={myGoat}
-          onPick={id => vote('goat', id)}
-        />
+      <div className="space-y-5 pb-24">
+        {showFullPickers ? (
+          <>
+            <AwardPicker
+              label="GOAT of the session"
+              hint="Who taught you the most. One vote."
+              icon={<GoatIcon size={17} />}
+              accent="sage"
+              people={others}
+              picked={myGoat}
+              onPick={id => vote('goat', id)}
+            />
 
-        <AwardPicker
-          label="Donkey of the session"
-          hint="Worst excuse, worst beta, worst timing. Be fair."
-          icon={<DonkeyIcon size={17} />}
-          accent="khaki"
-          people={participants}
-          picked={myDonkey}
-          onPick={id => vote('donkey', id)}
-        />
+            <AwardPicker
+              label="Donkey of the session"
+              hint="Worst excuse, worst beta, worst timing. Be fair."
+              icon={<DonkeyIcon size={17} />}
+              accent="khaki"
+              people={participants}
+              picked={myDonkey}
+              onPick={id => vote('donkey', id)}
+            />
+
+            {bothPicked && (
+              <button
+                type="button"
+                onClick={() => setEditingAwards(false)}
+                className="min-h-11 text-sm font-semibold text-sage-700"
+              >
+                Done
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-2.5 bg-gray-50 rounded-2xl p-3">
+            <span className="flex -space-x-2 flex-shrink-0">
+              <span className="w-8 h-8 rounded-full bg-sage-700 border-2 border-white text-white grid place-items-center overflow-hidden">
+                {goatPerson?.avatar_url
+                  ? <img src={goatPerson.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : <GoatIcon size={16} />}
+              </span>
+              <span className="w-8 h-8 rounded-full bg-khaki-600 border-2 border-white text-white grid place-items-center overflow-hidden">
+                {donkeyPerson?.avatar_url
+                  ? <img src={donkeyPerson.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : <DonkeyIcon size={16} />}
+              </span>
+            </span>
+            <p className="flex-1 min-w-0 text-sm font-semibold text-gray-800 truncate">
+              GOAT {goatPerson?.username ?? 'Someone'} · Donkey {donkeyPerson?.username ?? 'Someone'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setEditingAwards(true)}
+              className="min-h-11 px-2 text-sm font-semibold text-sage-700 flex-shrink-0"
+            >
+              Edit
+            </button>
+          </div>
+        )}
 
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">
@@ -80,9 +146,10 @@ export function RateSessionSheet({
                       <button
                         key={t.key}
                         type="button"
+                        aria-pressed={on}
                         onClick={() => toggleTag.mutate(
                           { roundId, subjectId: p.user_id, tag: t.key },
-                          { onError: () => toast.error('Could not tag') },
+                          { onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not tag') },
                         )}
                         className={`min-h-11 inline-flex items-center px-3 rounded-full text-[13px] font-semibold border ${
                           on
@@ -97,30 +164,30 @@ export function RateSessionSheet({
                 </div>
 
                 <NoteField
-                  initial={round?.mine.notes.find(n => n.subject_id === p.user_id)?.body ?? ''}
+                  initial={round.mine.notes.find(n => n.subject_id === p.user_id)?.body ?? ''}
                   onSave={body => setNote.mutate(
                     { roundId, subjectId: p.user_id, body },
-                    { onError: () => toast.error('Could not save') },
+                    { onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not save') },
                   )}
                 />
               </div>
             ))}
           </div>
         </div>
+      </div>
 
-        <div>
-          <button
-            type="button"
-            onClick={() => { toast.success('Verdict posted'); onClose() }}
-            disabled={!myGoat}
-            className="w-full bg-sage-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
-          >
-            Post my verdict
-          </button>
-          <p className="text-[11px] text-gray-400 text-center mt-2">
-            Hidden until everyone has voted or the session is 24h old.
-          </p>
-        </div>
+      <div className="sticky bottom-0 -mx-5 -mb-10 bg-white border-t border-gray-100 px-5 pt-3 pb-5">
+        <button
+          type="button"
+          onClick={() => { toast.success('Verdict posted'); onClose() }}
+          disabled={!myGoat}
+          className="w-full min-h-11 bg-sage-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+        >
+          Post my verdict
+        </button>
+        <p className="text-[11px] text-gray-400 text-center mt-2">
+          Hidden until everyone has voted or 24h after voting opened.
+        </p>
       </div>
     </BottomSheet>
   )
@@ -149,13 +216,14 @@ function AwardPicker({
         <h3 className="text-sm font-bold">{label}</h3>
       </div>
       <p className="text-xs text-gray-400 ml-[34px] mb-3">{hint}</p>
-      <div className="flex gap-2.5">
+      <div className="flex flex-wrap gap-x-2.5 gap-y-3">
         {people.map(p => (
           <button
             key={p.user_id}
             type="button"
             onClick={() => onPick(p.user_id)}
-            className="flex-1 flex flex-col items-center gap-1.5"
+            aria-pressed={picked === p.user_id}
+            className="w-[64px] flex flex-col items-center gap-1.5"
           >
             <span className={`relative w-[52px] h-[52px] rounded-full ${avatar} grid place-items-center text-lg font-semibold overflow-hidden ${
               picked === p.user_id ? `ring-2 ring-offset-2 ${ring}` : ''
