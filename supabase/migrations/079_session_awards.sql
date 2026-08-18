@@ -138,13 +138,16 @@ language plpgsql security definer stable set search_path = public as $$
 begin
   if not is_crew_member(p_crew) then raise exception 'Not your crew'; end if;
   return query
-    select s.date, s.location, count(distinct s.user_id)::integer, r.id
+    -- sessions.location is untrimmed free text; trim it here so the gym we
+    -- advertise is exactly the value open_award_round will canonicalise to,
+    -- otherwise a padded location can never be re-matched to its session.
+    select s.date, trim(s.location), count(distinct s.user_id)::integer, r.id
       from sessions s
       join crew_members m on m.user_id = s.user_id and m.crew_id = p_crew
       left join crew_award_rounds r
-        on r.crew_id = p_crew and r.round_date = s.date and r.gym = s.location
+        on r.crew_id = p_crew and r.round_date = s.date and r.gym = trim(s.location)
      where s.date >= current_date - interval '7 days'
-     group by s.date, s.location, r.id
+     group by s.date, trim(s.location), r.id
     having count(distinct s.user_id) >= 2
      order by s.date desc
      limit 5;
@@ -156,7 +159,7 @@ end; $$;
 -- counted but the denominator cannot shift mid-vote.
 create or replace function public.open_award_round(p_crew uuid, p_date date, p_gym text)
 returns uuid language plpgsql security definer set search_path = public as $$
-declare v_id uuid; v_gym text; v_count integer;
+declare v_id uuid; v_gym text; v_count integer; v_members uuid[];
 begin
   if not exists (select 1 from crew_members where crew_id = p_crew and user_id = auth.uid()) then
     raise exception 'Only crew members can open awards';
@@ -170,15 +173,25 @@ begin
     returning id into v_id;
 
   if (select first_vote_at from crew_award_rounds where id = v_id) is null then
+    -- sessions.location is untrimmed free text, so trim it here to match the
+    -- already-trimmed v_gym (crew_award_candidates trims the same way, which
+    -- is what makes the gym it advertises re-matchable here).
+    select coalesce(array_agg(m.user_id), array[]::uuid[]) into v_members
+      from crew_members m
+     where m.crew_id = p_crew
+       and exists (
+         select 1 from sessions s
+          where s.user_id = m.user_id and s.date = p_date and trim(s.location) = v_gym
+       );
+
     insert into crew_award_participants (round_id, user_id)
-      select v_id, m.user_id
-        from crew_members m
-       where m.crew_id = p_crew
-         and exists (
-           select 1 from sessions s
-            where s.user_id = m.user_id and s.date = p_date and s.location = v_gym
-         )
+      select v_id, x from unnest(v_members) as x
       on conflict do nothing;
+
+    -- A member who deleted or corrected their session since the last snapshot
+    -- must not stay in the denominator forever.
+    delete from crew_award_participants
+     where round_id = v_id and user_id <> all(v_members);
   end if;
 
   select count(*) into v_count from crew_award_participants where round_id = v_id;
@@ -189,13 +202,16 @@ begin
   return v_id;
 end; $$;
 
--- ── Voting ───────────────────────────────────────────────────────────────────
-create or replace function public.cast_award_vote(p_round uuid, p_kind text, p_subject uuid)
-returns void language plpgsql security definer set search_path = public as $$
+-- ── Guard helpers ────────────────────────────────────────────────────────────
+-- Shared by cast_award_vote, toggle_award_tag and set_award_note: the voter and
+-- the subject must both be participants of the round, and the round must still
+-- be open. p_what names the action in the not-a-participant message so each
+-- call site keeps its own wording.
+create or replace function public.assert_award_voter(p_round uuid, p_subject uuid, p_what text)
+returns void language plpgsql security definer stable set search_path = public as $$
 begin
-  if p_kind not in ('goat', 'donkey') then raise exception 'Unknown award'; end if;
   if not exists (select 1 from crew_award_participants where round_id = p_round and user_id = auth.uid()) then
-    raise exception 'Only climbers from that session can vote';
+    raise exception 'Only climbers from that session can %', p_what;
   end if;
   if not exists (select 1 from crew_award_participants where round_id = p_round and user_id = p_subject) then
     raise exception 'That climber was not in the session';
@@ -203,6 +219,30 @@ begin
   if exists (select 1 from crew_award_rounds where id = p_round and now() > closes_at) then
     raise exception 'Voting has closed';
   end if;
+end; $$;
+
+-- The single definition of the unlock predicate: used by get_award_round (to
+-- decide whether to return everyone else's votes/tags/notes) and by
+-- crew_award_history (to decide which rounds are safe to tally). A participant
+-- counts as having voted on their GOAT vote; the donkey vote is optional, so an
+-- abstainer cannot hold the round hostage. An empty round never unlocks.
+create or replace function public.award_round_unlocked(p_round uuid)
+returns boolean language plpgsql security definer stable set search_path = public as $$
+declare v_participants integer; v_voted integer; v_closes timestamptz;
+begin
+  select closes_at into v_closes from crew_award_rounds where id = p_round;
+  select count(*) into v_participants from crew_award_participants where round_id = p_round;
+  select count(distinct voter_id) into v_voted
+    from crew_award_votes where round_id = p_round and kind = 'goat';
+  return (v_participants > 0 and v_voted >= v_participants) or now() > v_closes;
+end; $$;
+
+-- ── Voting ───────────────────────────────────────────────────────────────────
+create or replace function public.cast_award_vote(p_round uuid, p_kind text, p_subject uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_kind not in ('goat', 'donkey') then raise exception 'Unknown award'; end if;
+  perform assert_award_voter(p_round, p_subject, 'vote');
 
   -- crew_award_votes_no_self_goat rejects a self-GOAT here, at the database.
   insert into crew_award_votes (round_id, voter_id, kind, subject_id)
@@ -210,7 +250,8 @@ begin
     on conflict (round_id, voter_id, kind)
       do update set subject_id = excluded.subject_id, created_at = now();
 
-  update crew_award_rounds set first_vote_at = coalesce(first_vote_at, now()) where id = p_round;
+  update crew_award_rounds set first_vote_at = coalesce(first_vote_at, now())
+   where id = p_round and first_vote_at is null;
 end; $$;
 
 -- ── Props and notes ──────────────────────────────────────────────────────────
@@ -219,15 +260,7 @@ create or replace function public.toggle_award_tag(p_round uuid, p_subject uuid,
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_deleted integer;
 begin
-  if not exists (select 1 from crew_award_participants where round_id = p_round and user_id = auth.uid()) then
-    raise exception 'Only climbers from that session can give props';
-  end if;
-  if not exists (select 1 from crew_award_participants where round_id = p_round and user_id = p_subject) then
-    raise exception 'That climber was not in the session';
-  end if;
-  if exists (select 1 from crew_award_rounds where id = p_round and now() > closes_at) then
-    raise exception 'Voting has closed';
-  end if;
+  perform assert_award_voter(p_round, p_subject, 'give props');
 
   delete from crew_award_tags
    where round_id = p_round and voter_id = auth.uid() and subject_id = p_subject and tag = p_tag;
@@ -244,15 +277,7 @@ create or replace function public.set_award_note(p_round uuid, p_subject uuid, p
 returns void language plpgsql security definer set search_path = public as $$
 declare v_body text;
 begin
-  if not exists (select 1 from crew_award_participants where round_id = p_round and user_id = auth.uid()) then
-    raise exception 'Only climbers from that session can comment';
-  end if;
-  if not exists (select 1 from crew_award_participants where round_id = p_round and user_id = p_subject) then
-    raise exception 'That climber was not in the session';
-  end if;
-  if exists (select 1 from crew_award_rounds where id = p_round and now() > closes_at) then
-    raise exception 'Voting has closed';
-  end if;
+  perform assert_award_voter(p_round, p_subject, 'comment');
 
   v_body := nullif(trim(coalesce(p_body, '')), '');
   if v_body is null then
@@ -285,7 +310,7 @@ begin
   select count(*) into v_participants from crew_award_participants where round_id = p_round;
   select count(distinct voter_id) into v_voted
     from crew_award_votes where round_id = p_round and kind = 'goat';
-  v_unlocked := (v_participants > 0 and v_voted >= v_participants) or now() > v_closes;
+  v_unlocked := award_round_unlocked(p_round);
 
   v_out := jsonb_build_object(
     'round_id', p_round,
@@ -327,18 +352,15 @@ begin
   if not is_crew_member(p_crew) then raise exception 'Not your crew'; end if;
   return query
   with recent as (
-    select r.id, r.round_date, r.closes_at,
-           (select count(*) from crew_award_participants p where p.round_id = r.id) as participants,
-           (select count(distinct v.voter_id) from crew_award_votes v
-             where v.round_id = r.id and v.kind = 'goat') as voted
+    select r.id, r.round_date
       from crew_award_rounds r
      where r.crew_id = p_crew
-     order by r.round_date desc
+       and award_round_unlocked(r.id)
+     order by r.round_date desc, r.gym
      limit least(coalesce(p_limit, 12), 52)
   )
   select ro.id, ro.round_date, v.kind, v.subject_id, count(*)::integer
     from recent ro
     join crew_award_votes v on v.round_id = ro.id
-   where (ro.participants > 0 and ro.voted >= ro.participants) or now() > ro.closes_at
    group by ro.id, ro.round_date, v.kind, v.subject_id;
 end; $$;
