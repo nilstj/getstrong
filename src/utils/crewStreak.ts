@@ -3,10 +3,9 @@ import { differenceInCalendarWeeks } from 'date-fns'
 /**
  * How many weeks in a row a crew has been active, counting back from now.
  * `dates` are ISO timestamps of the activity being counted — the crew's beta
- * posts. The current
- * week counts as in-progress: if there's activity this week the streak includes
- * it; if not, the streak is measured ending last week (0 if last week was also
- * quiet).
+ * posts. The current week counts as in-progress: if there's activity this week
+ * the streak includes it; if not, the streak is measured ending last week (0 if
+ * last week was also quiet).
  */
 export function weeklyStreak(dates: string[], now: Date): number {
   if (dates.length === 0) return 0
