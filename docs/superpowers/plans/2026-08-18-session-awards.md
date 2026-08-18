@@ -44,6 +44,17 @@
 
 ## Task 1: Migration 079 — tables, RLS and RPCs
 
+> **AMENDED AFTER REVIEW — do not re-execute this task from the SQL below.**
+> `supabase/migrations/079_session_awards.sql` as committed (767f54d + 0800f28)
+> is the source of truth. Review found the SQL here trims the gym on one side of
+> a comparison only, while `sessions.location` is untrimmed free text — which
+> makes a whitespace-padded gym produce a permanently unopenable round. It also
+> triplicated the three-guard preamble and defined the unlock predicate twice.
+> The committed file canonicalises the gym on `trim()` everywhere and extracts
+> `assert_award_voter()` and `award_round_unlocked()` as the single definitions.
+> If you need to re-derive this migration, read the committed file, not this.
+
+
 **Files:**
 - Create: `supabase/migrations/079_session_awards.sql`
 
