@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { profilesByIds } from '../lib/profiles'
 import { useAuth } from '../providers/AuthProvider'
 import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow, type FriendSessionSummary } from '../utils/friendSessions'
 
@@ -38,14 +39,6 @@ export interface CrewLeaderRow {
   username: string | null
   avatar_url: string | null
   points: number
-}
-
-async function profilesByIds(ids: string[]) {
-  const map = new Map<string, { username: string | null; avatar_url: string | null }>()
-  if (ids.length === 0) return map
-  const { data } = await supabase.from('profiles').select('id, username, avatar_url').in('id', ids)
-  for (const p of data ?? []) map.set(p.id as string, { username: p.username as string | null, avatar_url: p.avatar_url as string | null })
-  return map
 }
 
 /** Crews the current user belongs to, with their role and member count. */
