@@ -1007,6 +1007,7 @@ Layout, copy and colour come from artboards **2 · Vote GOAT + donkey** and **3 
 
 ```tsx
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import toast from 'react-hot-toast'
 import { Check } from 'lucide-react'
 import { BottomSheet } from './BottomSheet'
@@ -1047,7 +1048,7 @@ export function RateSessionSheet({
           hint="Who taught you the most. One vote."
           icon={<GoatIcon size={17} />}
           accent="sage"
-          people={participants.filter(p => p.user_id !== user?.id)}
+          people={others}
           picked={myGoat}
           onPick={id => vote('goat', id)}
         />
@@ -1138,7 +1139,7 @@ function AwardPicker({
 }: {
   label: string
   hint: string
-  icon: React.ReactNode
+  icon: ReactNode
   accent: 'sage' | 'khaki'
   people: { user_id: string; username: string | null; avatar_url: string | null }[]
   picked: string | null
@@ -1150,7 +1151,7 @@ function AwardPicker({
   return (
     <div>
       <div className="flex items-center gap-2">
-        <span className={`w-6.5 h-6.5 w-[26px] h-[26px] rounded-full ${badge} text-white grid place-items-center flex-shrink-0`}>
+        <span className={`w-[26px] h-[26px] rounded-full ${badge} text-white grid place-items-center flex-shrink-0`}>
           {icon}
         </span>
         <h3 className="text-sm font-bold">{label}</h3>
@@ -1164,7 +1165,7 @@ function AwardPicker({
             onClick={() => onPick(p.user_id)}
             className="flex-1 flex flex-col items-center gap-1.5"
           >
-            <span className={`relative w-13 h-13 w-[52px] h-[52px] rounded-full ${avatar} grid place-items-center text-lg font-semibold overflow-hidden ${
+            <span className={`relative w-[52px] h-[52px] rounded-full ${avatar} grid place-items-center text-lg font-semibold overflow-hidden ${
               picked === p.user_id ? `ring-2 ring-offset-2 ${ring}` : ''
             }`}>
               {p.avatar_url
@@ -1250,19 +1251,12 @@ export function DonkeyIcon({ size = 24 }: { size?: number }) {
 }
 ```
 
-- [ ] **Step 3: Clean up the placeholder size classes**
-
-The picker above contains `w-6.5 h-6.5 w-[26px] h-[26px]` and `w-13 h-13 w-[52px] h-[52px]` — duplicated because Tailwind has no `6.5`/`13` spacing step. Delete the invalid `w-6.5 h-6.5` and `w-13 h-13`, keeping only the arbitrary-value classes.
-
-Run: `grep -n "w-6.5\|w-13" src/components/RateSessionSheet.tsx`
-Expected: no matches.
-
-- [ ] **Step 4: Verify it compiles and lint is clean**
+- [ ] **Step 3: Verify it compiles and lint is clean**
 
 Run: `npm run build && npm run lint 2>&1 | tail -3`
 Expected: build succeeds; lint still reports **16 problems**, no more.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add src/components/RateSessionSheet.tsx src/components/AwardIcons.tsx
@@ -1291,7 +1285,6 @@ import { Link } from 'react-router-dom'
 import { Clock } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
-import { useAuth } from '../providers/AuthProvider'
 import { GoatIcon, DonkeyIcon } from './AwardIcons'
 import { RateSessionSheet } from './RateSessionSheet'
 import { useAwardCandidates, useOpenAwardRound, useAwardRound } from '../hooks/useSessionAwards'
@@ -1303,7 +1296,6 @@ import { awardsUnlocked } from '../utils/sessionAwards'
  * once it has unlocked. Renders nothing when there is no such session.
  */
 export function SessionAwardsCard({ crewId }: { crewId: string }) {
-  const { user } = useAuth()
   const { data: candidates = [] } = useAwardCandidates(crewId)
   const openRound = useOpenAwardRound()
   const [sheetRoundId, setSheetRoundId] = useState<string | null>(null)
@@ -1325,7 +1317,6 @@ export function SessionAwardsCard({ crewId }: { crewId: string }) {
       })
     : false
   const iVoted = !!round?.mine.votes.some(v => v.kind === 'goat')
-  const amParticipant = !!user
 
   const start = () => {
     if (candidate.round_id) { setSheetRoundId(candidate.round_id); return }
@@ -1383,7 +1374,7 @@ export function SessionAwardsCard({ crewId }: { crewId: string }) {
         <button
           type="button"
           onClick={start}
-          disabled={!amParticipant || openRound.isPending}
+          disabled={openRound.isPending}
           className={`mt-3 w-full min-h-11 flex items-center justify-center rounded-xl text-[15px] font-semibold disabled:opacity-50 ${
             iVoted ? 'bg-sage-50 text-sage-700' : 'bg-sage-700 text-white'
           }`}
