@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { awardTally, awardsUnlocked, tagTally, donkeyStreak } from '../sessionAwards'
 import type { AwardVoteRow, AwardHistoryRow } from '../sessionAwards'
 
@@ -127,5 +127,30 @@ describe('donkeyStreak', () => {
     const rows = [donkey('r1', '2026-08-17', 'nils', 1), donkey('r1', '2026-08-17', 'ida', 1)]
     expect(donkeyStreak(rows, 'nils', now)).toBe(1)
     expect(donkeyStreak(rows, 'ida', now)).toBe(1)
+  })
+
+  // The rest of this file's round_dates all land on a Monday-Saturday, which is
+  // exactly why the bug below was invisible: `new Date(round_date)` parses a
+  // bare 'YYYY-MM-DD' as UTC midnight, and shifting a Mon-Sat date backward by
+  // a few hours into a negative-offset timezone still lands on a day within
+  // that same Sun-Sat calendar week. A Sunday date is the one day where that
+  // backward shift crosses into the *previous* week (Sunday → Saturday), since
+  // Sunday is the first day of the week date-fns buckets by.
+  describe('in a negative-offset timezone', () => {
+    beforeAll(() => { vi.stubEnv('TZ', 'America/Los_Angeles') })
+    afterAll(() => { vi.unstubAllEnvs() })
+
+    it('keeps a streak running through a Sunday-dated round', () => {
+      // Un-normalised, '2026-08-16' (a Sunday, this week) parses as UTC
+      // midnight and reads back as Saturday 2026-08-15 in America/Los_Angeles
+      // — the last day of *last* week, not this week. That collapses onto the
+      // same week bucket as the '2026-08-11' (Tuesday, last week) round below,
+      // so the two donkey weeks are miscounted as one instead of two.
+      const rows = [
+        donkey('r1', '2026-08-11', 'nils'), // Tuesday, last week
+        donkey('r2', '2026-08-16', 'nils'), // Sunday, this week
+      ]
+      expect(donkeyStreak(rows, 'nils', now)).toBe(2)
+    })
   })
 })

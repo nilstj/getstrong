@@ -20,6 +20,9 @@ export interface AwardRoundState {
   closes_at: string
   unlocked: boolean
   voters: string[]
+  /** Always present: whether you were a climber in this session at all. A
+   *  crew member who did not climb that session is not invited to vote. */
+  am_participant: boolean
   /** Always present: what you personally submitted, so you can change it. */
   mine: {
     votes: { kind: 'goat' | 'donkey'; subject_id: string }[]
@@ -106,6 +109,70 @@ export function useAwardParticipants(roundId: string | null) {
         avatar_url: byId.get(id)?.avatar_url ?? null,
       }))
     },
+  })
+}
+
+/** One dig emoji's count on a round's verdict, and whether you sent it. */
+export interface AwardReactionSummary {
+  emoji: string
+  count: number
+  mine: boolean
+}
+
+/** Dig reactions on a round's GOAT and donkey verdict cards, by kind. */
+export function useAwardReactions(roundId: string | null) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['award_reactions', roundId],
+    enabled: !!roundId,
+    queryFn: async (): Promise<Record<'goat' | 'donkey', AwardReactionSummary[]>> => {
+      const { data, error } = await supabase
+        .from('crew_award_reactions')
+        .select('kind, emoji, user_id')
+        .eq('round_id', roundId)
+      if (error) throw error
+      const rows = (data ?? []) as { kind: 'goat' | 'donkey'; emoji: string; user_id: string }[]
+      const byKind: Record<'goat' | 'donkey', Map<string, AwardReactionSummary>> = {
+        goat: new Map(),
+        donkey: new Map(),
+      }
+      for (const r of rows) {
+        const map = byKind[r.kind]
+        const entry = map.get(r.emoji) ?? { emoji: r.emoji, count: 0, mine: false }
+        entry.count += 1
+        if (r.user_id === user?.id) entry.mine = true
+        map.set(r.emoji, entry)
+      }
+      return { goat: Array.from(byKind.goat.values()), donkey: Array.from(byKind.donkey.values()) }
+    },
+  })
+}
+
+/** Toggles the caller's dig reaction on a round's verdict on or off. */
+export function useToggleAwardReaction() {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  return useMutation({
+    mutationFn: async (v: { roundId: string; kind: 'goat' | 'donkey'; emoji: string }) => {
+      const cached = qc.getQueryData<Record<'goat' | 'donkey', AwardReactionSummary[]>>([
+        'award_reactions', v.roundId,
+      ])
+      const mine = cached?.[v.kind]?.some(r => r.emoji === v.emoji && r.mine) ?? false
+
+      if (mine) {
+        const { error } = await supabase
+          .from('crew_award_reactions')
+          .delete()
+          .eq('round_id', v.roundId).eq('user_id', user!.id).eq('kind', v.kind).eq('emoji', v.emoji)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('crew_award_reactions')
+          .insert({ round_id: v.roundId, user_id: user!.id, kind: v.kind, emoji: v.emoji })
+        if (error && error.code !== '23505') throw error // ignore "already reacted"
+      }
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_reactions', v.roundId] }),
   })
 }
 

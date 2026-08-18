@@ -10,11 +10,13 @@
 -- votes is unguardable in principle, so the award pays nothing and stays a joke
 -- rather than becoming a farmable metric.
 --
--- Read access splits in two. Rounds, participants and the thread are readable
--- by crew members. Votes, tags and notes have RLS on and NO SELECT POLICY AT
--- ALL — they are only ever readable through get_award_round(), which refuses to
--- return them until everyone has voted or the round has closed. That is what
--- makes the unlock gate real instead of cosmetic.
+-- Read access splits in two. Rounds, participants, the thread and dig
+-- reactions on the verdicts are readable by crew members. Votes, tags and
+-- notes have RLS on and NO SELECT POLICY AT ALL — they are only ever readable
+-- through get_award_round(), which refuses to return them until everyone has
+-- voted or the round has closed. That is what makes the unlock gate real
+-- instead of cosmetic. Reactions are exempt from that gate on purpose: they
+-- react to an already-revealed verdict, not to the secret vote itself.
 
 -- ── Tables ───────────────────────────────────────────────────────────────────
 create table if not exists crew_award_rounds (
@@ -85,12 +87,30 @@ create table if not exists crew_award_messages (
 );
 create index if not exists crew_award_messages_round_idx on crew_award_messages (round_id, created_at);
 
+-- Dig chips on the GOAT/donkey verdict cards. Mirrors problem_reactions
+-- (migration 018): a (round, user, kind, emoji) primary key is the guard —
+-- one of each emoji per person per award, no check-then-write. Reactions are
+-- reactions to an already-revealed verdict, not part of the secret vote, so
+-- unlike votes/tags/notes they get ordinary SELECT/INSERT/DELETE policies
+-- instead of going through a SECURITY DEFINER RPC. Deliberately no trigger of
+-- any kind here: this feature awards no beta_points at all.
+create table if not exists crew_award_reactions (
+  round_id uuid not null references crew_award_rounds(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null check (kind in ('goat', 'donkey')),
+  emoji text not null,
+  created_at timestamptz not null default now(),
+  primary key (round_id, user_id, kind, emoji)
+);
+create index if not exists crew_award_reactions_round_idx on crew_award_reactions (round_id);
+
 alter table crew_award_rounds       enable row level security;
 alter table crew_award_participants enable row level security;
 alter table crew_award_votes        enable row level security;
 alter table crew_award_tags         enable row level security;
 alter table crew_award_notes        enable row level security;
 alter table crew_award_messages     enable row level security;
+alter table crew_award_reactions    enable row level security;
 
 -- ── Membership helper ────────────────────────────────────────────────────────
 -- SECURITY DEFINER so policies on the child tables can reach the round's crew
@@ -124,6 +144,18 @@ drop policy if exists "award messages delete own" on crew_award_messages;
 create policy "award messages delete own" on crew_award_messages for delete
   using (user_id = auth.uid());
 
+drop policy if exists "award reactions readable by crew" on crew_award_reactions;
+create policy "award reactions readable by crew" on crew_award_reactions for select
+  using (is_award_round_member(round_id));
+
+drop policy if exists "award reactions insert by crew" on crew_award_reactions;
+create policy "award reactions insert by crew" on crew_award_reactions for insert
+  with check (user_id = auth.uid() and is_award_round_member(round_id));
+
+drop policy if exists "award reactions delete own" on crew_award_reactions;
+create policy "award reactions delete own" on crew_award_reactions for delete
+  using (user_id = auth.uid());
+
 -- crew_award_votes, crew_award_tags and crew_award_notes get NO policies on
 -- purpose. RLS is on, so a client cannot read or write them at all; every path
 -- goes through the SECURITY DEFINER functions below.
@@ -149,7 +181,9 @@ begin
      where s.date >= current_date - interval '7 days'
      group by s.date, trim(s.location), r.id
     having count(distinct s.user_id) >= 2
-     order by s.date desc
+     -- trim(s.location) is a tiebreaker: two gyms on the same date would
+     -- otherwise leave the first row (and thus the UI's pick) nondeterministic.
+     order by s.date desc, trim(s.location)
      limit 5;
 end; $$;
 
@@ -192,6 +226,20 @@ begin
     -- must not stay in the denominator forever.
     delete from crew_award_participants
      where round_id = v_id and user_id <> all(v_members);
+
+    -- A departed participant's votes/props/notes must go with them, not just
+    -- their participant row: left behind, their GOAT vote could still count
+    -- toward v_voted while v_participants shrank, and a note whose author is
+    -- no longer a participant renders in the UI as an anonymous dig (the
+    -- client resolves authors against the participant list and falls back to
+    -- "Someone") — which the spec forbids. Reuses v_members, the same
+    -- snapshot the participants delete above just used.
+    delete from crew_award_votes
+     where round_id = v_id and (voter_id <> all(v_members) or subject_id <> all(v_members));
+    delete from crew_award_tags
+     where round_id = v_id and (voter_id <> all(v_members) or subject_id <> all(v_members));
+    delete from crew_award_notes
+     where round_id = v_id and (voter_id <> all(v_members) or subject_id <> all(v_members));
   end if;
 
   select count(*) into v_count from crew_award_participants where round_id = v_id;
@@ -221,21 +269,38 @@ begin
   end if;
 end; $$;
 
--- The single definition of the unlock predicate: used by get_award_round (to
--- decide whether to return everyone else's votes/tags/notes) and by
--- crew_award_history (to decide which rounds are safe to tally). A participant
--- counts as having voted on their GOAT vote; the donkey vote is optional, so an
--- abstainer cannot hold the round hostage. An empty round never unlocks.
-create or replace function public.award_round_unlocked(p_round uuid)
-returns boolean language plpgsql security definer stable set search_path = public as $$
+-- The single computation of participants/voted/unlocked, shared by
+-- award_round_unlocked (the single definition of the unlock predicate used by
+-- the write guards and by crew_award_history) and get_award_round (which needs
+-- the same counts for its progress payload). Counting them here once, instead
+-- of separately in each caller, is what keeps "what counts as voted" written
+-- in exactly one place.
+--
+-- A participant counts as having voted on their GOAT vote; the donkey vote is
+-- optional, so an abstainer cannot hold the round hostage. A zero-participant
+-- round never unlocks. `coalesce(..., false)` also makes this total for a
+-- round id that does not exist at all (v_closes is null there, which would
+-- otherwise make `now() > v_closes` — and thus the whole expression — NULL,
+-- turning "is it unlocked" into an existence oracle).
+create or replace function public.award_round_status(p_round uuid)
+returns table (participants integer, voted integer, unlocked boolean)
+language plpgsql security definer stable set search_path = public as $$
 declare v_participants integer; v_voted integer; v_closes timestamptz;
 begin
   select closes_at into v_closes from crew_award_rounds where id = p_round;
   select count(*) into v_participants from crew_award_participants where round_id = p_round;
   select count(distinct voter_id) into v_voted
     from crew_award_votes where round_id = p_round and kind = 'goat';
-  return (v_participants > 0 and v_voted >= v_participants) or now() > v_closes;
+  return query select
+    v_participants,
+    v_voted,
+    coalesce((v_participants > 0 and v_voted >= v_participants) or now() > v_closes, false);
 end; $$;
+
+create or replace function public.award_round_unlocked(p_round uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select unlocked from award_round_status(p_round);
+$$;
 
 -- ── Voting ───────────────────────────────────────────────────────────────────
 create or replace function public.cast_award_vote(p_round uuid, p_kind text, p_subject uuid)
@@ -307,10 +372,11 @@ begin
   if v_crew is null then raise exception 'No such round'; end if;
   if not is_crew_member(v_crew) then raise exception 'Not your crew'; end if;
 
-  select count(*) into v_participants from crew_award_participants where round_id = p_round;
-  select count(distinct voter_id) into v_voted
-    from crew_award_votes where round_id = p_round and kind = 'goat';
-  v_unlocked := award_round_unlocked(p_round);
+  -- Counts and unlock state come from the one shared computation — the same
+  -- one award_round_unlocked uses — so this payload's "voted"/"unlocked" can
+  -- never drift from what actually gates the write guards.
+  select participants, voted, unlocked into v_participants, v_voted, v_unlocked
+    from award_round_status(p_round);
 
   v_out := jsonb_build_object(
     'round_id', p_round,
@@ -320,6 +386,7 @@ begin
     'unlocked', v_unlocked,
     'voters', (select coalesce(jsonb_agg(distinct voter_id), '[]'::jsonb)
                  from crew_award_votes where round_id = p_round and kind = 'goat'),
+    'am_participant', exists (select 1 from crew_award_participants where round_id = p_round and user_id = v_me),
     'mine', jsonb_build_object(
       'votes', (select coalesce(jsonb_agg(jsonb_build_object('kind', kind, 'subject_id', subject_id)), '[]'::jsonb)
                   from crew_award_votes where round_id = p_round and voter_id = v_me),
@@ -364,3 +431,30 @@ begin
     join crew_award_votes v on v.round_id = ro.id
    group by ro.id, ro.round_date, v.kind, v.subject_id;
 end; $$;
+
+-- ── Closing the helper functions to clients ─────────────────────────────────
+-- award_round_unlocked and assert_award_voter are SECURITY DEFINER internals:
+-- every caller of theirs (cast_award_vote, toggle_award_tag, set_award_note,
+-- get_award_round, crew_award_history) is itself a SECURITY DEFINER function,
+-- so the nested call is permission-checked against that function's owner, not
+-- against the client role — revoking these two from anon/authenticated closes
+-- them off from being called directly over PostgREST without touching any
+-- caller above.
+--
+-- is_award_round_member is deliberately NOT revoked here, unlike the other
+-- two: it is invoked directly inside RLS policy USING/WITH CHECK expressions
+-- on crew_award_participants, crew_award_messages and crew_award_reactions,
+-- and those expressions run as the querying client role, not as the
+-- function's definer. A function call inside a policy still needs EXECUTE
+-- granted to the role running the query — SECURITY DEFINER only changes what
+-- happens once execution starts (e.g. bypassing RLS on crew_award_rounds
+-- inside its own body), not whether the invoking role may call it at all.
+-- Revoking it here would make every read of those three tables fail with
+-- "permission denied for function is_award_round_member" for real
+-- anon/authenticated clients, breaking the feature outright.
+revoke execute on function public.award_round_unlocked(uuid) from anon, authenticated;
+revoke execute on function public.assert_award_voter(uuid, uuid, text) from anon, authenticated;
+-- award_round_status is new in this file and has the same shape of internal
+-- use as award_round_unlocked (only called from other SECURITY DEFINER
+-- functions), so it gets the same treatment.
+revoke execute on function public.award_round_status(uuid) from anon, authenticated;

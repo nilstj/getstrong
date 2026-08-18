@@ -95,9 +95,14 @@ export function donkeyStreak(rows: AwardHistoryRow[], userId: string, now: Date)
     }
     byRound.set(r.round_id, entry)
   }
+  // round_date is a bare 'YYYY-MM-DD'. `new Date(d)` inside weeklyStreak parses
+  // that as UTC midnight, then buckets it in local time — in a negative-offset
+  // timezone a Sunday round_date shifts to Saturday local and lands in the
+  // previous calendar week, breaking a streak that should still be running.
+  // Pinning to local midnight (as SessionAwardsCard already does) avoids that.
   const dates: string[] = []
   for (const { date, votes } of byRound.values()) {
-    if (awardTally(votes, 'donkey').winners.includes(userId)) dates.push(date)
+    if (awardTally(votes, 'donkey').winners.includes(userId)) dates.push(`${date}T00:00:00`)
   }
   return weeklyStreak(dates, now)
 }
