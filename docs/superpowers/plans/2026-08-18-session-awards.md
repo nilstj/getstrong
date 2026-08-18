@@ -520,9 +520,9 @@ describe('awardTally', () => {
     expect(awardTally(votes, 'goat').winners.slice().sort()).toEqual(['ida', 'thea'])
   })
 
-  it('returns winners in a stable order for the same input', () => {
+  it('orders tied winners by who was voted for first, which is the order they display in', () => {
     const votes = [vote('goat', 'a', 'thea'), vote('goat', 'b', 'ida')]
-    expect(awardTally(votes, 'goat').winners).toEqual(awardTally(votes, 'goat').winners)
+    expect(awardTally(votes, 'goat').winners).toEqual(['thea', 'ida'])
   })
 })
 
