@@ -239,7 +239,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setValue('attempts', Math.max(1, attempts - 1))}
+            onClick={() => setValue('attempts', Math.max(0, attempts - 1))}
             aria-label="One fewer attempt"
             className="grid h-7 w-7 place-items-center rounded-full border border-gray-200 text-base leading-none text-gray-600 hover:bg-gray-50"
           >
