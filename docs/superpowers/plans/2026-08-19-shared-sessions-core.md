@@ -324,7 +324,7 @@ Expected: both succeed, returning 0.
 **Interfaces:**
 - Produces:
   - `type BoulderStatus = 'none' | 'project' | 'sent'`
-  - `interface GroupBoulder { id: string; gym_problem_id: string | null; grade_value: string | null; grade_value_font: string | null; color: string | null; hold_color: string | null; image_url: string | null; beta_video_url: string | null; created_at: string }`
+  - `interface GroupBoulder { id: string; gym_problem_id: string | null; grade_system: string; grade_value: string | null; grade_value_font: string | null; color: string | null; hold_color: string | null; image_url: string | null; beta_video_url: string | null; created_at: string }`
   - `interface MyEntry { id: string; group_boulder_id: string | null; attempts: number; sent: boolean }`
   - `interface BoulderRow { boulder: GroupBoulder; entryId: string | null; status: BoulderStatus; attempts: number }`
   - `boulderRows(boulders: GroupBoulder[], mine: MyEntry[]): BoulderRow[]`
@@ -343,6 +343,7 @@ import type { GroupBoulder, MyEntry } from '../sessionGroups'
 const boulder = (id: string, createdAt: string): GroupBoulder => ({
   id,
   gym_problem_id: null,
+  grade_system: 'font',
   grade_value: '6A',
   grade_value_font: '6A',
   color: null,
@@ -475,6 +476,7 @@ export type BoulderStatus = 'none' | 'project' | 'sent'
 export interface GroupBoulder {
   id: string
   gym_problem_id: string | null
+  grade_system: string
   grade_value: string | null
   grade_value_font: string | null
   color: string | null
@@ -685,7 +687,7 @@ export function useGroupBoulders(groupId: string | null) {
     queryFn: async (): Promise<GroupBoulder[]> => {
       const { data, error } = await supabase
         .from('session_group_boulders')
-        .select('id, gym_problem_id, grade_value, grade_value_font, color, hold_color, image_url, beta_video_url, created_at')
+        .select('id, gym_problem_id, grade_system, grade_value, grade_value_font, color, hold_color, image_url, beta_video_url, created_at')
         .eq('group_id', groupId)
         .order('created_at', { ascending: true })
       if (error) throw error
@@ -1142,7 +1144,9 @@ export function useSetMyBoulderEntry() {
         session_id: v.sessionId,
         user_id: user!.id,
         group_boulder_id: v.groupBoulderId,
-        grade_system: 'font',
+        // Carried from the list entry, not assumed: a colour-graded gym stores
+        // 'color' here, and hardcoding 'font' would violate the check constraint.
+        grade_system: v.boulder.grade_system,
         grade_value: v.boulder.grade_value,
         grade_value_font: v.boulder.grade_value_font,
         color: v.boulder.color,
@@ -1327,7 +1331,7 @@ git commit -m "Show the shared boulder list with each climber's own status"
 - Modify: `src/pages/SessionsPage.tsx`
 
 **Interfaces:**
-- Consumes: `useMyGroupInvites`, `useAcceptSessionGroup`, `useDeclineSessionGroup` from Task 3; `useProfile`.
+- Consumes: `useMyGroupInvites`, `useAcceptSessionGroup`, `useDeclineSessionGroup` from Task 3. Nothing else — do not import `useProfile`, the card shows no avatars.
 - Produces: no new exports.
 
 Layout and copy follow artboard 1 of the mockup.
