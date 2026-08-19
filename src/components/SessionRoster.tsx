@@ -17,9 +17,13 @@ export function SessionRoster({
   sessionId, groupId, isOwner,
 }: { sessionId: string; groupId: string | null; isOwner: boolean }) {
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [pendingGroupId, setPendingGroupId] = useState<string | null>(groupId)
-  const { data: members = [] } = useGroupRoster(pendingGroupId)
-  const { data: invites = [] } = useGroupInvites(pendingGroupId)
+  // The prop is authoritative. State covers only the gap between creating a group
+  // here and the parent's session query refetching with the new group_id, so the
+  // prop can never go stale behind us.
+  const [createdGroupId, setCreatedGroupId] = useState<string | null>(null)
+  const effectiveGroupId = groupId ?? createdGroupId
+  const { data: members = [] } = useGroupRoster(effectiveGroupId)
+  const { data: invites = [] } = useGroupInvites(effectiveGroupId)
   const createGroup = useCreateSessionGroup()
 
   const rows = groupRoster(members, invites)
@@ -31,12 +35,14 @@ export function SessionRoster({
     invites.find(i => i.invited_user === userId)?.avatar_url ?? null
 
   const openSheet = () => {
-    if (pendingGroupId) { setSheetOpen(true); return }
+    if (effectiveGroupId) { setSheetOpen(true); return }
     createGroup.mutate({ sessionId }, {
-      onSuccess: id => { setPendingGroupId(id); setSheetOpen(true) },
+      onSuccess: id => { setCreatedGroupId(id); setSheetOpen(true) },
       onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not share this session'),
     })
   }
+
+  if (rows.length === 0 && !isOwner) return null
 
   return (
     <div>
@@ -86,11 +92,11 @@ export function SessionRoster({
         )}
       </div>
 
-      {pendingGroupId && (
+      {effectiveGroupId && (
         <AddPeopleSheet
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
-          groupId={pendingGroupId}
+          groupId={effectiveGroupId}
           alreadyIn={new Set([...members.map(m => m.user_id), ...invites.map(i => i.invited_user)])}
         />
       )}
