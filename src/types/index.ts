@@ -388,3 +388,23 @@ export interface FeedEvent {
 }
 
 export type CrewTitle = 'flash' | 'grinder' | 'first_send' | 'sandbagger'
+
+/**
+ * The props a climber can be tagged with for one session. Keys are stored in
+ * crew_award_tags.tag and constrained there; the emoji + label pairing follows
+ * the existing crew badge vocabulary.
+ */
+export type AwardTag =
+  | 'best_beta' | 'effort' | 'powerscream' | 'flash'
+  | 'beta_vulture' | 'worst_excuse' | 'silky_feet' | 'grinder'
+
+export const AWARD_TAGS: { key: AwardTag; emoji: string; label: string }[] = [
+  { key: 'best_beta',    emoji: '🧠', label: 'Best beta' },
+  { key: 'effort',       emoji: '💪', label: 'Effort' },
+  { key: 'powerscream',  emoji: '📣', label: 'Powerscream' },
+  { key: 'flash',        emoji: '⚡', label: 'Flash' },
+  { key: 'beta_vulture', emoji: '🎥', label: 'Beta vulture' },
+  { key: 'worst_excuse', emoji: '🩹', label: 'Worst excuse' },
+  { key: 'silky_feet',   emoji: '🧗', label: 'Silky feet' },
+  { key: 'grinder',      emoji: '🪨', label: 'Grinder' },
+]

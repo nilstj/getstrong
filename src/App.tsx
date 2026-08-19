@@ -22,6 +22,7 @@ import { MyCrewsPage } from './pages/MyCrewsPage'
 import { CrewGroupPage } from './pages/CrewGroupPage'
 import { FriendSessionPage } from './pages/FriendSessionPage'
 import { OnboardingPage } from './pages/OnboardingPage'
+import { SessionAwardsPage } from './pages/SessionAwardsPage'
 import { OnboardingGate } from './components/OnboardingGate'
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/crews" element={<MyCrewsPage />} />
                 <Route path="/crews/:crewId" element={<CrewGroupPage />} />
+                <Route path="/crews/:crewId/awards/:roundId" element={<SessionAwardsPage />} />
                 <Route path="/gym-problems" element={<CrewsPage />} />
                 {/* Old name of the page — keep old links and bookmarks working. */}
                 <Route path="/sendtrains" element={<Navigate to="/gym-problems" replace />} />
