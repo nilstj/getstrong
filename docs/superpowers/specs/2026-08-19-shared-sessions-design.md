@@ -61,12 +61,23 @@ session_groups
 sessions
   + group_id uuid null references session_groups(id) on delete set null
 
+-- The group asked you in.
 session_group_invites
   group_id uuid references session_groups(id) on delete cascade
   invited_user uuid references auth.users(id) on delete cascade
   invited_by uuid references auth.users(id) on delete set null
   created_at timestamptz not null default now()
   primary key (group_id, invited_user)
+
+-- You asked to come in. Keyed on the SESSION, not the group, because a session
+-- in the feed may have no group yet and a pending request must not create one —
+-- creating a group stamps group_id onto the owner's session row, which is the
+-- owner's call, not the requester's.
+session_join_requests
+  session_id uuid references sessions(id) on delete cascade
+  user_id uuid references auth.users(id) on delete cascade
+  created_at timestamptz not null default now()
+  primary key (session_id, user_id)
 
 -- The shared list: what was on the wall that evening. One row per boulder.
 session_group_boulders
@@ -133,6 +144,40 @@ you to a session"**, with the date, gym and who has already accepted. Two action
 not duration, not intensity, not the goal, not the notes; those are personal. Then
 it deletes the invite. **No problems are created.** You land on a session whose
 boulder list is already populated and whose entries are all yours to fill in.
+
+### 1b. Joining from the friends feed
+
+The feed already lists sessions: `mergeHomeFeed` merges friends' sessions with beta
+events and deliberately drops `send` events because they would "double-report the
+session cards". A friend's session card gains a join affordance, and which path it
+takes depends on the relationship:
+
+- **You share a crew with the owner** — join directly. You were plausibly there, and
+  a climbing log is self-reported anyway. `join_session(p_session)` checks the shared
+  crew, creates the group if the session has none, stamps `group_id` on the owner's
+  session, and creates yours.
+- **You do not** — the tap becomes a request. `request_to_join_session(p_session)`
+  writes a `session_join_requests` row and nothing else. The owner sees it on the
+  session and approves with one tap, which runs the same join path. One tap each
+  side, and no stranger can attach themselves to your evening.
+
+**Two guards, both necessary:**
+
+- **The owner's session row is written by someone else.** Setting `group_id` is the
+  only column touched, inside a `SECURITY DEFINER` function, and only on the direct
+  path or after the owner approves. Nothing about their climbs, stats or notes is
+  reachable.
+- **Joining closes when the verdict opens.** A join is refused once the session's
+  award round has `unlocked_at` set: adding a participant to a round whose result
+  people have already read is wrong, and the one-way unlock rule only prevents
+  *re-locking*, not this. After that the answer is "log your own session".
+
+Note what this does **not** change: the feed's session card stays derived from the
+friend's readable `problems` rows, because `sessions` is owner-only under RLS (the
+sole non-owner policy is migration 032's shared-wisdom case) and
+`session_group_boulders` is readable by group members only. Showing the group's
+boulder list on a card to a non-member would need either a broad new read policy or
+an aggregate-only RPC — see Follow-ups.
 
 ### 2. The session view
 
@@ -214,9 +259,13 @@ count within; when a group has no crew, the streak is simply absent.
 The design is one thing; building it is two, and each ships working software:
 
 **Step 1 — shared sessions.** `session_groups`, invites, `accept_session_group`,
-`session_group_boulders`, `problems.group_boulder_id`, the attempts-floor fix, and
-the roster and boulder sections in the session view, plus the add-people sheet.
-Awards are untouched and keep working off their existing anchor. Shippable alone.
+`session_group_boulders`, `problems.group_boulder_id`, the attempts-floor fix, the
+roster and boulder sections in the session view, the add-people sheet, and the
+join-from-feed paths (`session_join_requests`, `join_session`,
+`request_to_join_session`, `approve_join_request`) with the join affordance on the
+friends-feed session card. Awards are untouched and keep working off their existing
+anchor, so the "joining closes when the verdict opens" guard is inert until step 2 —
+build it anyway, since step 2 turns it on. Shippable alone.
 
 **Step 2 — awards move in.** Re-anchor the round to the group, add `unlocked_at`,
 rewrite the guards onto live membership, render the awards inside the session view,
@@ -239,9 +288,12 @@ seen.
 RLS: `session_groups`, `session_group_invites` and `session_group_boulders` are
 readable by group members (and invitees, for the group row); writes go through
 `SECURITY DEFINER` RPCs — `create_session_group`, `invite_to_session_group`,
-`accept_session_group`, `decline_session_group`, `add_group_boulder` — because a
-client must never write another user's `sessions` or `problems` rows.
-`accept_session_group` writes only rows owned by `auth.uid()`.
+`accept_session_group`, `decline_session_group`, `add_group_boulder`,
+`join_session`, `request_to_join_session`, `approve_join_request` — because a client
+must never write another user's `sessions` or `problems` rows.
+`accept_session_group` writes only rows owned by `auth.uid()`; `join_session` and
+`approve_join_request` additionally set `group_id` on the owner's session row and
+nothing else.
 
 ## Pure utils to TDD
 
@@ -255,6 +307,14 @@ client must never write another user's `sessions` or `problems` rows.
 
 Everything else is a hook, component or page, verified by `npm run build` plus the
 manual pass, per the project's testing constraint.
+
+## Follow-ups, not in either step
+
+- **A richer feed card.** The card shows counts, a top grade and photos; with a
+  shared list it could show what was on the wall and who got up it. A non-member
+  cannot read `session_group_boulders`, so this needs an aggregate-only RPC — boulder
+  count, hardest grade, sends across the group, no per-person attribution — rather
+  than a broadened read policy. Worth doing; not worth blocking step 1.
 
 ## Out of scope
 
