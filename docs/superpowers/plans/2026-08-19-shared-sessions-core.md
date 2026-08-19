@@ -573,12 +573,12 @@ export function groupRoster(
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run src/utils/__tests__/sessionGroups.test.ts`
-Expected: PASS, 15 tests.
+Expected: PASS, 16 tests.
 
 - [ ] **Step 5: Run the whole suite and the build**
 
 Run: `npx vitest run && npm run build`
-Expected: all tests pass (195 existing + 15 new = 210); build clean.
+Expected: all tests pass (195 existing + 16 new = 211); build clean.
 
 - [ ] **Step 6: Commit**
 
@@ -869,7 +869,7 @@ Expected: no matches.
 - [ ] **Step 4: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 210 tests pass; lint reports **16 problems**.
+Expected: build clean; 211 tests pass; lint reports **16 problems**.
 
 - [ ] **Step 5: Commit**
 
@@ -1089,7 +1089,7 @@ In `src/types/index.ts`, add one field to the existing `Session` interface, afte
 - [ ] **Step 4: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 210 tests pass; lint **16 problems**.
+Expected: build clean; 211 tests pass; lint **16 problems**.
 
 - [ ] **Step 5: Verify a `BottomSheet` is not inside a heading**
 
@@ -1323,7 +1323,7 @@ Expected: both new sections are guarded on `session.group_id` (the roster additi
 - [ ] **Step 5: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 210 tests pass; lint **16 problems**.
+Expected: build clean; 211 tests pass; lint **16 problems**.
 
 - [ ] **Step 6: Commit**
 
@@ -1426,7 +1426,7 @@ Expected: raised in the migration, matched in the page. Merging is out of scope,
 - [ ] **Step 4: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 210 tests pass; lint **16 problems**.
+Expected: build clean; 211 tests pass; lint **16 problems**.
 
 - [ ] **Step 5: Commit**
 
@@ -1449,7 +1449,7 @@ Expected: succeeds. If it errors, migration 080 was never applied and nothing be
 - [ ] **Step 2: Full automated check**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean, 210 tests pass, lint **16 problems** — the same baseline this branch started from. Any increase is yours to fix.
+Expected: build clean, 211 tests pass, lint **16 problems** — the same baseline this branch started from. Any increase is yours to fix.
 
 - [ ] **Step 3: Confirm the write policies really are absent**
 
@@ -1622,7 +1622,7 @@ In `src/pages/SessionDetailPage.tsx`, update the mount from Task 6 to pass the s
 - [ ] **Step 5: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 210 tests pass; lint **16 problems**.
+Expected: build clean; 211 tests pass; lint **16 problems**.
 
 - [ ] **Step 6: Verify the empty-list path is reachable**
 

@@ -376,7 +376,7 @@ Expected: PASS, 9 tests.
 - [ ] **Step 5: Run the whole suite and the build**
 
 Run: `npx vitest run && npm run build`
-Expected: 219 tests pass (210 after the core plan, plus 9); build clean.
+Expected: 220 tests pass (211 after the core plan, plus 9); build clean.
 
 - [ ] **Step 6: Commit**
 
@@ -693,7 +693,7 @@ Expected: every `<button` line is **outside** the `<Link>`/`</Link>` range. A bu
 - [ ] **Step 5: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 219 tests pass; lint **16 problems**.
+Expected: build clean; 220 tests pass; lint **16 problems**.
 
 - [ ] **Step 6: Commit**
 
@@ -782,7 +782,7 @@ Mount it directly above the `SessionRoster` from the core plan's Task 5:
 - [ ] **Step 3: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 219 tests pass; lint **16 problems**.
+Expected: build clean; 220 tests pass; lint **16 problems**.
 
 - [ ] **Step 4: Commit**
 
@@ -810,7 +810,7 @@ Expected: both succeed.
 - [ ] **Step 2: Full automated check**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean, 219 tests pass, lint **16 problems** — the branch baseline. Any increase is yours to fix.
+Expected: build clean, 220 tests pass, lint **16 problems** — the branch baseline. Any increase is yours to fix.
 
 - [ ] **Step 3: Confirm the write policies really are absent**
 
