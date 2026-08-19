@@ -105,8 +105,17 @@ copies once. A boulder you already have is skipped.
 **Copying once at accept time is not enough.** Accept before the creator has logged
 their climbs and you would get an empty session; boulders logged later would never
 reach you. So the session view also offers it on demand: when the group holds
-boulders you do not have, a row appears — "3 new boulders from the crew · Add them" —
-running the same dedupe. Same function, called again; not a second mechanism.
+boulders you do not have, a row appears — "3 more boulders on this session · Add
+them" — running the same dedupe. Same function, called again; not a second
+mechanism.
+
+**Nothing is ever pushed, and the flow is symmetric.** After the accept-time seed, no
+boulder enters your log without you tapping: people split up inside one session, and a
+project you never tried is permanent noise in your project list. The pool is boulders
+logged against the group *by anyone*, so a boulder you add is offered to the others on
+exactly the same terms as one the creator added — the creator is not privileged. The
+accept-time copy is the one push in the design, and it is justified by accepting being
+an explicit "I was there".
 
 **`attempts = 0` needs a client change.** `ProblemForm` currently floors the
 attempts stepper at 1 (`Math.max(1, attempts - 1)`) and defaults
