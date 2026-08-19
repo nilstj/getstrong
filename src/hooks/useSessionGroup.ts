@@ -1,0 +1,208 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../providers/AuthProvider'
+import { profilesByIds } from '../lib/profiles'
+import type { GroupBoulder } from '../utils/sessionGroups'
+
+export interface SessionGroup {
+  id: string
+  date: string
+  gym: string
+  crew_id: string | null
+  created_by: string | null
+}
+
+export interface GroupMember {
+  user_id: string
+  session_id: string
+  username: string | null
+  avatar_url: string | null
+}
+
+export interface PendingInvite {
+  invited_user: string
+  username: string | null
+  avatar_url: string | null
+}
+
+/** The group a session belongs to, or null for a solo session. */
+export function useSessionGroupRow(groupId: string | null) {
+  return useQuery({
+    queryKey: ['session_group', groupId],
+    enabled: !!groupId,
+    queryFn: async (): Promise<SessionGroup | null> => {
+      const { data, error } = await supabase
+        .from('session_groups')
+        .select('id, date, gym, crew_id, created_by')
+        .eq('id', groupId)
+        .maybeSingle()
+      if (error) throw error
+      return (data ?? null) as SessionGroup | null
+    },
+  })
+}
+
+/** Who has accepted. Ids come from the RPC; names from a second profiles query. */
+export function useGroupRoster(groupId: string | null) {
+  return useQuery({
+    queryKey: ['session_group_roster', groupId],
+    enabled: !!groupId,
+    queryFn: async (): Promise<GroupMember[]> => {
+      const { data, error } = await supabase.rpc('session_group_roster', { p_group: groupId })
+      if (error) throw error
+      const rows = (data ?? []) as { user_id: string; session_id: string }[]
+      const byId = await profilesByIds(rows.map(r => r.user_id))
+      return rows.map(r => ({
+        ...r,
+        username: byId.get(r.user_id)?.username ?? null,
+        avatar_url: byId.get(r.user_id)?.avatar_url ?? null,
+      }))
+    },
+  })
+}
+
+/** Who has been asked but not yet accepted. */
+export function useGroupInvites(groupId: string | null) {
+  return useQuery({
+    queryKey: ['session_group_invites', groupId],
+    enabled: !!groupId,
+    queryFn: async (): Promise<PendingInvite[]> => {
+      const { data, error } = await supabase
+        .from('session_group_invites')
+        .select('invited_user')
+        .eq('group_id', groupId)
+      if (error) throw error
+      const rows = (data ?? []) as { invited_user: string }[]
+      const byId = await profilesByIds(rows.map(r => r.invited_user))
+      return rows.map(r => ({
+        ...r,
+        username: byId.get(r.invited_user)?.username ?? null,
+        avatar_url: byId.get(r.invited_user)?.avatar_url ?? null,
+      }))
+    },
+  })
+}
+
+/** The shared boulder list. */
+export function useGroupBoulders(groupId: string | null) {
+  return useQuery({
+    queryKey: ['session_group_boulders', groupId],
+    enabled: !!groupId,
+    queryFn: async (): Promise<GroupBoulder[]> => {
+      const { data, error } = await supabase
+        .from('session_group_boulders')
+        .select('id, gym_problem_id, grade_system, grade_value, grade_value_font, color, hold_color, image_url, beta_video_url, created_at')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      return (data ?? []) as GroupBoulder[]
+    },
+  })
+}
+
+/** Sessions I have been invited to and not yet accepted. */
+export function useMyGroupInvites() {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['my_session_group_invites', user?.id],
+    enabled: !!user,
+    queryFn: async (): Promise<{ group: SessionGroup; invited_by: string | null }[]> => {
+      const { data, error } = await supabase
+        .from('session_group_invites')
+        .select('invited_by, session_groups(id, date, gym, crew_id, created_by)')
+        .eq('invited_user', user!.id)
+      if (error) throw error
+      const rows = (data ?? []) as unknown as { invited_by: string | null; session_groups: SessionGroup | null }[]
+      return rows
+        .filter(r => !!r.session_groups)
+        .map(r => ({ group: r.session_groups as SessionGroup, invited_by: r.invited_by }))
+    },
+  })
+}
+
+export function useCreateSessionGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { sessionId: string }): Promise<string> => {
+      const { data, error } = await supabase.rpc('create_session_group', { p_session: v.sessionId })
+      if (error) throw error
+      return data as string
+    },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['session', v.sessionId] })
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+    },
+  })
+}
+
+export function useInviteToSessionGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { groupId: string; userId: string }) => {
+      const { error } = await supabase.rpc('invite_to_session_group', { p_group: v.groupId, p_user: v.userId })
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['session_group_invites', v.groupId] }),
+  })
+}
+
+export function useAcceptSessionGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { groupId: string }): Promise<string> => {
+      const { data, error } = await supabase.rpc('accept_session_group', { p_group: v.groupId })
+      if (error) throw error
+      return data as string
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my_session_group_invites'] })
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+    },
+  })
+}
+
+export function useDeclineSessionGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { groupId: string }) => {
+      const { error } = await supabase.rpc('decline_session_group', { p_group: v.groupId })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my_session_group_invites'] }),
+  })
+}
+
+/** Puts a boulder on the group's list, returning the list entry's id. */
+export function useAddGroupBoulder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: {
+      groupId: string
+      gymProblemId: string | null
+      gradeSystem: string
+      gradeValue: string | null
+      gradeValueFont: string | null
+      gradeValueVscale: string | null
+      color: string | null
+      holdColor: string | null
+      imageUrl: string | null
+      betaVideoUrl: string | null
+    }): Promise<string> => {
+      const { data, error } = await supabase.rpc('add_group_boulder', {
+        p_group: v.groupId,
+        p_gym_problem_id: v.gymProblemId,
+        p_grade_system: v.gradeSystem,
+        p_grade_value: v.gradeValue,
+        p_grade_value_font: v.gradeValueFont,
+        p_grade_value_vscale: v.gradeValueVscale,
+        p_color: v.color,
+        p_hold_color: v.holdColor,
+        p_image_url: v.imageUrl,
+        p_beta_video_url: v.betaVideoUrl,
+      })
+      if (error) throw error
+      return data as string
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['session_group_boulders', v.groupId] }),
+  })
+}
