@@ -141,6 +141,7 @@ end; $$;
 -- ── Invites ──────────────────────────────────────────────────────────────────
 create or replace function public.invite_to_session_group(p_group uuid, p_user uuid)
 returns void language plpgsql security definer set search_path = public as $$
+declare v_user uuid := auth.uid();
 begin
   if not is_session_group_member(p_group) then
     raise exception 'Only people in the session can invite';
@@ -149,7 +150,7 @@ begin
     return;  -- already in
   end if;
   insert into session_group_invites (group_id, invited_user, invited_by)
-    values (p_group, p_user, auth.uid())
+    values (p_group, p_user, v_user)
     on conflict (group_id, invited_user) do nothing;
 end; $$;
 
@@ -172,6 +173,7 @@ begin
   if exists (
     select 1 from sessions
      where user_id = v_user and date = v_date and lower(trim(location)) = lower(v_gym)
+       and group_id is distinct from p_group
   ) then
     raise exception 'ALREADY_LOGGED: you already logged a session that day at that gym';
   end if;
@@ -222,8 +224,8 @@ begin
 
   if p_gym_problem_id is not null then
     select gym into v_gym from session_groups where id = p_group;
-    if not exists (select 1 from gym_problems where id = p_gym_problem_id and gym = v_gym) then
-      raise exception 'That boulder is not from this session''s gym';
+    if not exists (select 1 from gym_problems where id = p_gym_problem_id and lower(gym) = lower(v_gym)) then
+      raise exception 'WRONG_GYM: that boulder is not from this session''s gym';
     end if;
 
     -- Pre-select as a fast path; the on-conflict below is what actually
