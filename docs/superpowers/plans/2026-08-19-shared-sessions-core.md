@@ -1480,6 +1480,152 @@ Then use the `superpowers:finishing-a-development-branch` skill. **Do not push b
 
 ---
 
+## Task 9: Put a boulder on the shared list from the UI
+
+**Files:**
+- Modify: `src/components/SessionBoulderList.tsx`
+- Modify: `src/pages/SessionDetailPage.tsx`
+
+**Interfaces:**
+- Consumes: `useAddGroupBoulder`, `useSetMyBoulderEntry` from Task 3; `GymBoulderPicker` from `src/components/GymBoulderPicker.tsx` (`{ gym, onPick }`, where `onPick: (gp: GymProblem) => void`); `boulderToPrefill` from `src/utils/boulderPrefill.ts`; `vScaleToFont`, `fontToVScale` from `src/utils/grades.ts`; `BottomSheet`.
+- Produces: `SessionBoulderList` gains a required `gym: string` prop.
+
+Without this, `useAddGroupBoulder` exists but nothing calls it: a climber who accepts an invite can log against boulders other people added, but cannot put one of their own on the list. This closes that.
+
+- [ ] **Step 1: Give the list its gym and an add control**
+
+In `src/components/SessionBoulderList.tsx`, widen the props and add the sheet state. Change the signature to:
+
+```tsx
+export function SessionBoulderList({
+  sessionId, groupId, gym,
+}: { sessionId: string; groupId: string; gym: string }) {
+```
+
+Add these imports at the top of the file:
+
+```tsx
+import { useState } from 'react'
+import { BottomSheet } from './BottomSheet'
+import { GymBoulderPicker } from './GymBoulderPicker'
+import { boulderToPrefill } from '../utils/boulderPrefill'
+import { fontToVScale, vScaleToFont } from '../utils/grades'
+import { useAddGroupBoulder } from '../hooks/useSessionGroup'
+import type { GymProblem } from '../types'
+```
+
+Then inside the component, above the existing `if (boulders.length === 0) return null`, add:
+
+```tsx
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const addBoulder = useAddGroupBoulder()
+```
+
+**Delete the `if (boulders.length === 0) return null` line.** An empty list must still render, because otherwise the only control that can fill it is unreachable — the section now shows the add control plus an empty line.
+
+- [ ] **Step 2: Normalise the grade once, in one place**
+
+A picked shared boulder carries a single `community_grade` string, but `problems` and `session_group_boulders` both store a font value and a V-scale value. Add this helper at the bottom of `src/components/SessionBoulderList.tsx`, so the two writes cannot disagree:
+
+```tsx
+/**
+ * A shared boulder has one community grade; the list and the problem rows each
+ * store both scales. `useUpdateProblem` already normalises this way when a grade is
+ * edited, so deriving both here keeps the shared list consistent with the rest of
+ * the app rather than storing a half-populated grade.
+ */
+function normaliseGrade(grade: string | null): {
+  gradeValue: string | null
+  gradeValueFont: string | null
+  gradeValueVscale: string | null
+} {
+  if (!grade) return { gradeValue: null, gradeValueFont: null, gradeValueVscale: null }
+  const asFont = vScaleToFont(grade)
+  if (asFont) return { gradeValue: grade, gradeValueFont: asFont, gradeValueVscale: grade }
+  return { gradeValue: grade, gradeValueFont: grade, gradeValueVscale: fontToVScale(grade) }
+}
+```
+
+If `vScaleToFont` and `fontToVScale` do not have exactly these signatures (`(g: string) => string | null`), read `src/utils/grades.ts` and adapt the calls — do **not** invent a second normalisation scheme, and do not silently store only one scale.
+
+- [ ] **Step 3: Add the control and its sheet**
+
+Append this inside the component's returned markup, directly after the closing `</div>` of the rows list and before the component's outermost closing `</div>`:
+
+```tsx
+      <button
+        type="button"
+        onClick={() => setPickerOpen(true)}
+        className="w-full min-h-12 mt-2 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-gray-300 text-gray-600 text-sm font-semibold"
+      >
+        <Plus size={16} strokeWidth={2.25} />
+        Add a boulder to the session
+      </button>
+
+      <BottomSheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Add a boulder">
+        <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+          Puts it on the session's list for everyone, and on yours as a project.
+        </p>
+        <GymBoulderPicker
+          gym={gym}
+          onPick={(gp: GymProblem) => {
+            const prefill = boulderToPrefill(gp)
+            const grade = normaliseGrade(prefill.grade_value)
+            addBoulder.mutate(
+              {
+                groupId,
+                gymProblemId: gp.id,
+                gradeSystem: 'font',
+                gradeValue: grade.gradeValue,
+                gradeValueFont: grade.gradeValueFont,
+                gradeValueVscale: grade.gradeValueVscale,
+                color: prefill.color,
+                holdColor: prefill.hold_color,
+                imageUrl: prefill.image_url,
+                betaVideoUrl: prefill.beta_video_url,
+              },
+              {
+                onSuccess: () => { setPickerOpen(false); toast.success('On the list') },
+                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not add it'),
+              },
+            )
+          }}
+        />
+      </BottomSheet>
+```
+
+Note the boulder is added to the **group's list only**. It does not create your entry: `add_group_boulder` is idempotent on `(group_id, gym_problem_id)`, so tapping a boulder someone already added is harmless, and you then log your own tries with the row's existing controls like any other boulder. That keeps one path for "my status" instead of two.
+
+- [ ] **Step 4: Pass the gym in**
+
+In `src/pages/SessionDetailPage.tsx`, update the mount from Task 6 to pass the session's location:
+
+```tsx
+      {session.group_id && (
+        <SessionBoulderList sessionId={id!} groupId={session.group_id} gym={session.location} />
+      )}
+```
+
+- [ ] **Step 5: Verify build, lint and tests**
+
+Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
+Expected: build clean; 210 tests pass; lint **16 problems**.
+
+- [ ] **Step 6: Verify the empty-list path is reachable**
+
+Run: `grep -n "boulders.length === 0" src/components/SessionBoulderList.tsx`
+Expected: no early `return null` on an empty list — otherwise a brand-new group can never get its first boulder.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/components/SessionBoulderList.tsx src/pages/SessionDetailPage.tsx
+git commit -m "Let anyone in a shared session put a boulder on its list"
+```
+
+
+---
+
 ## Self-Review
 
 **Spec coverage (step 1 minus join-from-feed):**
@@ -1495,14 +1641,14 @@ Then use the `superpowers:finishing-a-development-branch` skill. **Do not push b
 | Status derived: none / project / sent | 2 (`boulderRows`), 6 (the chips) |
 | `attempts = 0` reachable | 4, 8 Step 4 |
 | Roster without widening `sessions` reads | 1 (`session_group_roster` RPC), 5 |
-| Add a boulder to the group's list | 1 (`add_group_boulder`), 3 (`useAddGroupBoulder`) |
+| Add a boulder to the group's list | 1 (`add_group_boulder`), 3 (`useAddGroupBoulder`), 9 (the picker UI) |
 | Every cross-user write is `SECURITY DEFINER` | 1, 8 Step 3 |
 | Solo sessions unchanged | 6 Step 4, 8 Step 4 |
 | `ALREADY_LOGGED` instead of a duplicate session | 1, 7 |
 | No `beta_points` | 8 Step 5 |
 | Release gate on 080 | 1 Step 6, 8 Step 1, 8 Step 6 |
 
-**Gap found and accepted:** `useAddGroupBoulder` is built in Task 3 but no screen calls it — the mockup's "Add a boulder to the session" control needs the gym-boulder picker wired into the shared-list flow, which is a larger piece of work than the rest of Task 6 and belongs with the boulder-picker refactor. Until then a boulder reaches the list only via the RPC. **This is a real hole in step 1: a newly accepted climber can log against boulders others added, but cannot add one of their own to the list from the UI.** It must be closed before this ships to users — either in this plan as a ninth task or in the join-from-feed plan. Flagged for the owner rather than silently deferred.
+**Gap found in the first draft and now closed:** `useAddGroupBoulder` was built in Task 3 with no screen calling it, which meant a climber could log against boulders others added but never put one of their own on the list. **Task 9** closes it with the gym-boulder picker, and also removes the empty-list early return that would otherwise have made a brand-new group's first boulder unreachable.
 
 **Placeholder scan:** every code step carries complete code; no TBD, no "similar to Task N", no "add error handling" — each mutation names its own `onError`.
 
