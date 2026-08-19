@@ -512,7 +512,7 @@ export function useApproveJoinRequest() {
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['session_join_requests', v.sessionId] })
       qc.invalidateQueries({ queryKey: ['session_group_roster'] })
-      qc.invalidateQueries({ queryKey: ['session', v.sessionId] })
+      qc.invalidateQueries({ queryKey: ['sessions', v.sessionId] })
     },
   })
 }

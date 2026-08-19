@@ -129,7 +129,7 @@ export function useCreateSessionGroup() {
       return data as string
     },
     onSuccess: (_, v) => {
-      qc.invalidateQueries({ queryKey: ['session', v.sessionId] })
+      qc.invalidateQueries({ queryKey: ['sessions', v.sessionId] })
       qc.invalidateQueries({ queryKey: ['sessions'] })
     },
   })
