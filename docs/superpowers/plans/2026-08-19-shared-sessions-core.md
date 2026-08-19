@@ -49,6 +49,15 @@
 
 ## Task 1: Migration 080 — schema, RLS and RPCs
 
+> **AMENDED AFTER REVIEW — do not re-execute this task from the SQL below.**
+> `supabase/migrations/080_shared_sessions.sql` as committed is the source of truth.
+> Review found the SQL here guards ownership with `v_owner <> auth.uid()`, which does
+> not fire when `auth.uid()` is NULL, letting an unauthenticated caller stamp
+> `group_id` onto a stranger's session. It also lacked a unique index on
+> `(group_id, user_id)`, so two concurrent accepts double-joined a climber, and
+> `add_group_boulder`'s comment described an `on conflict` path the code did not have.
+> If you need to re-derive this migration, read the committed file, not this.
+
 **Files:**
 - Create: `supabase/migrations/080_shared_sessions.sql`
 

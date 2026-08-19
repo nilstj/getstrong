@@ -22,9 +22,21 @@ create table if not exists session_groups (
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
+comment on column session_groups.crew_id is
+  'Unwritable here: nothing in this migration and no client can set it. Reserved '
+  'for a later migration that re-anchors session awards onto groups and needs a '
+  'crew to count a repeat-donkey streak within. Not dead weight -- do not drop.';
 
 alter table sessions add column if not exists group_id uuid references session_groups(id) on delete set null;
 create index if not exists sessions_group_idx on sessions (group_id);
+
+-- One session per (group, user): guards against two concurrent accept calls
+-- (e.g. a double-tapped button) both inserting a session row for the same
+-- climber in the same group. Partial predicate keeps every solo session
+-- (group_id null) out of the index, so this cannot fail on legacy data and
+-- cannot change solo-session behaviour.
+create unique index if not exists sessions_group_user_idx
+  on sessions (group_id, user_id) where group_id is not null;
 
 create table if not exists session_group_invites (
   group_id uuid not null references session_groups(id) on delete cascade,
@@ -105,17 +117,22 @@ create policy "group boulders readable by members" on session_group_boulders for
 -- Idempotent: a session that already belongs to a group returns that group.
 create or replace function public.create_session_group(p_session uuid)
 returns uuid language plpgsql security definer set search_path = public as $$
-declare v_id uuid; v_date date; v_gym text; v_owner uuid;
+declare v_id uuid; v_date date; v_gym text; v_owner uuid; v_user uuid := auth.uid();
 begin
+  if v_user is null then raise exception 'Not authenticated'; end if;
+
+  -- for update: two concurrent calls on the same session must not each insert
+  -- a group and leave one orphaned.
   select s.user_id, s.date, nullif(trim(s.location), ''), s.group_id
     into v_owner, v_date, v_gym, v_id
-    from sessions s where s.id = p_session;
+    from sessions s where s.id = p_session
+    for update;
   if v_owner is null then raise exception 'No such session'; end if;
-  if v_owner <> auth.uid() then raise exception 'Only the session owner can share it'; end if;
+  if v_owner is distinct from v_user then raise exception 'Only the session owner can share it'; end if;
   if v_id is not null then return v_id; end if;
   if v_gym is null then raise exception 'A shared session needs a gym'; end if;
 
-  insert into session_groups (date, gym, created_by) values (v_date, v_gym, auth.uid())
+  insert into session_groups (date, gym, created_by) values (v_date, v_gym, v_user)
     returning id into v_id;
   update sessions set group_id = v_id where id = p_session;
   return v_id;
@@ -140,26 +157,38 @@ end; $$;
 -- the boulder list is shared, so there is nothing to copy.
 create or replace function public.accept_session_group(p_group uuid)
 returns uuid language plpgsql security definer set search_path = public as $$
-declare v_session uuid; v_date date; v_gym text;
+declare v_session uuid; v_date date; v_gym text; v_user uuid := auth.uid();
 begin
-  if not exists (select 1 from session_group_invites where group_id = p_group and invited_user = auth.uid()) then
+  if v_user is null then raise exception 'Not authenticated'; end if;
+  if not exists (select 1 from session_group_invites where group_id = p_group and invited_user = v_user) then
     raise exception 'No invite to that session';
   end if;
   select date, gym into v_date, v_gym from session_groups where id = p_group;
 
-  -- Merging with a session you already logged is out of scope, so refuse
-  -- distinguishably rather than silently creating a duplicate evening.
+  -- Merging with a session you already logged that evening at that gym is out
+  -- of scope, so refuse distinguishably rather than silently creating a
+  -- duplicate evening. Case-insensitive, and catches a session already tied
+  -- to a *different* group too -- not just an ungrouped one.
   if exists (
     select 1 from sessions
-     where user_id = auth.uid() and date = v_date and trim(location) = v_gym and group_id is null
+     where user_id = v_user and date = v_date and lower(trim(location)) = lower(v_gym)
   ) then
     raise exception 'ALREADY_LOGGED: you already logged a session that day at that gym';
   end if;
 
+  -- on conflict: two concurrent accepts (e.g. a double-tapped button) both
+  -- pass the checks above; the unique index on (group_id, user_id) lets only
+  -- one insert win, and we return the existing row's id instead of null.
   insert into sessions (user_id, date, location, group_id)
-    values (auth.uid(), v_date, v_gym, p_group)
+    values (v_user, v_date, v_gym, p_group)
+    on conflict (group_id, user_id) where group_id is not null do nothing
     returning id into v_session;
-  delete from session_group_invites where group_id = p_group and invited_user = auth.uid();
+
+  if v_session is null then
+    select id into v_session from sessions where group_id = p_group and user_id = v_user;
+  end if;
+
+  delete from session_group_invites where group_id = p_group and invited_user = v_user;
   return v_session;
 end; $$;
 
@@ -185,25 +214,42 @@ create or replace function public.add_group_boulder(
   p_image_url text,
   p_beta_video_url text
 ) returns uuid language plpgsql security definer set search_path = public as $$
-declare v_id uuid;
+declare v_id uuid; v_gym text;
 begin
   if not is_session_group_member(p_group) then
     raise exception 'Only people in the session can add boulders';
   end if;
 
   if p_gym_problem_id is not null then
+    select gym into v_gym from session_groups where id = p_group;
+    if not exists (select 1 from gym_problems where id = p_gym_problem_id and gym = v_gym) then
+      raise exception 'That boulder is not from this session''s gym';
+    end if;
+
+    -- Pre-select as a fast path; the on-conflict below is what actually
+    -- guarantees we never return null for a boulder that is on the list.
     select id into v_id from session_group_boulders
      where group_id = p_group and gym_problem_id = p_gym_problem_id;
     if v_id is not null then return v_id; end if;
   end if;
 
+  -- Two members adding the same published boulder at once (the ordinary case
+  -- when a crew is working the same problem) must not surface a raw
+  -- duplicate-key error: the conflict path recovers the existing row's id.
   insert into session_group_boulders (
     group_id, gym_problem_id, grade_system, grade_value, grade_value_font,
     grade_value_vscale, color, hold_color, image_url, beta_video_url, added_by
   ) values (
     p_group, p_gym_problem_id, p_grade_system, p_grade_value, p_grade_value_font,
     p_grade_value_vscale, p_color, p_hold_color, p_image_url, p_beta_video_url, auth.uid()
-  ) returning id into v_id;
+  )
+  on conflict (group_id, gym_problem_id) where gym_problem_id is not null do nothing
+  returning id into v_id;
+
+  if v_id is null and p_gym_problem_id is not null then
+    select id into v_id from session_group_boulders
+     where group_id = p_group and gym_problem_id = p_gym_problem_id;
+  end if;
   return v_id;
 end; $$;
 
