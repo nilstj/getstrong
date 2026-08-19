@@ -32,6 +32,8 @@ import { useClaimGymProblem } from '../hooks/useGymProblems'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { GymThumb } from '../components/GymThumb'
 import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
+import { SessionRoster } from '../components/SessionRoster'
+import { useAuth } from '../providers/AuthProvider'
 
 type SheetTab = 'problem' | 'challenge'
 
@@ -50,6 +52,7 @@ function displayGrade(problem: import('../types').Problem, preference: 'font' | 
 export function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetTab, setSheetTab] = useState<SheetTab>('problem')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -175,6 +178,14 @@ export function SessionDetailPage() {
           <Pencil size={16} strokeWidth={1.75} />
         </Link>
       </div>
+
+      {!planned && (
+        <SessionRoster
+          sessionId={id!}
+          groupId={session.group_id ?? null}
+          isOwner={session.user_id === user?.id}
+        />
+      )}
 
       {problems.length > 0 && (
         <div>

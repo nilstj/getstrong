@@ -21,6 +21,7 @@ export interface Session {
   notes: string | null
   wisdom: string | null
   wisdom_shared: boolean
+  group_id: string | null
   created_at: string
 }
 
