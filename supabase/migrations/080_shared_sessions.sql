@@ -123,7 +123,9 @@ create policy "group boulders readable by members" on session_group_boulders for
 -- Idempotent: a session that already belongs to a group returns that group.
 create or replace function public.create_session_group(p_session uuid)
 returns uuid language plpgsql security definer set search_path = public as $$
-declare v_id uuid; v_date date; v_gym text; v_owner uuid; v_user uuid := auth.uid();
+declare
+  v_id uuid; v_date date; v_gym text; v_owner uuid; v_user uuid := auth.uid();
+  v_boulder_id uuid; r record;
 begin
   if v_user is null then raise exception 'Not authenticated'; end if;
 
@@ -141,6 +143,56 @@ begin
   insert into session_groups (date, gym, created_by) values (v_date, v_gym, v_user)
     returning id into v_id;
   update sessions set group_id = v_id where id = p_session;
+
+  -- Back-fill the shared list from what the owner already logged, so sharing a
+  -- session never hands an invitee "Boulders (0)" and the owner's own status
+  -- shows correctly against the list instead of "not logged". Outdoor problems
+  -- are excluded like every other read of `problems` (crag is out of scope).
+  for r in
+    select id, gym_problem_id, grade_system, grade_value, grade_value_font,
+           grade_value_vscale, color, hold_color, image_url, beta_video_url
+      from problems
+     where session_id = p_session and crag is null
+     order by created_at
+  loop
+    v_boulder_id := null;
+
+    -- Two of the owner's problems can link the same published boulder; the
+    -- partial unique index on (group_id, gym_problem_id) is the conflict
+    -- target so the second insert is a no-op instead of an error. A null
+    -- gym_problem_id never matches that index's predicate, so it always
+    -- inserts its own row -- correct, since an unlinked boulder is identified
+    -- only by what the climber typed.
+    insert into session_group_boulders (
+      group_id, gym_problem_id, grade_system, grade_value, grade_value_font,
+      grade_value_vscale, color, hold_color, image_url, beta_video_url, added_by
+    ) values (
+      v_id, r.gym_problem_id, r.grade_system, r.grade_value, r.grade_value_font,
+      r.grade_value_vscale, r.color, r.hold_color, r.image_url, r.beta_video_url, v_user
+    )
+    on conflict (group_id, gym_problem_id) where gym_problem_id is not null do nothing
+    returning id into v_boulder_id;
+
+    -- Only the conflicting (skipped) insert reaches here with a null id; the
+    -- pair (group_id, gym_problem_id) is unique, so this lookup is unambiguous.
+    if v_boulder_id is null then
+      select id into v_boulder_id from session_group_boulders
+       where group_id = v_id and gym_problem_id = r.gym_problem_id;
+    end if;
+
+    -- problems_group_boulder_user_idx allows only one of the owner's rows per
+    -- (user, group_boulder_id): when two of their problems link the same
+    -- gym_problem_id, both resolve to the same v_boulder_id above, and only the
+    -- first to reach here may claim it -- the guard skips the rest rather than
+    -- raising a unique-violation and failing the whole share.
+    update problems set group_boulder_id = v_boulder_id
+     where id = r.id
+       and not exists (
+         select 1 from problems p2
+          where p2.user_id = v_owner and p2.group_boulder_id = v_boulder_id
+       );
+  end loop;
+
   return v_id;
 end; $$;
 
@@ -172,14 +224,17 @@ begin
   end if;
   select date, gym into v_date, v_gym from session_groups where id = p_group;
 
-  -- Merging with a session you already logged that evening at that gym is out
-  -- of scope, so refuse distinguishably rather than silently creating a
-  -- duplicate evening. Case-insensitive, and catches a session already tied
-  -- to a *different* group too -- not just an ungrouped one.
+  -- Merging with a solo session you already logged that evening at that gym is
+  -- out of scope, so refuse distinguishably rather than silently creating a
+  -- duplicate evening. Case-insensitive, and scoped to ungrouped sessions only
+  -- (group_id is null): a session already tied to a *different* shared group at
+  -- the same gym/date is a genuinely different evening and must not be blocked
+  -- here. The partial unique index on sessions (group_id, user_id) already
+  -- prevents a double-accept into *this* group.
   if exists (
     select 1 from sessions
      where user_id = v_user and date = v_date and lower(trim(location)) = lower(v_gym)
-       and group_id is distinct from p_group
+       and group_id is null
   ) then
     raise exception 'ALREADY_LOGGED: you already logged a session that day at that gym';
   end if;

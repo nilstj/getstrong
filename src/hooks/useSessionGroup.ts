@@ -155,9 +155,13 @@ export function useAcceptSessionGroup() {
       if (error) throw error
       return data as string
     },
-    onSuccess: () => {
+    onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['my_session_group_invites'] })
       qc.invalidateQueries({ queryKey: ['sessions'] })
+      // accept_session_group writes both a roster row and deletes the invite,
+      // so both queries are stale for everyone already in the group too.
+      qc.invalidateQueries({ queryKey: ['session_group_roster', v.groupId] })
+      qc.invalidateQueries({ queryKey: ['session_group_invites', v.groupId] })
     },
   })
 }
@@ -256,6 +260,10 @@ export function useSetMyBoulderEntry() {
       attempts: number
       sent: boolean
       boulder: GroupBoulder
+      // Not inferred here -- the caller supplies the gym so a send logged from
+      // the shared list also exists for that gym's grade leaderboard, which
+      // filters problems.eq('gym', gym).
+      gym: string
     }) => {
       if (v.entryId) {
         const { error } = await supabase
@@ -269,6 +277,7 @@ export function useSetMyBoulderEntry() {
         session_id: v.sessionId,
         user_id: user!.id,
         group_boulder_id: v.groupBoulderId,
+        gym: v.gym,
         // Carried from the list entry, not assumed: a colour-graded gym stores
         // 'color' here, and hardcoding 'font' would violate the check constraint.
         grade_system: v.boulder.grade_system,
@@ -289,7 +298,12 @@ export function useSetMyBoulderEntry() {
       if (error && error.code !== '23505') throw error
     },
     onSuccess: (_, v) => {
+      // Mirrors useAddProblem's invalidation set: a send logged from the shared
+      // list must also move the home dashboard and the all-problems views, not
+      // just this session's own query.
       qc.invalidateQueries({ queryKey: ['problems', v.sessionId] })
+      qc.invalidateQueries({ queryKey: ['problems'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }

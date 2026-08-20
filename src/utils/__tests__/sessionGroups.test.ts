@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { boulderRows, sessionProjectSummary, groupRoster } from '../sessionGroups'
 import type { GroupBoulder, MyEntry } from '../sessionGroups'
 
-const boulder = (id: string, createdAt: string): GroupBoulder => ({
+const boulder = (id: string, createdAt: string, gymProblemId: string | null = null): GroupBoulder => ({
   id,
-  gym_problem_id: null,
+  gym_problem_id: gymProblemId,
   grade_system: 'font',
   grade_value: '6A',
   grade_value_font: '6A',
@@ -15,8 +15,10 @@ const boulder = (id: string, createdAt: string): GroupBoulder => ({
   beta_video_url: null,
   created_at: createdAt,
 })
-const entry = (boulderId: string | null, attempts: number, sent: boolean): MyEntry =>
-  ({ id: 'e-' + boulderId, group_boulder_id: boulderId, attempts, sent })
+const entry = (boulderId: string | null, attempts: number, sent: boolean, gymProblemId: string | null = null): MyEntry =>
+  ({ id: 'e-' + boulderId, group_boulder_id: boulderId, gym_problem_id: gymProblemId, attempts, sent })
+const handLoggedEntry = (id: string, attempts: number, sent: boolean, gymProblemId: string): MyEntry =>
+  ({ id, group_boulder_id: null, gym_problem_id: gymProblemId, attempts, sent })
 
 describe('boulderRows', () => {
   it('is empty when the list is empty', () => {
@@ -66,6 +68,56 @@ describe('boulderRows', () => {
     )
     expect(rows.map(r => r.boulder.id)).toEqual(['b1', 'b2'])
   })
+
+  it('matches a hand-logged entry to a list boulder by gym_problem_id when it has no group_boulder_id', () => {
+    const rows = boulderRows(
+      [boulder('b1', '2026-08-18T18:00:00+00:00', 'gp1')],
+      [handLoggedEntry('hand-1', 2, false, 'gp1')],
+    )
+    expect(rows[0].status).toBe('project')
+    expect(rows[0].entryId).toBe('hand-1')
+    expect(rows[0].attempts).toBe(2)
+  })
+
+  it('leaves a boulder unmatched when no entry has a matching gym_problem_id', () => {
+    const rows = boulderRows(
+      [boulder('b1', '2026-08-18T18:00:00+00:00', 'gp1')],
+      [handLoggedEntry('hand-1', 2, false, 'gp2')],
+    )
+    expect(rows[0].status).toBe('none')
+    expect(rows[0].entryId).toBeNull()
+  })
+
+  it('lets a group_boulder_id match win, so the entry cannot be stolen by another boulder sharing its gym_problem_id', () => {
+    const rows = boulderRows(
+      [
+        // earlier in list order, shares gp1 but has no real link to this entry
+        boulder('b2', '2026-08-18T18:00:00+00:00', 'gp1'),
+        // later in list order, and the boulder the entry is actually linked to
+        boulder('b1', '2026-08-18T19:00:00+00:00', 'gp1'),
+      ],
+      [entry('b1', 4, true, 'gp1')],
+    )
+    const byId = new Map(rows.map(r => [r.boulder.id, r]))
+    expect(byId.get('b1')!.status).toBe('sent')
+    expect(byId.get('b1')!.entryId).toBe('e-b1')
+    expect(byId.get('b2')!.status).toBe('none')
+    expect(byId.get('b2')!.entryId).toBeNull()
+  })
+
+  it('does not let two boulders sharing a gym_problem_id both claim the same hand-logged entry', () => {
+    const rows = boulderRows(
+      [
+        boulder('b1', '2026-08-18T18:00:00+00:00', 'gp1'),
+        boulder('b2', '2026-08-18T19:00:00+00:00', 'gp1'),
+      ],
+      [handLoggedEntry('hand-1', 1, false, 'gp1')],
+    )
+    expect(rows.filter(r => r.entryId === 'hand-1')).toHaveLength(1)
+    expect(rows[0].entryId).toBe('hand-1')
+    expect(rows[1].entryId).toBeNull()
+    expect(rows[1].status).toBe('none')
+  })
 })
 
 describe('sessionProjectSummary', () => {
@@ -98,6 +150,10 @@ describe('sessionProjectSummary', () => {
 
   it('singularises one project', () => {
     expect(sessionProjectSummary(rows('project')).label).toBe('1 project')
+  })
+
+  it('pluralises more than one project', () => {
+    expect(sessionProjectSummary(rows('project', 'project')).label).toBe('2 projects')
   })
 })
 

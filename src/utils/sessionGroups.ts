@@ -20,6 +20,7 @@ export interface GroupBoulder {
 export interface MyEntry {
   id: string
   group_boulder_id: string | null
+  gym_problem_id: string | null
   attempts: number
   sent: boolean
 }
@@ -34,20 +35,40 @@ export interface BoulderRow {
 /**
  * Join the group's boulder list to the caller's own entries.
  *
+ * A direct `group_boulder_id` match wins. Failing that, an entry that has no
+ * `group_boulder_id` yet (logged by hand before the boulder joined the list) is
+ * matched by `gym_problem_id`, so a hand-logged send isn't shown as "not logged"
+ * and re-logged into a duplicate row. Every entry is claimed by at most one
+ * boulder -- `claimed` tracks ids already matched (by either path) and the
+ * fallback refuses a candidate already in that set, so two list boulders that
+ * happen to share a `gym_problem_id` cannot both claim the same entry.
+ *
  * Status is derived, never stored: no entry means the boulder is on the wall but
  * not in your log and costs you nothing; an unsent entry is a project whether or
  * not it has tries; a sent entry is a send. Ordering follows the list, so rows do
  * not move as you log.
  */
 export function boulderRows(boulders: GroupBoulder[], mine: MyEntry[]): BoulderRow[] {
-  const byBoulder = new Map<string, MyEntry>()
+  const byGroupBoulder = new Map<string, MyEntry>()
   for (const e of mine) {
-    if (e.group_boulder_id) byBoulder.set(e.group_boulder_id, e)
+    if (e.group_boulder_id) byGroupBoulder.set(e.group_boulder_id, e)
   }
+  // Fallback pool for hand-logged entries not yet linked to a list entry.
+  const byGymProblem = new Map<string, MyEntry>()
+  for (const e of mine) {
+    if (!e.group_boulder_id && e.gym_problem_id) byGymProblem.set(e.gym_problem_id, e)
+  }
+  const claimed = new Set<string>()
+
   return [...boulders]
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
     .map(boulder => {
-      const e = byBoulder.get(boulder.id)
+      let e = byGroupBoulder.get(boulder.id)
+      if (!e && boulder.gym_problem_id) {
+        const candidate = byGymProblem.get(boulder.gym_problem_id)
+        if (candidate && !claimed.has(candidate.id)) e = candidate
+      }
+      if (e) claimed.add(e.id)
       return {
         boulder,
         entryId: e?.id ?? null,
