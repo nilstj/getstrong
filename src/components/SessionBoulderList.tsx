@@ -1,10 +1,15 @@
+import { useState } from 'react'
 import { Plus, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { HoldGraphic } from './Chip'
+import { BottomSheet } from './BottomSheet'
+import { GymBoulderPicker } from './GymBoulderPicker'
+import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useSessionProblems } from '../hooks/useProblems'
-import { useGroupBoulders, useSetMyBoulderEntry } from '../hooks/useSessionGroup'
+import { useAddGroupBoulder, useGroupBoulders, useSetMyBoulderEntry } from '../hooks/useSessionGroup'
 import { boulderRows, sessionProjectSummary } from '../utils/sessionGroups'
 import type { BoulderStatus } from '../utils/sessionGroups'
+import type { GymProblem } from '../types'
 
 const CHIP: Record<BoulderStatus, { label: string; className: string }> = {
   none:    { label: 'Not logged', className: 'bg-gray-100 text-gray-400' },
@@ -16,18 +21,20 @@ const CHIP: Record<BoulderStatus, { label: string; className: string }> = {
  * The group's shared boulder list, joined to the caller's own entries. A boulder
  * with no entry of yours is on the wall but not in your log, and costs you no row.
  */
-export function SessionBoulderList({ sessionId, groupId }: { sessionId: string; groupId: string }) {
+export function SessionBoulderList({
+  sessionId, groupId, gym,
+}: { sessionId: string; groupId: string; gym: string }) {
   const { data: boulders = [] } = useGroupBoulders(groupId)
   const { data: problems = [] } = useSessionProblems(sessionId)
   const setEntry = useSetMyBoulderEntry()
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const addBoulder = useAddGroupBoulder()
 
   const rows = boulderRows(
     boulders,
     problems.map(p => ({ id: p.id, group_boulder_id: p.group_boulder_id, attempts: p.attempts, sent: p.sent })),
   )
   const summary = sessionProjectSummary(rows)
-
-  if (boulders.length === 0) return null
 
   const save = (
     row: (typeof rows)[number],
@@ -115,6 +122,42 @@ export function SessionBoulderList({ sessionId, groupId }: { sessionId: string; 
           )
         })}
       </div>
+
+      <button
+        type="button"
+        onClick={() => setPickerOpen(true)}
+        className="w-full min-h-12 mt-2 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-gray-300 text-gray-600 text-sm font-semibold"
+      >
+        <Plus size={16} strokeWidth={2.25} />
+        Add a boulder to the session
+      </button>
+
+      <BottomSheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Add a boulder">
+        <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+          Puts it on the session's list for everyone, and on yours as a project.
+        </p>
+        <GymBoulderPicker
+          gym={gym}
+          onPick={(gp: GymProblem) => {
+            const prefill = boulderToPrefill(gp)
+            addBoulder.mutate(
+              {
+                groupId,
+                gymProblemId: gp.id,
+                grade: prefill.grade_value,
+                color: prefill.color,
+                holdColor: prefill.hold_color,
+                imageUrl: prefill.image_url,
+                betaVideoUrl: prefill.beta_video_url,
+              },
+              {
+                onSuccess: () => { setPickerOpen(false); toast.success('On the list') },
+                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not add it'),
+              },
+            )
+          }}
+        />
+      </BottomSheet>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import { profilesByIds } from '../lib/profiles'
+import { fontToVScale, vScaleToFont } from '../utils/grades'
 import type { GroupBoulder } from '../utils/sessionGroups'
 
 export interface SessionGroup {
@@ -172,29 +173,55 @@ export function useDeclineSessionGroup() {
   })
 }
 
-/** Puts a boulder on the group's list, returning the list entry's id. */
+/**
+ * Puts a boulder on the group's list, returning the list entry's id. A picked
+ * shared boulder carries a single grade string of unknown scale; this fetches the
+ * mapping table once and derives both scales here, the same way `useAddProblem`
+ * does, so the two writes cannot disagree and callers never do grade maths.
+ */
 export function useAddGroupBoulder() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (v: {
       groupId: string
       gymProblemId: string | null
-      gradeSystem: string
-      gradeValue: string | null
-      gradeValueFont: string | null
-      gradeValueVscale: string | null
+      grade: string | null
       color: string | null
       holdColor: string | null
       imageUrl: string | null
       betaVideoUrl: string | null
     }): Promise<string> => {
+      let gradeSystem: 'font' | 'v_scale' | null = null
+      let gradeValueFont: string | null = null
+      let gradeValueVscale: string | null = null
+
+      if (v.grade) {
+        const { data: mappings } = await supabase.from('grade_mappings').select('*')
+        const m = mappings ?? []
+        const asVscale = fontToVScale(v.grade, m)
+        const asFont = vScaleToFont(v.grade, m)
+        if (asVscale !== null) {
+          gradeSystem = 'font'
+          gradeValueFont = v.grade
+          gradeValueVscale = asVscale
+        } else if (asFont !== null) {
+          gradeSystem = 'v_scale'
+          gradeValueFont = asFont
+          gradeValueVscale = v.grade
+        } else {
+          gradeSystem = 'font'
+          gradeValueFont = v.grade
+          gradeValueVscale = null
+        }
+      }
+
       const { data, error } = await supabase.rpc('add_group_boulder', {
         p_group: v.groupId,
         p_gym_problem_id: v.gymProblemId,
-        p_grade_system: v.gradeSystem,
-        p_grade_value: v.gradeValue,
-        p_grade_value_font: v.gradeValueFont,
-        p_grade_value_vscale: v.gradeValueVscale,
+        p_grade_system: gradeSystem,
+        p_grade_value: v.grade,
+        p_grade_value_font: gradeValueFont,
+        p_grade_value_vscale: gradeValueVscale,
         p_color: v.color,
         p_hold_color: v.holdColor,
         p_image_url: v.imageUrl,

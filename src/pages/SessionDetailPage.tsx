@@ -188,7 +188,9 @@ export function SessionDetailPage() {
         />
       )}
 
-      {session.group_id && <SessionBoulderList sessionId={id!} groupId={session.group_id} />}
+      {session.group_id && (
+        <SessionBoulderList sessionId={id!} groupId={session.group_id} gym={session.location} />
+      )}
 
       {problems.length > 0 && (
         <div>
