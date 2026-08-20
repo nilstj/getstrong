@@ -33,6 +33,7 @@ import { ImageLightbox } from '../components/ImageLightbox'
 import { GymThumb } from '../components/GymThumb'
 import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
 import { SessionRoster } from '../components/SessionRoster'
+import { SessionBoulderList } from '../components/SessionBoulderList'
 import { useAuth } from '../providers/AuthProvider'
 
 type SheetTab = 'problem' | 'challenge'
@@ -186,6 +187,8 @@ export function SessionDetailPage() {
           isOwner={session.user_id === user?.id}
         />
       )}
+
+      {session.group_id && <SessionBoulderList sessionId={id!} groupId={session.group_id} />}
 
       {problems.length > 0 && (
         <div>

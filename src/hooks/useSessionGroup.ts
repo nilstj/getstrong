@@ -206,3 +206,56 @@ export function useAddGroupBoulder() {
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['session_group_boulders', v.groupId] }),
   })
 }
+
+/**
+ * Create or update my own entry for one boulder on the group's list. Creating is
+ * what turns "on the wall" into "on my list": a first try makes it a project at
+ * one attempt, and marking it sent from untouched records a single try, because a
+ * send with zero attempts is not a thing.
+ */
+export function useSetMyBoulderEntry() {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  return useMutation({
+    mutationFn: async (v: {
+      sessionId: string
+      groupId: string
+      groupBoulderId: string
+      entryId: string | null
+      attempts: number
+      sent: boolean
+      boulder: GroupBoulder
+    }) => {
+      if (v.entryId) {
+        const { error } = await supabase
+          .from('problems')
+          .update({ attempts: v.attempts, sent: v.sent })
+          .eq('id', v.entryId)
+        if (error) throw error
+        return
+      }
+      const { error } = await supabase.from('problems').insert({
+        session_id: v.sessionId,
+        user_id: user!.id,
+        group_boulder_id: v.groupBoulderId,
+        // Carried from the list entry, not assumed: a colour-graded gym stores
+        // 'color' here, and hardcoding 'font' would violate the check constraint.
+        grade_system: v.boulder.grade_system,
+        grade_value: v.boulder.grade_value,
+        grade_value_font: v.boulder.grade_value_font,
+        color: v.boulder.color,
+        hold_color: v.boulder.hold_color,
+        image_url: v.boulder.image_url,
+        beta_video_url: v.boulder.beta_video_url,
+        gym_problem_id: v.boulder.gym_problem_id,
+        attempts: v.attempts,
+        sent: v.sent,
+      })
+      if (error) throw error
+    },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['problems', v.sessionId] })
+      qc.invalidateQueries({ queryKey: ['session_group_boulders', v.groupId] })
+    },
+  })
+}
