@@ -1472,16 +1472,37 @@ Expected: refused by row-level security. Every write must go through the RPCs.
 Run `npm run dev`, then walk this list. Hooks, components and pages have no automated coverage in this project, so this pass *is* the test.
 
 - [ ] **A solo session looks exactly as it did before.** Open an existing session with no group: no boulder-list section, the Problems block unchanged, and only the "Add" affordance in the roster.
-- [ ] Tap Add on your own session → a group is created and the sheet opens. Ask someone.
-- [ ] As that person, open `/sessions` → the invite card is at the top with the date and gym.
-- [ ] Tap **Accept** → you land on a new session at the right date and gym, and **your log has no problems in it**.
-- [ ] The boulder list shows every boulder the other person logged, each as `Not logged`.
-- [ ] Tap `Add a try` on one → it becomes `Project · 1 try`. Reload; it persists.
-- [ ] Tap `Sent` on an untouched one → it becomes `Sent` with 1 try, not 0.
+**Sharing and accepting**
+
+- [ ] Tap Add on your own session → the sheet opens and **no group is created yet**. Close it without inviting anyone; the session must still be solo (no Boulders section).
+- [ ] Reopen, Ask someone → now the group exists, and asking a second person does **not** create a second group.
+- [ ] Your own Boulders list is populated from the problems that session already had, each showing **your** status (`Sent`/`Project`), not `Not logged`. This is the back-fill — if the list is empty here, it failed.
+- [ ] As the invited climber, open `/sessions` → the invite card is at the top, with the date formatted like the rest of the app (`Wed 19 Aug`, not `2026-08-19`).
+- [ ] Tap **Accept** → you land on a session at the right date and gym, and **your log has no problems in it**. The boulder list shows the other climber's boulders, each `Not logged`.
+- [ ] Tap **Wasn't me** on a different invite → a toast confirms it and the card disappears.
+
+**Logging your own status**
+
+- [ ] Tap `Add a try` → `Project · 1 try`. Reload; it persists.
+- [ ] Tap `Sent` on an untouched boulder → `Sent` with **1 try, not 0**.
 - [ ] Tap `Sent` again → back to `Project`, try count kept.
 - [ ] Open that problem in the normal Problems block and set tries to 0 with the stepper — it must reach 0, not stop at 1.
+- [ ] **The core sharing property:** a boulder *either* climber adds through the picker appears on the *other* climber's list too, as `Not logged`.
+- [ ] **A boulder you already logged by hand, then added to the list**, shows your existing status — not `Not logged` — and tapping it does **not** create a second row. Check the Problems block for a duplicate.
+
+**Where a send has to show up**
+
+- [ ] After logging a send from the shared list, the **home dashboard** and the **sessions calendar** both reflect it without a hard reload.
+- [ ] That send is counted on the **gym grade-score leaderboard** (`/analysis/leaderboards`). A send logged this way must score the same as one logged by hand.
+
+**Edges**
+
 - [ ] Both climbers' rosters show each other, and a pending invitee shows faded with "Asked".
 - [ ] Accept an invite for a day you already logged at that gym → the "already logged a session that day" message appears and no second session is created.
+- [ ] **Open your own shared session's URL as a different climber** (a follower, on a session with shared wisdom). No roster and no Boulders section may appear — those are owner-only.
+- [ ] **At a colour-graded gym** (one configured through the per-gym colour picker), the rows are distinguishable — tape and hold colour visible — not a wall of identical grey cards.
+- [ ] **The awards still work.** Migration 079 is live and matches award participants by crew + date + gym, so accepting an invite enrols you in that evening's round. Confirm the participant count moves as expected and that an already-revealed verdict does not re-lock.
+- [ ] A **planned** session shows no roster and no boulder list.
 - [ ] Nothing anywhere claims you sent something you did not.
 
 - [ ] **Step 5: Confirm no points were minted**
