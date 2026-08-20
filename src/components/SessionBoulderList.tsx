@@ -6,10 +6,11 @@ import { BottomSheet } from './BottomSheet'
 import { GymBoulderPicker } from './GymBoulderPicker'
 import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useSessionProblems } from '../hooks/useProblems'
-import { useAddGroupBoulder, useGroupBoulders, useSetMyBoulderEntry, useSessionGroupRow } from '../hooks/useSessionGroup'
-import { boulderRows, sessionProjectSummary } from '../utils/sessionGroups'
+import { useAddGroupBoulder, useGroupBoulderEntries, useGroupBoulders, useSetMyBoulderEntry, useSessionGroupRow } from '../hooks/useSessionGroup'
+import { boulderRows, companionLine, companionsByBoulder, sessionProjectSummary } from '../utils/sessionGroups'
 import type { BoulderStatus } from '../utils/sessionGroups'
 import type { GymProblem } from '../types'
+import { useAuth } from '../providers/AuthProvider'
 
 const CHIP: Record<BoulderStatus, { label: string; className: string }> = {
   none:    { label: 'Not logged', className: 'bg-gray-100 text-gray-400' },
@@ -39,6 +40,13 @@ export function SessionBoulderList({
   const setEntry = useSetMyBoulderEntry()
   const [pickerOpen, setPickerOpen] = useState(false)
   const addBoulder = useAddGroupBoulder()
+  const { user } = useAuth()
+  const boulderIds = boulders.map(b => b.id)
+  const { data: companionData } = useGroupBoulderEntries(boulderIds)
+  const companions = companionData
+    ? companionsByBoulder(companionData.entries, user?.id ?? '')
+    : {}
+  const namesById = companionData?.namesById ?? {}
 
   const rows = boulderRows(
     boulders,
@@ -79,6 +87,13 @@ export function SessionBoulderList({
       <div className="space-y-2">
         {rows.map(row => {
           const chip = CHIP[row.status]
+          const companion = companions[row.boulder.id]
+          const line = companion
+            ? companionLine(
+                companion.sentIds.map(id => namesById[id] ?? 'Someone'),
+                companion.projectingIds.map(id => namesById[id] ?? 'Someone'),
+              )
+            : null
           return (
             <div
               key={row.boulder.id}
@@ -105,6 +120,9 @@ export function SessionBoulderList({
                   <p className="text-xs text-gray-500 mt-1.5">
                     {row.attempts === 0 ? 'no tries logged' : `${row.attempts} ${row.attempts === 1 ? 'try' : 'tries'}`}
                   </p>
+                  {line && (
+                    <p className="text-xs text-gray-500 mt-0.5">{line}</p>
+                  )}
                 </div>
               </div>
 

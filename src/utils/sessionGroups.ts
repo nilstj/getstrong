@@ -110,3 +110,76 @@ export function groupRoster(
     ...invites.filter(i => !accepted.has(i.invited_user)).map(i => ({ userId: i.invited_user, pending: true })),
   ]
 }
+
+/** One other climber's row against a shared boulder, reduced to what companionsByBoulder needs. */
+export interface CompanionEntry {
+  user_id: string
+  group_boulder_id: string | null
+  sent: boolean
+}
+
+/**
+ * Who else -- not me -- has sent or is projecting each boulder on the shared
+ * list, keyed by `group_boulder_id`.
+ *
+ * A boulder with no other climbers' entries is left out of the record
+ * entirely (not present with two empty arrays), so callers can render nothing
+ * with a plain `record[boulderId]` lookup.
+ *
+ * A user's final status per boulder is resolved in a first pass over all
+ * entries -- any sent row promotes them to "sent" regardless of where in the
+ * list an unsent row for the same user and boulder falls -- before a second
+ * pass places each user once, on first appearance, into the correct bucket.
+ * That ordering is what guarantees a user never lands in both buckets: the
+ * bucket is decided before placement, not flipped as later rows are seen.
+ */
+export function companionsByBoulder(
+  entries: CompanionEntry[],
+  meId: string,
+): Record<string, { sentIds: string[]; projectingIds: string[] }> {
+  const sentByBoulder = new Map<string, Set<string>>()
+  for (const e of entries) {
+    if (!e.group_boulder_id || e.user_id === meId || !e.sent) continue
+    if (!sentByBoulder.has(e.group_boulder_id)) sentByBoulder.set(e.group_boulder_id, new Set())
+    sentByBoulder.get(e.group_boulder_id)!.add(e.user_id)
+  }
+
+  const result: Record<string, { sentIds: string[]; projectingIds: string[] }> = {}
+  const placed = new Map<string, Set<string>>()
+
+  for (const e of entries) {
+    if (!e.group_boulder_id || e.user_id === meId) continue
+    const boulderId = e.group_boulder_id
+    if (!placed.has(boulderId)) placed.set(boulderId, new Set())
+    const seen = placed.get(boulderId)!
+    if (seen.has(e.user_id)) continue
+    seen.add(e.user_id)
+
+    if (!result[boulderId]) result[boulderId] = { sentIds: [], projectingIds: [] }
+    if (sentByBoulder.get(boulderId)?.has(e.user_id)) {
+      result[boulderId].sentIds.push(e.user_id)
+    } else {
+      result[boulderId].projectingIds.push(e.user_id)
+    }
+  }
+
+  return result
+}
+
+/** Joins names the way this app's copy does: commas, and " and " before the last. */
+function joinNames(names: string[]): string {
+  if (names.length === 0) return ''
+  if (names.length === 1) return names[0]
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/**
+ * The "Ida sent it · Sondre projecting" line under a shared boulder. `null`
+ * when nobody else has touched it, so the caller renders nothing.
+ */
+export function companionLine(sentNames: string[], projectingNames: string[]): string | null {
+  const clauses: string[] = []
+  if (sentNames.length > 0) clauses.push(`${joinNames(sentNames)} sent it`)
+  if (projectingNames.length > 0) clauses.push(`${joinNames(projectingNames)} projecting`)
+  return clauses.length > 0 ? clauses.join(' · ') : null
+}
