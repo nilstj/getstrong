@@ -1,5 +1,9 @@
+import { Check } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { useNavigate } from 'react-router-dom'
 import { useSessions } from '../hooks/useSessions'
 import { useAllProblems } from '../hooks/useProblems'
+import { useMyGroupInvites, useAcceptSessionGroup, useDeclineSessionGroup } from '../hooks/useSessionGroup'
 import { SessionCard, isPlannedSession } from '../components/SessionCard'
 import { SessionCalendar } from '../components/SessionCalendar'
 
@@ -17,6 +21,8 @@ export function SessionsPage() {
 
   return (
     <div className="p-4 space-y-3">
+      <PendingSessionInvites />
+
       <SessionCalendar sessions={sessions} problems={problems} />
 
       {planned.length > 0 && (
@@ -56,6 +62,58 @@ export function SessionsPage() {
           No sessions yet. Tap Log to start your first session.
         </p>
       )}
+    </div>
+  )
+}
+
+/** Sessions someone added you to, waiting for you to say you were there. */
+function PendingSessionInvites() {
+  const { data: invites = [] } = useMyGroupInvites()
+  const accept = useAcceptSessionGroup()
+  const decline = useDeclineSessionGroup()
+  const navigate = useNavigate()
+
+  if (invites.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      {invites.map(({ group }) => (
+        <div key={group.id} className="bg-white border border-sage-200 rounded-2xl p-3.5">
+          <p className="text-sm font-bold leading-snug">You were added to a session</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Accept if you were there · {group.date} · {group.gym}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+            The session's boulder list is already there. Nothing lands in your log until you log it.
+          </p>
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => accept.mutate({ groupId: group.id }, {
+                onSuccess: sessionId => { toast.success('Added to your log'); navigate(`/sessions/${sessionId}`) },
+                onError: (e: unknown) => {
+                  const msg = e instanceof Error ? e.message : ''
+                  toast.error(msg.includes('ALREADY_LOGGED')
+                    ? 'You already logged a session that day at that gym'
+                    : 'Could not accept')
+                },
+              })}
+              disabled={accept.isPending}
+              className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-sage-700 text-white text-[15px] font-semibold disabled:opacity-50"
+            >
+              <Check size={16} strokeWidth={2.5} />
+              Accept
+            </button>
+            <button
+              type="button"
+              onClick={() => decline.mutate({ groupId: group.id }, { onError: () => toast.error('Failed') })}
+              className="min-h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-500 text-[15px] font-semibold"
+            >
+              Wasn't me
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
