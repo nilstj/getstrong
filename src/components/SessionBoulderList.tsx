@@ -134,7 +134,7 @@ export function SessionBoulderList({
 
       <BottomSheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Add a boulder">
         <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-          Puts it on the session's list for everyone, and on yours as a project.
+          Puts it on the session's list for everyone; you log your own tries on it like any other boulder.
         </p>
         <GymBoulderPicker
           gym={gym}

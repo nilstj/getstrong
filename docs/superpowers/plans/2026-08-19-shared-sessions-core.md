@@ -1502,6 +1502,15 @@ Then use the `superpowers:finishing-a-development-branch` skill. **Do not push b
 
 ## Task 9: Put a boulder on the shared list from the UI
 
+> **AMENDED AFTER REVIEW — do not re-execute this task from the code below.**
+> The committed files are the source of truth. Step 2's `normaliseGrade` helper does
+> not compile: `vScaleToFont`/`fontToVScale` both require a `mappings` argument, so
+> the normalisation belongs in `useAddGroupBoulder`, which fetches `grade_mappings`
+> the way `useAddProblem` does. Review then found that an ungraded boulder sent
+> `p_grade_system: null` into a `not null` column, so adding any ungraded boulder
+> failed, and that the sheet's copy promised the boulder would land "on yours as a
+> project" when the design deliberately does not create the caller's entry.
+
 **Files:**
 - Modify: `src/components/SessionBoulderList.tsx`
 - Modify: `src/pages/SessionDetailPage.tsx`

@@ -175,9 +175,11 @@ export function useDeclineSessionGroup() {
 
 /**
  * Puts a boulder on the group's list, returning the list entry's id. A picked
- * shared boulder carries a single grade string of unknown scale; this fetches the
- * mapping table once and derives both scales here, the same way `useAddProblem`
- * does, so the two writes cannot disagree and callers never do grade maths.
+ * shared boulder carries a single `community_grade` string with no scale attached,
+ * unlike `useAddProblem`, which is told its scale by its caller. This hook has to
+ * infer which scale the string is in, so it fetches the mapping table once and
+ * derives both scales here, so the two writes cannot disagree and callers never do
+ * grade maths.
  */
 export function useAddGroupBoulder() {
   const qc = useQueryClient()
@@ -191,22 +193,24 @@ export function useAddGroupBoulder() {
       imageUrl: string | null
       betaVideoUrl: string | null
     }): Promise<string> => {
-      let gradeSystem: 'font' | 'v_scale' | null = null
+      // The column is `not null`, so an ungraded boulder still needs a permitted
+      // value here -- default to 'font' with every grade value left null.
+      let gradeSystem: 'font' | 'v_scale' = 'font'
       let gradeValueFont: string | null = null
       let gradeValueVscale: string | null = null
 
       if (v.grade) {
         const { data: mappings } = await supabase.from('grade_mappings').select('*')
         const m = mappings ?? []
-        const asVscale = fontToVScale(v.grade, m)
-        const asFont = vScaleToFont(v.grade, m)
-        if (asVscale !== null) {
+        const vscaleIfFont = fontToVScale(v.grade, m)
+        const fontIfVscale = vScaleToFont(v.grade, m)
+        if (vscaleIfFont !== null) {
           gradeSystem = 'font'
           gradeValueFont = v.grade
-          gradeValueVscale = asVscale
-        } else if (asFont !== null) {
+          gradeValueVscale = vscaleIfFont
+        } else if (fontIfVscale !== null) {
           gradeSystem = 'v_scale'
-          gradeValueFont = asFont
+          gradeValueFont = fontIfVscale
           gradeValueVscale = v.grade
         } else {
           gradeSystem = 'font'
