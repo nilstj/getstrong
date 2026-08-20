@@ -47,6 +47,7 @@ export interface Problem {
   notes: string | null
   created_at: string
   gym_problem_id: string | null
+  group_boulder_id: string | null
 }
 
 export interface GradeMapping {

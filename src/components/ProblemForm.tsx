@@ -22,7 +22,7 @@ type FormValues = {
 }
 
 interface ProblemFormProps {
-  onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[]; makePublic?: boolean }) => void
+  onSubmit: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'group_boulder_id'> & { tagIds?: string[]; makePublic?: boolean }) => void
   isSubmitting: boolean
   initialGradeSystem?: 'font' | 'v_scale'
   existing?: Problem
