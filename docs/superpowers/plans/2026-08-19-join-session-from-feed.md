@@ -10,13 +10,13 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-19-shared-sessions-design.md`, section "1b. Joining from the friends feed".
 
-**Depends on:** `docs/superpowers/plans/2026-08-19-shared-sessions-core.md` must be complete and **migration 080 applied**. This plan's migration is **081**, and it calls `create_session_group`'s logic, `session_groups`, `session_group_invites` and `is_session_group_member` from 080.
+**Depends on:** `docs/superpowers/plans/2026-08-19-shared-sessions-core.md` must be complete and **migration 080 applied**. This plan's migration is **082**, and it calls `create_session_group`'s logic, `session_groups`, `session_group_invites` and `is_session_group_member` from 080.
 
 ## Global Constraints
 
 - **Branch:** `feature/shared-sessions`. Do not push to `main`.
-- **Release gate:** migration `081_join_session.sql` is applied **by hand in the Supabase dashboard**, after 080, and before the client that reads it is deployed. Pushing `main` is a release.
-- **Migration numbering:** 079 (awards) and 080 (shared sessions) exist; this is **081**. The spec's step 2 (awards on groups) therefore becomes **082** — update the spec's migration section as part of Task 1.
+- **Release gate:** migration `082_join_session.sql` is applied **by hand in the Supabase dashboard**, after 080, and before the client that reads it is deployed. Pushing `main` is a release.
+- **Migration numbering:** 079 (awards) and 080 (shared sessions) exist; this is **082**. The spec's step 2 (awards on groups) therefore becomes **083** — update the spec's migration section as part of Task 1.
 - **The only column this feature may write on another user's row is `sessions.group_id`**, and only inside a `SECURITY DEFINER` function. Never their climbs, notes, wisdom, duration or intensity.
 - **Do not widen the read policies on `sessions`.** The feed's session card is derived from the friend's world-readable `problems` rows precisely because `sessions` is owner-only; keep it that way.
 - **Joining closes when the verdict opens.** A join is refused once the session's award round has `unlocked_at` set. That column arrives in step 2, so guard on it defensively: if the column does not exist yet the check is inert, but write the guard now so step 2 turns it on rather than having to find this code again.
@@ -34,7 +34,7 @@
 
 | File | Responsibility |
 |---|---|
-| Create `supabase/migrations/081_join_session.sql` | `session_join_requests`, three RPCs, one policy. |
+| Create `supabase/migrations/082_join_session.sql` | `session_join_requests`, three RPCs, one policy. |
 | Create `src/utils/joinEligibility.ts` | Pure logic: which join affordance a feed card should show. |
 | Create `src/utils/__tests__/joinEligibility.test.ts` | Tests for the above. |
 | Modify `src/hooks/useSessionGroup.ts` | `useJoinSession`, `useRequestToJoinSession`, `useSessionJoinRequests`, `useApproveJoinRequest`, `useSharedCrewUsers`. |
@@ -43,10 +43,10 @@
 
 ---
 
-## Task 1: Migration 081 — requests and the join paths
+## Task 1: Migration 082 — requests and the join paths
 
 **Files:**
-- Create: `supabase/migrations/081_join_session.sql`
+- Create: `supabase/migrations/082_join_session.sql`
 - Modify: `docs/superpowers/specs/2026-08-19-shared-sessions-design.md`
 
 **Interfaces:**
@@ -111,7 +111,7 @@ $$;
 
 -- ── Guard: a revealed verdict closes the roster ───────────────────────────────
 -- Adding a participant to a round whose result people have already read is wrong.
--- `unlocked_at` arrives with the awards-on-groups migration (082); until then this
+-- `unlocked_at` arrives with the awards-on-groups migration (083); until then this
 -- returns false and the guard is inert, which is deliberate.
 create or replace function public.session_group_verdict_is_out(p_group uuid)
 returns boolean language plpgsql security definer stable set search_path = public as $$
@@ -234,26 +234,26 @@ end; $$;
 
 - [ ] **Step 2: Note the renumbering in the spec**
 
-In `docs/superpowers/specs/2026-08-19-shared-sessions-design.md`, find the Migrations section and change the step 2 migration number from **081** to **082**, since 081 is now this plan. Change every occurrence, including the one in "Delivery in two steps".
+In `docs/superpowers/specs/2026-08-19-shared-sessions-design.md`, find the Migrations section and change the step 2 migration number from **082** to **083**, since 082 is now this plan. Change every occurrence, including the one in "Delivery in two steps".
 
-Run: `grep -n "081\|082" docs/superpowers/specs/2026-08-19-shared-sessions-design.md`
-Expected: 081 refers only to this join migration; step 2's awards migration is 082 everywhere.
+Run: `grep -n "082\|083" docs/superpowers/specs/2026-08-19-shared-sessions-design.md`
+Expected: 082 refers only to this join migration; step 2's awards migration is 083 everywhere.
 
 - [ ] **Step 3: Check the guards are constraints, and the write policies are absent**
 
-Run: `grep -n "primary key\|create policy" supabase/migrations/081_join_session.sql`
+Run: `grep -n "primary key\|create policy" supabase/migrations/082_join_session.sql`
 Expected: one pending request per person is `primary key (session_id, user_id)`; exactly one policy, `for select`. Zero insert/update/delete policies. Paste the output.
 
 - [ ] **Step 4: Check nothing widens `sessions` reads**
 
-Run: `grep -n "policy.*on sessions\|on sessions for" supabase/migrations/081_join_session.sql`
+Run: `grep -n "policy.*on sessions\|on sessions for" supabase/migrations/082_join_session.sql`
 Expected: no matches. The feed card stays derived from `problems`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/081_join_session.sql docs/superpowers/specs/2026-08-19-shared-sessions-design.md
-git commit -m "Add joining a session directly or by request (migration 081)"
+git add supabase/migrations/082_join_session.sql docs/superpowers/specs/2026-08-19-shared-sessions-design.md
+git commit -m "Add joining a session directly or by request (migration 082)"
 ```
 
 - [ ] **Step 6: Apply the migration by hand**
@@ -264,7 +264,7 @@ Paste into the Supabase dashboard SQL editor and run, **after 080**. Then confir
 select count(*) from session_join_requests;
 select public.session_group_verdict_is_out(gen_random_uuid());
 ```
-Expected: 0, and `false` — the second proves the forward-compatible guard is inert rather than erroring before migration 082 adds `unlocked_at`.
+Expected: 0, and `false` — the second proves the forward-compatible guard is inert rather than erroring before migration 083 adds `unlocked_at`.
 
 ---
 
@@ -803,7 +803,7 @@ In the Supabase dashboard:
 
 ```sql
 select count(*) from session_group_boulders;   -- 080
-select count(*) from session_join_requests;    -- 081
+select count(*) from session_join_requests;    -- 082
 ```
 Expected: both succeed.
 
@@ -837,7 +837,7 @@ Run `npm run dev`. Hooks, components and pages have no automated coverage, so th
 
 - [ ] **Step 5: Confirm no points were minted**
 
-Run: `grep -rn "beta_points" supabase/migrations/081_join_session.sql src/utils/joinEligibility.ts src/components/FriendSessionCard.tsx`
+Run: `grep -rn "beta_points" supabase/migrations/082_join_session.sql src/utils/joinEligibility.ts src/components/FriendSessionCard.tsx`
 Expected: no matches.
 
 - [ ] **Step 6: Commit any fixes and finish the branch**
@@ -847,7 +847,7 @@ git add -A
 git commit -m "Fix defects found in the join-from-feed manual pass"
 ```
 
-Then use the `superpowers:finishing-a-development-branch` skill. **Do not push before 080 and 081 are both applied in Supabase** — a push to `main` is a release.
+Then use the `superpowers:finishing-a-development-branch` skill. **Do not push before 080 and 082 are both applied in Supabase** — a push to `main` is a release.
 
 ---
 
@@ -867,12 +867,12 @@ Then use the `superpowers:finishing-a-development-branch` skill. **Do not push b
 | `sessions` read policies not widened | 1 Step 4 |
 | Feed card keeps working as a link | 4 Step 4 |
 | No `beta_points` | 6 Step 5 |
-| Release gate on 081, after 080 | 1 Step 6, 6 Step 1, 6 Step 6 |
+| Release gate on 082, after 080 | 1 Step 6, 6 Step 1, 6 Step 6 |
 
 **Two things this plan does that the spec did not ask for, both deliberate:**
 
 1. **`approve_join_request` attaches an existing same-day session** instead of creating a second one. The spec defers merging, but here the owner is approving a specific person for a specific evening, so a duplicate would be an obvious bug. It is a single `update … set group_id`, which is exactly the "attaching proves as simple as it looks" case the spec anticipated.
-2. **`session_group_verdict_is_out` is written before the column it reads exists**, catching `undefined_column`/`undefined_table` so it returns `false` under migration 081 and starts working the moment 082 adds `unlocked_at`. The alternative — leaving the guard out and remembering to add it later — is how a rule gets lost. Task 1 Step 6 verifies it is inert rather than broken.
+2. **`session_group_verdict_is_out` is written before the column it reads exists**, catching `undefined_column`/`undefined_table` so it returns `false` under migration 082 and starts working the moment 083 adds `unlocked_at`. The alternative — leaving the guard out and remembering to add it later — is how a rule gets lost. Task 1 Step 6 verifies it is inert rather than broken.
 
 **Placeholder scan:** every code step carries complete code; no TBD, no "similar to Task N". Task 3 Step 2 and Task 1 Step 2 are explicit verify-then-adapt steps with the exact command and the exact thing to change, not vague instructions.
 

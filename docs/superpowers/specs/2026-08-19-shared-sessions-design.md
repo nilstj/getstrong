@@ -271,7 +271,7 @@ build it anyway, since step 2 turns it on. Shippable alone.
 rewrite the guards onto live membership, render the awards inside the session view,
 and delete the machinery listed above.
 
-Two migrations, therefore: **080** for step 1 and **081** for step 2, each its own
+Two migrations, therefore: **080** for step 1 and **083** for step 2, each its own
 release gate. Do not fold them: step 2 alters live award data and wants its own
 apply-and-verify.
 
@@ -279,7 +279,7 @@ apply-and-verify.
 
 Applied by hand in the Supabase dashboard, each a release gate that must be applied
 **before** the client that reads it is deployed: **080_shared_sessions.sql** and
-**081_awards_on_groups.sql**. Migration 079 is already applied in production, so 081
+**083_awards_on_groups.sql**. Migration 079 is already applied in production, so 083
 alters live objects — it must say explicitly whether existing award rounds are
 migrated onto groups or dropped, and the plan must decide which. Dropping is
 defensible: at the time of writing the feature has produced no rounds anyone has

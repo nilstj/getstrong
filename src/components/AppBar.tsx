@@ -110,6 +110,7 @@ const ICONS: Record<Notification['type'], string> = {
   new_follower: '🤝',
   hype: '🔥',
   session_tag: '📍',
+  session_group_invite: '✉️',
   wall_comment: '🗣️',
   beta_video: '🎥',
   proof_video: '🎬',
@@ -142,6 +143,8 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       return { text: `${username} sent you hype while you were on the wall!` }
     case 'session_tag':
       return { text: `${username} tagged you in a session at ${d.location ?? 'the gym'}`, detail: d.date }
+    case 'session_group_invite':
+      return { text: `${username} added you to a session at ${d.gym ?? 'the gym'} — accept to join in`, detail: d.date }
     case 'wall_comment':
       return { text: `${username} replied to your wall at ${d.location ?? 'the gym'}`, detail: d.body ? `"${d.body}"` : undefined }
     case 'beta_video':
@@ -185,6 +188,10 @@ function routeFor(n: Notification): string | null {
     case 'problem_reaction':
     case 'session_tag':
       return d.session_id ? `/sessions/${d.session_id}` : null
+    case 'session_group_invite':
+      // The invitee has no session of their own for this group yet -- a
+      // per-session route would 404. The invite card renders on /sessions.
+      return '/sessions'
     case 'attempt_reaction':
     case 'challenge_comment':
     case 'challenge_invitation':
