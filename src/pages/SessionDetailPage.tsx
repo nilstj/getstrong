@@ -91,6 +91,11 @@ export function SessionDetailPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (!session) return <div className="p-4 text-red-600">Session not found.</div>
 
+  // A follower can read this session (migration 032, wisdom_shared) without owning
+  // it. The shared-session sections are the owner's group state -- guard them here
+  // rather than relying on RLS, which correctly permits a member's own writes.
+  const isOwner = session.user_id === user?.id
+
   const handleAddProblem = ({ makePublic, ...values }: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'group_boulder_id'> & { tagIds?: string[]; makePublic?: boolean }) => {
     addProblem.mutate(
       { ...values, session_id: id! },
@@ -180,16 +185,16 @@ export function SessionDetailPage() {
         </Link>
       </div>
 
-      {!planned && (
+      {!planned && isOwner && (
         <SessionRoster
           sessionId={id!}
           groupId={session.group_id ?? null}
-          isOwner={session.user_id === user?.id}
+          isOwner={isOwner}
         />
       )}
 
-      {session.group_id && (
-        <SessionBoulderList sessionId={id!} groupId={session.group_id} gym={session.location} />
+      {isOwner && session.group_id && (
+        <SessionBoulderList sessionId={id!} groupId={session.group_id} />
       )}
 
       {problems.length > 0 && (

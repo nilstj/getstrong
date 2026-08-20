@@ -24,7 +24,6 @@ export function SessionRoster({
   const effectiveGroupId = groupId ?? createdGroupId
   const { data: members = [] } = useGroupRoster(effectiveGroupId)
   const { data: invites = [] } = useGroupInvites(effectiveGroupId)
-  const createGroup = useCreateSessionGroup()
 
   const rows = groupRoster(members, invites)
   const nameOf = (userId: string) =>
@@ -34,13 +33,11 @@ export function SessionRoster({
     members.find(m => m.user_id === userId)?.avatar_url ??
     invites.find(i => i.invited_user === userId)?.avatar_url ?? null
 
-  const openSheet = () => {
-    if (effectiveGroupId) { setSheetOpen(true); return }
-    createGroup.mutate({ sessionId }, {
-      onSuccess: id => { setCreatedGroupId(id); setSheetOpen(true) },
-      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not share this session'),
-    })
-  }
+  // Opening the sheet must not create a group by itself -- a curious tap that
+  // closes without inviting anyone would otherwise permanently turn a solo
+  // session into a shared one. The group is created lazily, inside the invite
+  // handler, the first time the owner actually asks someone.
+  const openSheet = () => setSheetOpen(true)
 
   if (rows.length === 0 && !isOwner) return null
 
@@ -74,8 +71,7 @@ export function SessionRoster({
             <button
               type="button"
               onClick={openSheet}
-              disabled={createGroup.isPending}
-              className="flex flex-col items-center gap-1.5 w-14 disabled:opacity-50"
+              className="flex flex-col items-center gap-1.5 w-14"
             >
               <span className="w-11 h-11 rounded-full border border-dashed border-gray-300 grid place-items-center text-gray-400">
                 <Plus size={18} strokeWidth={2} />
@@ -92,24 +88,57 @@ export function SessionRoster({
         )}
       </div>
 
-      {effectiveGroupId && (
-        <AddPeopleSheet
-          open={sheetOpen}
-          onClose={() => setSheetOpen(false)}
-          groupId={effectiveGroupId}
-          alreadyIn={new Set([...members.map(m => m.user_id), ...invites.map(i => i.invited_user)])}
-        />
-      )}
+      <AddPeopleSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        sessionId={sessionId}
+        groupId={effectiveGroupId}
+        onGroupCreated={setCreatedGroupId}
+        alreadyIn={new Set([...members.map(m => m.user_id), ...invites.map(i => i.invited_user)])}
+      />
     </div>
   )
 }
 
 function AddPeopleSheet({
-  open, onClose, groupId, alreadyIn,
-}: { open: boolean; onClose: () => void; groupId: string; alreadyIn: Set<string> }) {
+  open, onClose, sessionId, groupId, onGroupCreated, alreadyIn,
+}: {
+  open: boolean
+  onClose: () => void
+  sessionId: string
+  groupId: string | null
+  onGroupCreated: (id: string) => void
+  alreadyIn: Set<string>
+}) {
   const { data: following = [] } = useFollowing()
+  const createGroup = useCreateSessionGroup()
   const invite = useInviteToSessionGroup()
   const candidates = following.filter(f => !alreadyIn.has(f.following_id))
+
+  // The group is created lazily, right here, the first time the owner actually
+  // asks someone -- not when the sheet opens. create_session_group is
+  // idempotent, but groupId is cached by the parent after the first success so
+  // a second invite in the same sitting reuses it instead of calling again.
+  const handleInvite = (userId: string) => {
+    const askError = (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not ask')
+    if (groupId) {
+      invite.mutate({ groupId, userId }, {
+        onSuccess: () => toast.success('Asked them'),
+        onError: askError,
+      })
+      return
+    }
+    createGroup.mutate({ sessionId }, {
+      onSuccess: id => {
+        onGroupCreated(id)
+        invite.mutate({ groupId: id, userId }, {
+          onSuccess: () => toast.success('Asked them'),
+          onError: askError,
+        })
+      },
+      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not share this session'),
+    })
+  }
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Who was there?">
@@ -127,13 +156,8 @@ function AddPeopleSheet({
               <CandidateRow
                 key={f.following_id}
                 userId={f.following_id}
-                onInvite={() => invite.mutate(
-                  { groupId, userId: f.following_id },
-                  {
-                    onSuccess: () => toast.success('Asked them'),
-                    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not ask'),
-                  },
-                )}
+                disabled={createGroup.isPending}
+                onInvite={() => handleInvite(f.following_id)}
               />
             ))}
           </div>
@@ -143,7 +167,7 @@ function AddPeopleSheet({
   )
 }
 
-function CandidateRow({ userId, onInvite }: { userId: string; onInvite: () => void }) {
+function CandidateRow({ userId, onInvite, disabled }: { userId: string; onInvite: () => void; disabled?: boolean }) {
   const { data: profile } = useProfile(userId)
   return (
     <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3 min-h-14">
@@ -156,7 +180,8 @@ function CandidateRow({ userId, onInvite }: { userId: string; onInvite: () => vo
       <button
         type="button"
         onClick={onInvite}
-        className="min-h-11 px-4 rounded-full bg-sage-700 text-white text-sm font-semibold"
+        disabled={disabled}
+        className="min-h-11 px-4 rounded-full bg-sage-700 text-white text-sm font-semibold disabled:opacity-50"
       >
         Ask
       </button>

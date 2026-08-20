@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Plus, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { HoldGraphic } from './Chip'
+import { HoldGraphic, ProblemColorIcons } from './Chip'
 import { BottomSheet } from './BottomSheet'
 import { GymBoulderPicker } from './GymBoulderPicker'
 import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useSessionProblems } from '../hooks/useProblems'
-import { useAddGroupBoulder, useGroupBoulders, useSetMyBoulderEntry } from '../hooks/useSessionGroup'
+import { useAddGroupBoulder, useGroupBoulders, useSetMyBoulderEntry, useSessionGroupRow } from '../hooks/useSessionGroup'
 import { boulderRows, sessionProjectSummary } from '../utils/sessionGroups'
 import type { BoulderStatus } from '../utils/sessionGroups'
 import type { GymProblem } from '../types'
@@ -22,8 +22,13 @@ const CHIP: Record<BoulderStatus, { label: string; className: string }> = {
  * with no entry of yours is on the wall but not in your log, and costs you no row.
  */
 export function SessionBoulderList({
-  sessionId, groupId, gym,
-}: { sessionId: string; groupId: string; gym: string }) {
+  sessionId, groupId,
+}: { sessionId: string; groupId: string }) {
+  const { data: group } = useSessionGroupRow(groupId)
+  // The group's gym is canonical -- read defensively rather than blocking on a
+  // spinner; the picker's own empty state already covers an empty string while
+  // the row is still loading.
+  const gym = group?.gym ?? ''
   const { data: boulders = [] } = useGroupBoulders(groupId)
   const { data: problems = [] } = useSessionProblems(sessionId)
   const setEntry = useSetMyBoulderEntry()
@@ -32,7 +37,13 @@ export function SessionBoulderList({
 
   const rows = boulderRows(
     boulders,
-    problems.map(p => ({ id: p.id, group_boulder_id: p.group_boulder_id, attempts: p.attempts, sent: p.sent })),
+    problems.map(p => ({
+      id: p.id,
+      group_boulder_id: p.group_boulder_id,
+      gym_problem_id: p.gym_problem_id,
+      attempts: p.attempts,
+      sent: p.sent,
+    })),
   )
   const summary = sessionProjectSummary(rows)
 
@@ -46,6 +57,7 @@ export function SessionBoulderList({
         groupBoulderId: row.boulder.id,
         entryId: row.entryId,
         boulder: row.boulder,
+        gym,
         ...next,
       },
       { onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not save') },
@@ -80,6 +92,7 @@ export function SessionBoulderList({
                         {row.boulder.grade_value}
                       </span>
                     )}
+                    <ProblemColorIcons color={row.boulder.color} holdColor={row.boulder.hold_color} size={16} />
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${chip.className}`}>
                       {chip.label}
                     </span>

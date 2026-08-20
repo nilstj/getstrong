@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react'
+import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { useSessions } from '../hooks/useSessions'
@@ -66,6 +67,14 @@ export function SessionsPage() {
   )
 }
 
+/** `date` is a bare YYYY-MM-DD -- pin it to local midnight so the displayed day
+ * cannot shift backwards in a negative-offset timezone, and fall back to the
+ * raw string if it somehow fails to parse. */
+function inviteDateLabel(dateStr: string): string {
+  try { return format(new Date(`${dateStr}T00:00:00`), 'EEE d MMM') }
+  catch { return dateStr }
+}
+
 /** Sessions someone added you to, waiting for you to say you were there. */
 function PendingSessionInvites() {
   const { data: invites = [] } = useMyGroupInvites()
@@ -81,7 +90,7 @@ function PendingSessionInvites() {
         <div key={group.id} className="bg-white border border-sage-200 rounded-2xl p-3.5">
           <p className="text-sm font-bold leading-snug">You were added to a session</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            Accept if you were there · {group.date} · {group.gym}
+            Accept if you were there · {inviteDateLabel(group.date)} · {group.gym}
           </p>
           <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
             The session's boulder list is already there. Nothing lands in your log until you log it.
@@ -106,7 +115,10 @@ function PendingSessionInvites() {
             </button>
             <button
               type="button"
-              onClick={() => decline.mutate({ groupId: group.id }, { onError: () => toast.error('Failed') })}
+              onClick={() => decline.mutate({ groupId: group.id }, {
+                onSuccess: () => toast.success('Got it, left off the log'),
+                onError: () => toast.error('Failed'),
+              })}
               className="min-h-11 px-4 rounded-xl border border-gray-200 bg-white text-gray-500 text-[15px] font-semibold"
             >
               Wasn't me
