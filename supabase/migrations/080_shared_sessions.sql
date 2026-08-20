@@ -152,7 +152,7 @@ begin
     select id, gym_problem_id, grade_system, grade_value, grade_value_font,
            grade_value_vscale, color, hold_color, image_url, beta_video_url
       from problems
-     where session_id = p_session and crag is null
+     where session_id = p_session and crag is null and user_id = v_owner
      order by created_at
   loop
     v_boulder_id := null;

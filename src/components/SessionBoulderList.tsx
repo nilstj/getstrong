@@ -29,6 +29,11 @@ export function SessionBoulderList({
   // spinner; the picker's own empty state already covers an empty string while
   // the row is still loading.
   const gym = group?.gym ?? ''
+  // Empty until the group row loads (or forever, if it errors out after its
+  // retries). useGradeLeaderboard filters .eq('gym', gym), so a write made with
+  // gym: '' would log a send that never counts toward that gym's leaderboard --
+  // gate every write on a known gym rather than let one slip through silently.
+  const gymKnown = gym !== ''
   const { data: boulders = [] } = useGroupBoulders(groupId)
   const { data: problems = [] } = useSessionProblems(sessionId)
   const setEntry = useSetMyBoulderEntry()
@@ -106,7 +111,7 @@ export function SessionBoulderList({
               <div className="flex items-center gap-2 mt-2.5">
                 <button
                   type="button"
-                  disabled={setEntry.isPending}
+                  disabled={setEntry.isPending || !gymKnown}
                   onClick={() => save(row, { attempts: row.attempts + 1, sent: row.status === 'sent' })}
                   className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white border border-gray-200 text-gray-600 text-sm font-semibold disabled:opacity-50"
                 >
@@ -115,7 +120,7 @@ export function SessionBoulderList({
                 </button>
                 <button
                   type="button"
-                  disabled={setEntry.isPending}
+                  disabled={setEntry.isPending || !gymKnown}
                   onClick={() => save(row, {
                     attempts: row.attempts === 0 ? 1 : row.attempts,
                     sent: row.status !== 'sent',
@@ -138,8 +143,9 @@ export function SessionBoulderList({
 
       <button
         type="button"
+        disabled={!gymKnown}
         onClick={() => setPickerOpen(true)}
-        className="w-full min-h-12 mt-2 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-gray-300 text-gray-600 text-sm font-semibold"
+        className="w-full min-h-12 mt-2 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-gray-300 text-gray-600 text-sm font-semibold disabled:opacity-50"
       >
         <Plus size={16} strokeWidth={2.25} />
         Add a boulder to the session

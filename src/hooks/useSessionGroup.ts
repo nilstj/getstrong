@@ -132,6 +132,12 @@ export function useCreateSessionGroup() {
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['sessions', v.sessionId] })
       qc.invalidateQueries({ queryKey: ['sessions'] })
+      // create_session_group also stamps group_boulder_id on the owner's own
+      // problems rows (the back-fill), so an already-mounted problems cache is
+      // stale too -- without this a colour-only problem has no gym_problem_id
+      // fallback and renders "Not logged" until the 60s staleTime lapses.
+      qc.invalidateQueries({ queryKey: ['problems', v.sessionId] })
+      qc.invalidateQueries({ queryKey: ['problems'] })
     },
   })
 }
