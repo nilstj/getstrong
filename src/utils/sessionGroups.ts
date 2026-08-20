@@ -8,6 +8,7 @@ export interface GroupBoulder {
   grade_system: string
   grade_value: string | null
   grade_value_font: string | null
+  grade_value_vscale: string | null
   color: string | null
   hold_color: string | null
   image_url: string | null

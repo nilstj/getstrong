@@ -1107,6 +1107,13 @@ git commit -m "Show who was at a session and let the owner add people"
 
 ## Task 6: The shared boulder list
 
+**AMENDED AFTER REVIEW — do not re-execute this task from the code below.**
+The committed files are the source of truth. Review found the write buttons were
+not disabled while the mutation was in flight and nothing enforced one entry per
+climber per shared boulder, so a double-tap created a second `problems` row that
+`boulderRows` hides but the climber's stats still count. It also found the insert
+left `grade_value_vscale` null, unlike `useAddProblem` which computes both scales.
+
 **Files:**
 - Create: `src/components/SessionBoulderList.tsx`
 - Modify: `src/pages/SessionDetailPage.tsx`

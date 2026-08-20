@@ -86,20 +86,22 @@ export function SessionBoulderList({ sessionId, groupId }: { sessionId: string; 
               <div className="flex items-center gap-2 mt-2.5">
                 <button
                   type="button"
+                  disabled={setEntry.isPending}
                   onClick={() => save(row, { attempts: row.attempts + 1, sent: row.status === 'sent' })}
-                  className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white border border-gray-200 text-gray-600 text-sm font-semibold"
+                  className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white border border-gray-200 text-gray-600 text-sm font-semibold disabled:opacity-50"
                 >
                   <Plus size={15} strokeWidth={2.25} />
                   {row.attempts === 0 ? 'Add a try' : `${row.attempts} ${row.attempts === 1 ? 'try' : 'tries'}`}
                 </button>
                 <button
                   type="button"
+                  disabled={setEntry.isPending}
                   onClick={() => save(row, {
                     attempts: row.attempts === 0 ? 1 : row.attempts,
                     sent: row.status !== 'sent',
                   })}
                   aria-pressed={row.status === 'sent'}
-                  className={`min-h-11 min-w-11 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold ${
+                  className={`min-h-11 min-w-11 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold disabled:opacity-50 ${
                     row.status === 'sent'
                       ? 'bg-sage-50 border-sage-300 text-sage-800'
                       : 'bg-white border-gray-200 text-gray-400'

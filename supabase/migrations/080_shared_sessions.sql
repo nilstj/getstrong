@@ -75,6 +75,12 @@ create unique index if not exists session_group_boulders_gym_problem_idx
 alter table problems add column if not exists group_boulder_id uuid references session_group_boulders(id) on delete set null;
 create index if not exists problems_group_boulder_idx on problems (group_boulder_id);
 
+-- One entry per climber per shared boulder. Partial, so every pre-existing
+-- problem (group_boulder_id null) stays out of the index and the constraint
+-- cannot fail on legacy data or change solo-session behaviour.
+create unique index if not exists problems_group_boulder_user_idx
+  on problems (group_boulder_id, user_id) where group_boulder_id is not null;
+
 alter table session_groups          enable row level security;
 alter table session_group_invites   enable row level security;
 alter table session_group_boulders  enable row level security;

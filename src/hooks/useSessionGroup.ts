@@ -91,7 +91,7 @@ export function useGroupBoulders(groupId: string | null) {
     queryFn: async (): Promise<GroupBoulder[]> => {
       const { data, error } = await supabase
         .from('session_group_boulders')
-        .select('id, gym_problem_id, grade_system, grade_value, grade_value_font, color, hold_color, image_url, beta_video_url, created_at')
+        .select('id, gym_problem_id, grade_system, grade_value, grade_value_font, grade_value_vscale, color, hold_color, image_url, beta_video_url, created_at')
         .eq('group_id', groupId)
         .order('created_at', { ascending: true })
       if (error) throw error
@@ -243,6 +243,7 @@ export function useSetMyBoulderEntry() {
         grade_system: v.boulder.grade_system,
         grade_value: v.boulder.grade_value,
         grade_value_font: v.boulder.grade_value_font,
+        grade_value_vscale: v.boulder.grade_value_vscale,
         color: v.boulder.color,
         hold_color: v.boulder.hold_color,
         image_url: v.boulder.image_url,
@@ -251,11 +252,13 @@ export function useSetMyBoulderEntry() {
         attempts: v.attempts,
         sent: v.sent,
       })
-      if (error) throw error
+      // A double-tap can race two inserts for the same (group_boulder_id, user_id);
+      // the unique index lets only one land, and the other's insert is treated as
+      // success -- the row the other tap created is the row we wanted.
+      if (error && error.code !== '23505') throw error
     },
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['problems', v.sessionId] })
-      qc.invalidateQueries({ queryKey: ['session_group_boulders', v.groupId] })
     },
   })
 }

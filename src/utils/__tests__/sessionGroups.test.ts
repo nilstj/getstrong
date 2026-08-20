@@ -8,6 +8,7 @@ const boulder = (id: string, createdAt: string): GroupBoulder => ({
   grade_system: 'font',
   grade_value: '6A',
   grade_value_font: '6A',
+  grade_value_vscale: null,
   color: null,
   hold_color: 'blue',
   image_url: null,
