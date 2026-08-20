@@ -42,45 +42,6 @@ export function useSetSessionPartners(sessionId: string) {
   })
 }
 
-// ── Problem partners ──────────────────────────────────────────────────────────
-
-export function useProblemPartners(problemId: string) {
-  return useQuery({
-    queryKey: ['problem_partners', problemId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('problem_partners')
-        .select('partner_id')
-        .eq('problem_id', problemId)
-      if (error) throw error
-      return (data ?? []).map(r => r.partner_id as string)
-    },
-    enabled: !!problemId,
-  })
-}
-
-export function useSetProblemPartners(problemId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (partnerIds: string[]) => {
-      const { error: delErr } = await supabase
-        .from('problem_partners')
-        .delete()
-        .eq('problem_id', problemId)
-      if (delErr) throw delErr
-      if (partnerIds.length > 0) {
-        const { error } = await supabase
-          .from('problem_partners')
-          .insert(partnerIds.map(partner_id => ({ problem_id: problemId, partner_id })))
-        if (error) throw error
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['problem_partners', problemId] })
-    },
-  })
-}
-
 // ── Tagged sessions (current user was tagged as partner) ──────────────────────
 
 export function useMyTaggedSessions() {

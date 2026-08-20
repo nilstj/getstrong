@@ -16,11 +16,8 @@ import { useSessionProblemTags } from '../hooks/useProblemTags'
 import { INTENSITY_OPTIONS } from '../types'
 import { isPlannedSession } from '../components/SessionCard'
 import { CalendarClock } from 'lucide-react'
-import {
-  useSessionPartners, useSetSessionPartners,
-  useProblemPartners, useSetProblemPartners,
-} from '../hooks/usePartners'
-import { PartnerPicker, PartnerAvatars } from '../components/PartnerPicker'
+import { useSessionPartners, useSetSessionPartners } from '../hooks/usePartners'
+import { PartnerPicker } from '../components/PartnerPicker'
 import type { Problem, Challenge, ChallengeAttempt } from '../types'
 import { ReactionBar } from '../components/ReactionBar'
 import { ProblemCommentThread } from '../components/ProblemCommentThread'
@@ -163,17 +160,6 @@ export function SessionDetailPage() {
             ) : null
           })()}
           {session.notes && <p className="text-gray-500 text-sm mt-1">{session.notes}</p>}
-          {!planned && (
-            <div className="flex items-center gap-2 mt-2">
-              <PartnerAvatars partnerIds={sessionPartners} />
-              <PartnerPicker
-                currentPartnerIds={sessionPartners}
-                onSave={ids => setSessionPartners.mutate(ids)}
-                isSaving={setSessionPartners.isPending}
-                label={sessionPartners.length > 0 ? 'Edit partners' : 'Tag friends'}
-              />
-            </div>
-          )}
         </div>
         <Link
           to={`/sessions/${id}/edit`}
@@ -268,7 +254,6 @@ export function SessionDetailPage() {
                     ))}
                   </div>
                 )}
-                <ProblemPartnerRow problemId={problem.id} />
                 <ReactionBar problemId={problem.id} compact />
                 <div className="flex items-center mt-1.5">
                   <button
@@ -558,22 +543,6 @@ function EditAttemptSheet({
         </button>
       </div>
     </BottomSheet>
-  )
-}
-
-function ProblemPartnerRow({ problemId }: { problemId: string }) {
-  const { data: partners = [] } = useProblemPartners(problemId)
-  const setPartners = useSetProblemPartners(problemId)
-  return (
-    <div className="flex items-center gap-2 mt-1.5">
-      <PartnerAvatars partnerIds={partners} size="xs" />
-      <PartnerPicker
-        currentPartnerIds={partners}
-        onSave={ids => setPartners.mutate(ids)}
-        isSaving={setPartners.isPending}
-        label={partners.length > 0 ? 'Edit' : '+ friend'}
-      />
-    </div>
   )
 }
 
