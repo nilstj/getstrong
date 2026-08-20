@@ -104,7 +104,7 @@ export function useDeleteProblem() {
 export function useAddProblem() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (values: Omit<Problem, 'id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[] }) => {
+    mutationFn: async (values: Omit<Problem, 'id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'group_boulder_id'> & { tagIds?: string[] }) => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 

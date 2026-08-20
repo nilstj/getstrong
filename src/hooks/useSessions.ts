@@ -38,7 +38,7 @@ export function useSession(id: string) {
 export function useCreateSession() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (values: Omit<Session, 'id' | 'user_id' | 'created_at' | 'wisdom' | 'wisdom_shared'>) => {
+    mutationFn: async (values: Omit<Session, 'id' | 'user_id' | 'created_at' | 'wisdom' | 'wisdom_shared' | 'group_id'>) => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
       const { data, error } = await supabase

@@ -21,6 +21,7 @@ export interface Session {
   notes: string | null
   wisdom: string | null
   wisdom_shared: boolean
+  group_id: string | null
   created_at: string
 }
 
@@ -46,6 +47,7 @@ export interface Problem {
   notes: string | null
   created_at: string
   gym_problem_id: string | null
+  group_boulder_id: string | null
 }
 
 export interface GradeMapping {

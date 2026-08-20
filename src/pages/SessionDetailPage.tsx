@@ -32,6 +32,9 @@ import { useClaimGymProblem } from '../hooks/useGymProblems'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { GymThumb } from '../components/GymThumb'
 import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
+import { SessionRoster } from '../components/SessionRoster'
+import { SessionBoulderList } from '../components/SessionBoulderList'
+import { useAuth } from '../providers/AuthProvider'
 
 type SheetTab = 'problem' | 'challenge'
 
@@ -50,6 +53,7 @@ function displayGrade(problem: import('../types').Problem, preference: 'font' | 
 export function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetTab, setSheetTab] = useState<SheetTab>('problem')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -87,7 +91,12 @@ export function SessionDetailPage() {
   if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
   if (!session) return <div className="p-4 text-red-600">Session not found.</div>
 
-  const handleAddProblem = ({ makePublic, ...values }: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'> & { tagIds?: string[]; makePublic?: boolean }) => {
+  // A follower can read this session (migration 032, wisdom_shared) without owning
+  // it. The shared-session sections are the owner's group state -- guard them here
+  // rather than relying on RLS, which correctly permits a member's own writes.
+  const isOwner = session.user_id === user?.id
+
+  const handleAddProblem = ({ makePublic, ...values }: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'group_boulder_id'> & { tagIds?: string[]; makePublic?: boolean }) => {
     addProblem.mutate(
       { ...values, session_id: id! },
       {
@@ -175,6 +184,18 @@ export function SessionDetailPage() {
           <Pencil size={16} strokeWidth={1.75} />
         </Link>
       </div>
+
+      {!planned && isOwner && (
+        <SessionRoster
+          sessionId={id!}
+          groupId={session.group_id ?? null}
+          isOwner={isOwner}
+        />
+      )}
+
+      {isOwner && session.group_id && (
+        <SessionBoulderList sessionId={id!} groupId={session.group_id} />
+      )}
 
       {problems.length > 0 && (
         <div>
@@ -459,7 +480,7 @@ function EditProblemSheet({
   sessionId?: string
   gradeSystem: 'font' | 'v_scale'
   onClose: () => void
-  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id'>, tagIds: string[], makePublic?: boolean) => void
+  onSave: (values: Omit<Problem, 'id' | 'session_id' | 'user_id' | 'created_at' | 'grade_value_font' | 'grade_value_vscale' | 'gym_problem_id' | 'group_boulder_id'>, tagIds: string[], makePublic?: boolean) => void
   isSaving: boolean
 }) {
   const { data: currentTags, isLoading: tagsLoading } = useProblemTags(problem.id)
