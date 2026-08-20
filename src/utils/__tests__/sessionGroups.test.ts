@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { boulderRows, sessionProjectSummary, groupRoster } from '../sessionGroups'
-import type { GroupBoulder, MyEntry } from '../sessionGroups'
+import { boulderRows, sessionProjectSummary, groupRoster, companionsByBoulder, companionLine } from '../sessionGroups'
+import type { GroupBoulder, MyEntry, CompanionEntry } from '../sessionGroups'
 
 const boulder = (id: string, createdAt: string, gymProblemId: string | null = null): GroupBoulder => ({
   id,
@@ -174,5 +174,133 @@ describe('groupRoster', () => {
   it('drops an invite for someone who already accepted, so nobody appears twice', () => {
     const r = groupRoster([{ user_id: 'a' }], [{ invited_user: 'a' }])
     expect(r).toEqual([{ userId: 'a', pending: false }])
+  })
+})
+
+describe('companionsByBoulder', () => {
+  const row = (userId: string, boulderId: string | null, sent: boolean): CompanionEntry => ({
+    user_id: userId,
+    group_boulder_id: boulderId,
+    sent,
+  })
+
+  it('is empty for an empty entry list', () => {
+    expect(companionsByBoulder([], 'me')).toEqual({})
+  })
+
+  it('skips an entry with no group_boulder_id, since it is not on the shared list', () => {
+    // A wrong implementation might key by `String(group_boulder_id)`, which
+    // would file this under the literal key "null" instead of dropping it.
+    const result = companionsByBoulder([row('a', null, true)], 'me')
+    expect(result).toEqual({})
+  })
+
+  it('skips my own entry, since my status already has its own chip', () => {
+    // Without the meId check this would (wrongly) put 'me' in sentIds.
+    const result = companionsByBoulder([row('me', 'b1', true)], 'me')
+    expect(result).toEqual({})
+  })
+
+  it('reports another climber alongside my own entry for the same boulder, proving only mine is dropped', () => {
+    const result = companionsByBoulder([row('me', 'b1', true), row('ida', 'b1', false)], 'me')
+    expect(result).toEqual({ b1: { sentIds: [], projectingIds: ['ida'] } })
+  })
+
+  it('buckets a sent row under sentIds and an unsent row under projectingIds', () => {
+    const result = companionsByBoulder([row('ida', 'b1', true), row('sondre', 'b1', false)], 'me')
+    expect(result).toEqual({ b1: { sentIds: ['ida'], projectingIds: ['sondre'] } })
+  })
+
+  it('dedupes repeated identical rows for the same user and boulder', () => {
+    // A naive push-on-every-row implementation would return ['ida', 'ida'].
+    const result = companionsByBoulder([row('ida', 'b1', false), row('ida', 'b1', false)], 'me')
+    expect(result).toEqual({ b1: { sentIds: [], projectingIds: ['ida'] } })
+  })
+
+  it('lets a sent row win over an earlier unsent row for the same user and boulder', () => {
+    // An implementation that keeps only the first-seen status per user (a plain
+    // "seen" set with no promotion) would leave ida stuck in projectingIds here.
+    const result = companionsByBoulder([row('ida', 'b1', false), row('ida', 'b1', true)], 'me')
+    expect(result).toEqual({ b1: { sentIds: ['ida'], projectingIds: [] } })
+  })
+
+  it('lets sent win even when the unsent row for that user comes after the sent one', () => {
+    // An implementation that just overwrites the user's bucket on each pass
+    // (last-row-wins) would wrongly move ida back to projectingIds here.
+    const result = companionsByBoulder([row('ida', 'b1', true), row('ida', 'b1', false)], 'me')
+    expect(result).toEqual({ b1: { sentIds: ['ida'], projectingIds: [] } })
+  })
+
+  it('never places the same user in both buckets for one boulder', () => {
+    // A push-without-dedupe-across-buckets bug would leave ida in both arrays
+    // once a sent row is promoted without removing her from projectingIds.
+    const result = companionsByBoulder([row('ida', 'b1', false), row('ida', 'b1', true)], 'me')
+    expect(result.b1.sentIds).toContain('ida')
+    expect(result.b1.projectingIds).not.toContain('ida')
+  })
+
+  it('keeps boulders separate, so a status on one does not leak onto another', () => {
+    const result = companionsByBoulder([row('ida', 'b1', true), row('ida', 'b2', false)], 'me')
+    expect(result).toEqual({
+      b1: { sentIds: ['ida'], projectingIds: [] },
+      b2: { sentIds: [], projectingIds: ['ida'] },
+    })
+  })
+
+  it('omits a boulder from the record entirely when it has no other climbers, rather than an empty-arrays entry', () => {
+    // Guards against `result[boulderId] = { sentIds: [], projectingIds: [] }`
+    // being created eagerly for every boulder seen, including boulders whose
+    // only entries are mine.
+    const result = companionsByBoulder([row('me', 'b1', true)], 'me')
+    expect(Object.prototype.hasOwnProperty.call(result, 'b1')).toBe(false)
+  })
+
+  it('orders each bucket by first appearance in entries, not alphabetically or by insertion into the other bucket', () => {
+    // A wrong implementation might sort the arrays, or push new users to the
+    // front. Using 'b' before 'a' here catches either mistake.
+    const result = companionsByBoulder(
+      [row('sondre', 'b1', false), row('marius', 'b1', true), row('ida', 'b1', false), row('thea', 'b1', true)],
+      'me',
+    )
+    expect(result.b1).toEqual({ sentIds: ['marius', 'thea'], projectingIds: ['sondre', 'ida'] })
+  })
+})
+
+describe('companionLine', () => {
+  it('is null when both lists are empty, so the caller renders nothing', () => {
+    expect(companionLine([], [])).toBeNull()
+  })
+
+  it('renders a single sent name with no separator', () => {
+    expect(companionLine(['Ida'], [])).toBe('Ida sent it')
+  })
+
+  it('joins two sent names with "and"', () => {
+    // A join-with-comma-only implementation would produce "Ida, Marius sent it".
+    expect(companionLine(['Ida', 'Marius'], [])).toBe('Ida and Marius sent it')
+  })
+
+  it('joins three or more sent names with commas and a final "and"', () => {
+    // Catches an implementation that uses "and" between every pair instead of
+    // only before the last name.
+    expect(companionLine(['Ida', 'Marius', 'Thea'], [])).toBe('Ida, Marius and Thea sent it')
+  })
+
+  it('renders a projecting-only clause without "sent it"', () => {
+    expect(companionLine([], ['Sondre'])).toBe('Sondre projecting')
+  })
+
+  it('joins multiple projecting names the same way as sent names', () => {
+    expect(companionLine([], ['Ida', 'Marius'])).toBe('Ida and Marius projecting')
+  })
+
+  it('puts the sent clause first and joins with a space-padded middle dot when both are present', () => {
+    // Catches both a wrong join order (projecting first) and a wrong
+    // separator (plain "." or no spaces).
+    expect(companionLine(['Ida'], ['Sondre'])).toBe('Ida sent it · Sondre projecting')
+  })
+
+  it('joins both clauses with the full multi-name form on each side', () => {
+    expect(companionLine(['Ida', 'Marius'], ['Sondre', 'Thea'])).toBe('Ida and Marius sent it · Sondre and Thea projecting')
   })
 })

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import { profilesByIds } from '../lib/profiles'
 import { fontToVScale, vScaleToFont } from '../utils/grades'
-import type { GroupBoulder } from '../utils/sessionGroups'
+import type { CompanionEntry, GroupBoulder } from '../utils/sessionGroups'
 
 export interface SessionGroup {
   id: string
@@ -97,6 +97,38 @@ export function useGroupBoulders(groupId: string | null) {
         .order('created_at', { ascending: true })
       if (error) throw error
       return (data ?? []) as GroupBoulder[]
+    },
+  })
+}
+
+/**
+ * Other climbers' rows against the group's boulder list, for the "Ida sent it
+ * · Sondre projecting" line. Sorted before joining into the query key so a
+ * reordered (but otherwise identical) `boulderIds` array reuses the same
+ * cache entry instead of refetching under a second key.
+ *
+ * `crag` is filtered to null like every other read of `problems` in this
+ * codebase -- outdoor logging is out of scope for v1 -- and names are
+ * resolved with a second `profiles` query, never an FK embed.
+ */
+export function useGroupBoulderEntries(boulderIds: string[]) {
+  return useQuery({
+    queryKey: ['session_group_boulder_entries', [...boulderIds].sort().join(',')],
+    enabled: boulderIds.length > 0,
+    queryFn: async (): Promise<{ entries: CompanionEntry[]; namesById: Record<string, string | null> }> => {
+      const { data, error } = await supabase
+        .from('problems')
+        .select('user_id, group_boulder_id, sent')
+        .in('group_boulder_id', boulderIds)
+        .is('crag', null)
+      if (error) throw error
+      const entries = (data ?? []) as CompanionEntry[]
+      const byId = await profilesByIds([...new Set(entries.map(e => e.user_id))])
+      const namesById: Record<string, string | null> = {}
+      for (const userId of byId.keys()) {
+        namesById[userId] = byId.get(userId)?.username ?? null
+      }
+      return { entries, namesById }
     },
   })
 }
