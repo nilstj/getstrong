@@ -100,39 +100,3 @@ function FollowerRow({ userId, selected, onToggle }: { userId: string; selected:
     </button>
   )
 }
-
-interface PartnerAvatarsProps {
-  partnerIds: string[]
-  size?: 'sm' | 'xs'
-}
-
-export function PartnerAvatars({ partnerIds, size = 'sm' }: PartnerAvatarsProps) {
-  if (partnerIds.length === 0) return null
-  const dim = size === 'xs' ? 'w-5 h-5 text-[9px]' : 'w-6 h-6 text-[10px]'
-  return (
-    <div className="flex items-center -space-x-1.5">
-      {partnerIds.slice(0, 4).map(id => (
-        <PartnerAvatar key={id} userId={id} dim={dim} />
-      ))}
-      {partnerIds.length > 4 && (
-        <div className={`${dim} rounded-full bg-gray-200 border border-white flex items-center justify-center font-medium text-gray-500`}>
-          +{partnerIds.length - 4}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PartnerAvatar({ userId, dim }: { userId: string; dim: string }) {
-  const { data: profile } = useProfile(userId)
-  return (
-    <div
-      className={`${dim} rounded-full bg-sage-100 border border-white overflow-hidden flex items-center justify-center text-sage-700 font-medium cursor-default`}
-      title={profile?.username ?? ''}
-    >
-      {profile?.avatar_url
-        ? <img src={profile.avatar_url} alt={profile.username ?? ''} className="w-full h-full object-cover" />
-        : profile?.username?.[0]?.toUpperCase() ?? '?'}
-    </div>
-  )
-}
