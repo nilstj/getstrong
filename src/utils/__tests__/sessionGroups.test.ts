@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { boulderRows, sessionProjectSummary, groupRoster, companionsByBoulder, companionLine } from '../sessionGroups'
+import {
+  boulderRows, sessionProjectSummary, groupRoster, companionsByBoulder, companionLine,
+  boulderSectionState,
+} from '../sessionGroups'
 import type { GroupBoulder, MyEntry, CompanionEntry } from '../sessionGroups'
 
 const boulder = (id: string, createdAt: string, gymProblemId: string | null = null): GroupBoulder => ({
@@ -302,5 +305,40 @@ describe('companionLine', () => {
 
   it('joins both clauses with the full multi-name form on each side', () => {
     expect(companionLine(['Ida', 'Marius'], ['Sondre', 'Thea'])).toBe('Ida and Marius sent it · Sondre and Thea projecting')
+  })
+})
+
+describe('boulderSectionState', () => {
+  it('is "list" before the group row has loaded, even for someone who would otherwise get "add"', () => {
+    // The dangerous wrong implementation here ignores groupLoaded and decides
+    // from isCreator/hasMarkedAny alone -- that would return 'add' for this
+    // input (not creator, nothing marked) and flash the prompt while
+    // created_by is still unknown. Only checking groupLoaded first catches it.
+    const result = boulderSectionState({ groupLoaded: false, isCreator: false, hasMarkedAny: false })
+    expect(result).toBe('list')
+  })
+
+  it('is "list" for the creator, who never gets the add prompt', () => {
+    // A wrong implementation that decides purely from hasMarkedAny (skipping
+    // the isCreator check entirely) would return 'add' here, since the
+    // creator's back-filled entries are exactly what hasMarkedAny is false
+    // for in this input.
+    const result = boulderSectionState({ groupLoaded: true, isCreator: true, hasMarkedAny: false })
+    expect(result).toBe('list')
+  })
+
+  it('is "add" for a joiner who has loaded the group and marked nothing yet', () => {
+    // Catches an implementation that always returns 'list' (e.g. a stub that
+    // hasn't implemented the rule at all, or one that inverted the isCreator
+    // check).
+    const result = boulderSectionState({ groupLoaded: true, isCreator: false, hasMarkedAny: false })
+    expect(result).toBe('add')
+  })
+
+  it('is "list" once that joiner has marked at least one boulder', () => {
+    // Catches an implementation that never reads hasMarkedAny and would keep
+    // returning 'add' forever for a non-creator.
+    const result = boulderSectionState({ groupLoaded: true, isCreator: false, hasMarkedAny: true })
+    expect(result).toBe('list')
   })
 })

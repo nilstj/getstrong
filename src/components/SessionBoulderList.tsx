@@ -7,7 +7,7 @@ import { GymBoulderPicker } from './GymBoulderPicker'
 import { boulderToPrefill } from '../utils/boulderPrefill'
 import { useSessionProblems } from '../hooks/useProblems'
 import { useAddGroupBoulder, useGroupBoulderEntries, useGroupBoulders, useSetMyBoulderEntry, useSessionGroupRow } from '../hooks/useSessionGroup'
-import { boulderRows, companionLine, companionsByBoulder, sessionProjectSummary } from '../utils/sessionGroups'
+import { boulderRows, boulderSectionState, companionLine, companionsByBoulder, sessionProjectSummary } from '../utils/sessionGroups'
 import type { BoulderStatus } from '../utils/sessionGroups'
 import type { GymProblem } from '../types'
 import { useAuth } from '../providers/AuthProvider'
@@ -26,6 +26,10 @@ export function SessionBoulderList({
   sessionId, groupId,
 }: { sessionId: string; groupId: string }) {
   const { data: group } = useSessionGroupRow(groupId)
+  // Distinct from "the group has no gym yet" below -- this is specifically
+  // whether the row has arrived at all, since created_by (and so isCreator)
+  // is unknown until it has.
+  const groupLoaded = group !== undefined
   // The group's gym is canonical -- read defensively rather than blocking on a
   // spinner; the picker's own empty state already covers an empty string while
   // the row is still loading.
@@ -59,6 +63,9 @@ export function SessionBoulderList({
     })),
   )
   const summary = sessionProjectSummary(rows)
+  const isCreator = group?.created_by === user?.id
+  const hasMarkedAny = rows.some(row => row.entryId !== null)
+  const sectionState = boulderSectionState({ groupLoaded, isCreator, hasMarkedAny })
 
   const save = (
     row: (typeof rows)[number],
@@ -79,9 +86,20 @@ export function SessionBoulderList({
 
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-2">
-        <h2 className="text-base font-semibold">Boulders ({boulders.length})</h2>
-        <span className="text-xs font-semibold text-gray-400 tabular-nums">{summary.label}</span>
+      <div className="mb-2">
+        {sectionState === 'add' ? (
+          <>
+            <h2 className="text-base font-semibold">Add boulders</h2>
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+              Tick off what you climbed. Your tries and sends are your own, separate from what everyone else logged here.
+            </p>
+          </>
+        ) : (
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-base font-semibold">Boulders ({boulders.length})</h2>
+            <span className="text-xs font-semibold text-gray-400 tabular-nums">{summary.label}</span>
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">
