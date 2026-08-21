@@ -169,6 +169,7 @@ export type NotificationType =
   | 'challenge_invitation'
   | 'hype'
   | 'session_tag'
+  | 'session_group_invite'
   | 'wall_comment'
   | 'beta_video'
   | 'proof_video'
