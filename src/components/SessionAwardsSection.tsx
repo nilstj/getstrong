@@ -44,9 +44,9 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
   const setNote = useSetAwardNote()
   const [editingAwards, setEditingAwards] = useState(false)
 
-  // Batch-resolve the round's roster (plain ids since Task 2 dropped
-  // useAwardParticipants) into names/avatars in one query, the same way
-  // useAwardMessages and useGroupRoster already do for a list of ids.
+  // Batch-resolve the round's roster -- get_award_round returns it as plain
+  // ids -- into names/avatars in one query, the same way useAwardMessages and
+  // useGroupRoster already do for a list of ids.
   const rosterIds = round?.roster ?? []
   const { data: profilesById } = useQuery({
     queryKey: ['award_round_roster_profiles', [...rosterIds].sort().join(',')],
