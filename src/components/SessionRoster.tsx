@@ -8,6 +8,7 @@ import { groupRoster } from '../utils/sessionGroups'
 import {
   useGroupRoster, useGroupInvites, useCreateSessionGroup, useInviteToSessionGroup,
 } from '../hooks/useSessionGroup'
+import { errorMessage } from '../utils/errors'
 
 /**
  * Who was at a session. A solo session has no group yet, so the only thing shown
@@ -120,7 +121,7 @@ function AddPeopleSheet({
   // idempotent, but groupId is cached by the parent after the first success so
   // a second invite in the same sitting reuses it instead of calling again.
   const handleInvite = (userId: string) => {
-    const askError = (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not ask')
+    const askError = (e: unknown) => toast.error(errorMessage(e, 'Could not ask'))
     if (groupId) {
       invite.mutate({ groupId, userId }, {
         onSuccess: () => toast.success('Asked them'),
@@ -136,7 +137,7 @@ function AddPeopleSheet({
           onError: askError,
         })
       },
-      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not share this session'),
+      onError: (e: unknown) => toast.error(errorMessage(e, 'Could not share this session')),
     })
   }
 

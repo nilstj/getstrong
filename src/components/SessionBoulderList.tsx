@@ -11,6 +11,7 @@ import { boulderRows, boulderSectionState, companionLine, companionsByBoulder, s
 import type { BoulderStatus } from '../utils/sessionGroups'
 import type { GymProblem } from '../types'
 import { useAuth } from '../providers/AuthProvider'
+import { errorMessage } from '../utils/errors'
 
 const CHIP: Record<BoulderStatus, { label: string; className: string }> = {
   none:    { label: 'Not logged', className: 'bg-gray-100 text-gray-400' },
@@ -99,7 +100,7 @@ export function SessionBoulderList({
         gym,
         ...next,
       },
-      { onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not save') },
+      { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save')) },
     )
   }
 
@@ -244,7 +245,7 @@ export function SessionBoulderList({
               },
               {
                 onSuccess: () => { setPickerOpen(false); toast.success('On the list') },
-                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not add it'),
+                onError: (e: unknown) => toast.error(errorMessage(e, 'Could not add it')),
               },
             )
           }}

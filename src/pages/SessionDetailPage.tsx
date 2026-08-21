@@ -34,6 +34,7 @@ import { SessionBoulderList } from '../components/SessionBoulderList'
 import { SessionAwardsSection } from '../components/SessionAwardsSection'
 import { useAuth } from '../providers/AuthProvider'
 import { useSessionJoinRequests, useApproveJoinRequest, useDeclineJoinRequest } from '../hooks/useSessionGroup'
+import { errorMessage } from '../utils/errors'
 
 type SheetTab = 'problem' | 'challenge'
 
@@ -732,7 +733,7 @@ function JoinRequests({ sessionId }: { sessionId: string }) {
               type="button"
               onClick={() => approve.mutate({ sessionId, userId: r.user_id }, {
                 onSuccess: () => toast.success('They’re in'),
-                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not approve'),
+                onError: (e: unknown) => toast.error(errorMessage(e, 'Could not approve')),
               })}
               disabled={isPending}
               className="min-h-11 px-4 rounded-full bg-sage-700 text-white text-sm font-semibold disabled:opacity-50"
@@ -742,7 +743,7 @@ function JoinRequests({ sessionId }: { sessionId: string }) {
             <button
               type="button"
               onClick={() => decline.mutate({ sessionId, userId: r.user_id }, {
-                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not decline'),
+                onError: (e: unknown) => toast.error(errorMessage(e, 'Could not decline')),
               })}
               disabled={isPending}
               className="min-h-11 px-3 text-sm font-semibold text-gray-400 disabled:opacity-50"

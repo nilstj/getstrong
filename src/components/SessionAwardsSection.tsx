@@ -13,6 +13,7 @@ import {
 import { useGroupRoster } from '../hooks/useSessionGroup'
 import { useAuth } from '../providers/AuthProvider'
 import { awardTally, tagTally, donkeyStreak } from '../utils/sessionAwards'
+import { errorMessage } from '../utils/errors'
 
 const tagMeta = (tag: AwardTag) => AWARD_TAGS.find(t => t.key === tag)
 
@@ -74,7 +75,7 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
         <button
           type="button"
           onClick={() => openRound.mutate({ groupId }, {
-            onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not open awards'),
+            onError: (e: unknown) => toast.error(errorMessage(e, 'Could not open awards')),
           })}
           disabled={openRound.isPending}
           className="min-h-11 w-full bg-sage-700 text-white rounded-xl text-[15px] font-semibold disabled:opacity-50"
@@ -117,7 +118,7 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
 
     const vote = (kind: 'goat' | 'donkey', subjectId: string) => {
       castVote.mutate({ roundId, groupId, kind, subjectId }, {
-        onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not vote'),
+        onError: (e: unknown) => toast.error(errorMessage(e, 'Could not vote')),
       })
     }
 
@@ -256,7 +257,7 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
                             aria-pressed={on}
                             onClick={() => toggleTag.mutate(
                               { roundId, groupId, subjectId: p.user_id, tag: t.key },
-                              { onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not tag') },
+                              { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not tag')) },
                             )}
                             className={`min-h-11 inline-flex items-center px-3 rounded-full text-[13px] font-semibold border ${
                               on
@@ -274,7 +275,7 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
                       initial={round.mine.notes.find(n => n.subject_id === p.user_id)?.body ?? ''}
                       onSave={body => setNote.mutate(
                         { roundId, groupId, subjectId: p.user_id, body },
-                        { onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not save') },
+                        { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save')) },
                       )}
                     />
                   </div>
@@ -454,7 +455,7 @@ function AwardDigChips({ roundId, kind }: { roundId: string; kind: 'goat' | 'don
 
   const dig = (emoji: string) => {
     toggle.mutate({ roundId, kind, emoji }, {
-      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not dig'),
+      onError: (e: unknown) => toast.error(errorMessage(e, 'Could not dig')),
     })
     setPickerOpen(false)
   }

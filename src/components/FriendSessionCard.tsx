@@ -12,6 +12,7 @@ import {
   useSharedCrewUsers, useMyJoinRequests, useJoinSession, useRequestToJoinSession, useCancelJoinRequest,
 } from '../hooks/useSessionGroup'
 import type { FriendSession } from '../hooks/useFriendsFeed'
+import { errorMessage } from '../utils/errors'
 
 function formatDate(iso: string): string {
   try { return format(new Date(iso), 'd MMM') } catch { return '' }
@@ -59,7 +60,7 @@ export function FriendSessionCard({
   })
 
   const onJoinError = (e: unknown) => {
-    const msg = e instanceof Error ? e.message : ''
+    const msg = errorMessage(e)
     if (msg.includes('VERDICT_OUT')) { toast.error('The awards for that session are already in'); return }
     if (msg.includes('NEEDS_APPROVAL')) {
       // This means the cached crew set is stale -- without refreshing it the
@@ -136,7 +137,7 @@ export function FriendSessionCard({
               type="button"
               onClick={() => cancel.mutate({ sessionId: session.sessionId }, {
                 onSuccess: () => toast.success('Request withdrawn'),
-                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not withdraw'),
+                onError: (e: unknown) => toast.error(errorMessage(e, 'Could not withdraw')),
               })}
               disabled={cancel.isPending}
               title="Withdraw request"
