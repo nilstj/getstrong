@@ -31,8 +31,9 @@ import { GymThumb } from '../components/GymThumb'
 import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
 import { SessionRoster } from '../components/SessionRoster'
 import { SessionBoulderList } from '../components/SessionBoulderList'
+import { SessionAwardsSection } from '../components/SessionAwardsSection'
 import { useAuth } from '../providers/AuthProvider'
-import { useSessionJoinRequests, useApproveJoinRequest, useDeclineJoinRequest } from '../hooks/useSessionGroup'
+import { useSessionJoinRequests, useApproveJoinRequest, useDeclineJoinRequest, useSessionGroupRow } from '../hooks/useSessionGroup'
 
 type SheetTab = 'problem' | 'challenge'
 
@@ -80,6 +81,7 @@ export function SessionDetailPage() {
   const setSessionPartners = useSetSessionPartners(id!)
   const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
   const claimGymProblem = useClaimGymProblem()
+  const { data: sessionGroup } = useSessionGroupRow(session?.group_id ?? null)
 
   useEffect(() => {
     setActiveSessionId(id ?? null)
@@ -184,6 +186,10 @@ export function SessionDetailPage() {
 
       {isOwner && session.group_id && (
         <SessionBoulderList sessionId={id!} groupId={session.group_id} />
+      )}
+
+      {isOwner && session.group_id && (
+        <SessionAwardsSection groupId={session.group_id} crewId={sessionGroup?.crew_id ?? null} />
       )}
 
       {problems.length > 0 && (

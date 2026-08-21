@@ -60,22 +60,22 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
     // Nobody has opened a round for this group yet. open_award_round raises
     // below two climbers, so only offer the control once the session's group
     // roster (already fetched elsewhere on this page) actually has that many.
-    const canOpen = groupRoster.length >= 2
+    // Below that, there is nothing the viewer can do here, so render nothing
+    // rather than a heading with no control under it.
+    if (groupRoster.length < 2) return null
     return (
       <div>
         <h2 className={SECTION_HEADING}>Session awards</h2>
-        {canOpen && (
-          <button
-            type="button"
-            onClick={() => openRound.mutate({ groupId }, {
-              onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not open awards'),
-            })}
-            disabled={openRound.isPending}
-            className="min-h-11 w-full bg-sage-700 text-white rounded-xl text-[15px] font-semibold disabled:opacity-50"
-          >
-            {openRound.isPending ? 'Opening…' : 'Cast your votes'}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => openRound.mutate({ groupId }, {
+            onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not open awards'),
+          })}
+          disabled={openRound.isPending}
+          className="min-h-11 w-full bg-sage-700 text-white rounded-xl text-[15px] font-semibold disabled:opacity-50"
+        >
+          {openRound.isPending ? 'Opening…' : 'Cast your votes'}
+        </button>
       </div>
     )
   }

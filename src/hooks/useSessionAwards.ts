@@ -29,12 +29,6 @@ export interface AwardRoundState {
   notes?: { voter_id: string; subject_id: string; body: string }[]
 }
 
-export interface AwardParticipant {
-  user_id: string
-  username: string | null
-  avatar_url: string | null
-}
-
 export interface AwardMessage {
   id: string
   user_id: string
