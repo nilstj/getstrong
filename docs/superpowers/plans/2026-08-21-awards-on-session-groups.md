@@ -236,20 +236,14 @@ begin
   -- crew is derived here: exactly one crew that EVERY current member belongs to,
   -- otherwise none. A crew climbing together gets a streak; a mixed group does
   -- not, which is what "crew-scoped where a crew exists" means.
-  select cm.crew_id into v_crew
-    from crew_members cm
-   where cm.user_id in (select user_id from sessions where group_id = p_group)
-   group by cm.crew_id
-  having count(distinct cm.user_id) = v_members
-   limit 2;
-  if (select count(*) from (
-        select cm.crew_id from crew_members cm
-         where cm.user_id in (select user_id from sessions where group_id = p_group)
-         group by cm.crew_id
-        having count(distinct cm.user_id) = v_members
-      ) c) <> 1 then
-    v_crew := null;
-  end if;
+  select case when count(*) = 1 then min(c.crew_id) end into v_crew
+    from (
+      select cm.crew_id
+        from crew_members cm
+       where cm.user_id in (select user_id from sessions where group_id = p_group)
+       group by cm.crew_id
+      having count(distinct cm.user_id) = v_members
+    ) c;
 
   insert into crew_award_rounds (crew_id, group_id, round_date, gym, opened_by, closes_at)
     values (v_crew, p_group, v_date, v_gym, v_user, now() + interval '24 hours')
@@ -491,7 +485,8 @@ Expected: zero rows even when rows exist, because those three tables have no SEL
 - [ ] Open it; both climbers see the pickers inline — **no sheet, no navigation**.
 - [ ] **A climber who is in the session but in no shared crew can vote, tag and comment.** This is the whole point of the change.
 - [ ] Vote as both; the verdict appears inline, with the GOAT and donkey cards, tag tallies and comments.
-- [ ] A third climber joins **after** the verdict is out: they can vote, and **the verdict does not re-lock**.
+- [ ] A third climber tries to **join** after the verdict is out → refused. 082's `session_group_verdict_is_out` guard reads `unlocked_at`, which only exists once 083 is applied, so this is the **first** time that guard can fire — it must be observed, not assumed.
+- [ ] A third climber **accepts an invite** after the verdict is out — `accept_session_group` has no verdict guard, so this is the path that can still add a participant. They may vote, and **the verdict must not re-lock**: that is what the `unlocked_at` latch is for.
 - [ ] The dig chips still work on both award cards.
 - [ ] The session thread still posts and persists.
 - [ ] A group whose members all share exactly one crew shows the repeat-donkey streak; a mixed group shows none.
