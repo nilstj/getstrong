@@ -32,6 +32,7 @@ import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
 import { SessionRoster } from '../components/SessionRoster'
 import { SessionBoulderList } from '../components/SessionBoulderList'
 import { useAuth } from '../providers/AuthProvider'
+import { useSessionJoinRequests, useApproveJoinRequest, useDeclineJoinRequest } from '../hooks/useSessionGroup'
 
 type SheetTab = 'problem' | 'challenge'
 
@@ -170,6 +171,8 @@ export function SessionDetailPage() {
           <Pencil size={16} strokeWidth={1.75} />
         </Link>
       </div>
+
+      {!planned && isOwner && <JoinRequests sessionId={id!} />}
 
       {!planned && isOwner && (
         <SessionRoster
@@ -689,6 +692,50 @@ function WisdomSection({ session }: { session: import('../types').Session }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/** People asking to join this session. Only the owner ever sees these. */
+function JoinRequests({ sessionId }: { sessionId: string }) {
+  const { data: requests = [] } = useSessionJoinRequests(sessionId)
+  const approve = useApproveJoinRequest()
+  const decline = useDeclineJoinRequest()
+
+  if (requests.length === 0) return null
+
+  return (
+    <div>
+      <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Asking to join</h2>
+      <div className="space-y-2">
+        {requests.map(r => (
+          <div key={r.user_id} className="flex items-center gap-3 bg-white border border-sage-200 rounded-2xl p-3">
+            <span className="w-9 h-9 rounded-full bg-sage-100 grid place-items-center text-sm font-semibold text-sage-700 overflow-hidden flex-shrink-0">
+              {r.avatar_url
+                ? <img src={r.avatar_url} alt="" className="w-full h-full object-cover" />
+                : (r.username ?? '?').slice(0, 1).toUpperCase()}
+            </span>
+            <span className="flex-1 text-sm font-medium text-gray-800 truncate">{r.username ?? 'Someone'}</span>
+            <button
+              type="button"
+              onClick={() => approve.mutate({ sessionId, userId: r.user_id }, {
+                onSuccess: () => toast.success('They’re in'),
+                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not approve'),
+              })}
+              className="min-h-11 px-4 rounded-full bg-sage-700 text-white text-sm font-semibold"
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => decline.mutate({ sessionId, userId: r.user_id }, { onError: () => toast.error('Failed') })}
+              className="min-h-11 px-3 text-sm font-semibold text-gray-400"
+            >
+              No
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
