@@ -5,17 +5,6 @@ import { useAuth } from '../providers/AuthProvider'
 import type { AwardTag } from '../types'
 import type { AwardVoteRow, AwardTagRow, AwardHistoryRow } from '../utils/sessionAwards'
 
-/** A recent day where two or more crew members logged a session at one gym. */
-export interface AwardCandidate {
-  round_date: string
-  gym: string
-  climbers: number
-  round_id: string | null
-  /** Whether you logged a session that day at that gym — the caller only,
-   *  same condition open_award_round uses to build its participant snapshot. */
-  am_participant: boolean
-}
-
 export interface AwardRoundState {
   round_id: string
   participants: number
@@ -26,6 +15,8 @@ export interface AwardRoundState {
   /** Always present: whether you were a climber in this session at all. A
    *  crew member who did not climb that session is not invited to vote. */
   am_participant: boolean
+  /** Every user id with live group membership for this round's session. */
+  roster: string[]
   /** Always present: what you personally submitted, so you can change it. */
   mine: {
     votes: { kind: 'goat' | 'donkey'; subject_id: string }[]
@@ -53,31 +44,18 @@ export interface AwardMessage {
   avatar_url: string | null
 }
 
-/** Sessions from the last 7 days that two or more of this crew were at. */
-export function useAwardCandidates(crewId: string) {
-  return useQuery({
-    queryKey: ['award_candidates', crewId],
-    enabled: !!crewId,
-    queryFn: async (): Promise<AwardCandidate[]> => {
-      const { data, error } = await supabase.rpc('crew_award_candidates', { p_crew: crewId })
-      if (error) throw error
-      return (data ?? []) as AwardCandidate[]
-    },
-  })
-}
-
-/** Opens (or re-snapshots) a round and returns its id. Idempotent. */
+/** Opens (or re-snapshots) a round for a session's group and returns its id. Idempotent. */
 export function useOpenAwardRound() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { crewId: string; date: string; gym: string }): Promise<string> => {
+    mutationFn: async (v: { groupId: string }): Promise<string> => {
       const { data, error } = await supabase.rpc('open_award_round', {
-        p_crew: v.crewId, p_date: v.date, p_gym: v.gym,
+        p_group: v.groupId,
       })
       if (error) throw error
       return data as string
     },
-    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_candidates', v.crewId] }),
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_round_for_group', v.groupId] }),
   })
 }
 
@@ -94,24 +72,22 @@ export function useAwardRound(roundId: string | null) {
   })
 }
 
-export function useAwardParticipants(roundId: string | null) {
+/** The award round for a session's group, or null if nobody has opened one. */
+export function useAwardRoundForGroup(groupId: string | null) {
   return useQuery({
-    queryKey: ['award_participants', roundId],
-    enabled: !!roundId,
-    queryFn: async (): Promise<AwardParticipant[]> => {
-      const { data, error } = await supabase
-        .from('crew_award_participants')
-        .select('user_id')
-        .eq('round_id', roundId)
-        .order('user_id')
+    queryKey: ['award_round_for_group', groupId],
+    enabled: !!groupId,
+    queryFn: async (): Promise<AwardRoundState | null> => {
+      const { data: round, error } = await supabase
+        .from('crew_award_rounds')
+        .select('id')
+        .eq('group_id', groupId)
+        .maybeSingle()
       if (error) throw error
-      const ids = (data ?? []).map(r => r.user_id as string)
-      const byId = await profilesByIds(ids)
-      return ids.map(id => ({
-        user_id: id,
-        username: byId.get(id)?.username ?? null,
-        avatar_url: byId.get(id)?.avatar_url ?? null,
-      }))
+      if (!round) return null
+      const { data, error: rErr } = await supabase.rpc('get_award_round', { p_round: round.id })
+      if (rErr) throw rErr
+      return data as AwardRoundState
     },
   })
 }
