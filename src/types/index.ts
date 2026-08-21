@@ -179,6 +179,8 @@ export type NotificationType =
   | 'crew_send'
   | 'crew_stripped'
   | 'variation_cleared'
+  | 'session_join_request'
+  | 'session_join_approved'
 
 export interface Notification {
   id: string

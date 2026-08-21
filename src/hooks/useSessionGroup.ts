@@ -356,12 +356,15 @@ export interface JoinRequest {
 /**
  * The set of user ids the caller shares a crew with. Fetched once and reused for
  * every card in the feed, rather than one `shares_crew_with` call per card.
+ *
+ * `enabled` lets a caller that doesn't need this (a card rendered with
+ * `showJoin` off) skip the query entirely rather than firing it pointlessly.
  */
-export function useSharedCrewUsers() {
+export function useSharedCrewUsers(enabled: boolean = true) {
   const { user } = useAuth()
   return useQuery({
     queryKey: ['shared_crew_users', user?.id],
-    enabled: !!user,
+    enabled: !!user && enabled,
     queryFn: async (): Promise<Set<string>> => {
       const { data: mine, error } = await supabase
         .from('crew_members')
@@ -382,12 +385,37 @@ export function useSharedCrewUsers() {
   })
 }
 
-/** Sessions I have asked to join and not yet been approved for. */
-export function useMyJoinRequests() {
+/**
+ * Which of these other climbers' sessions the caller's own group already
+ * includes them in. Batched like `useSharedCrewUsers`: one call for the whole
+ * feed rather than one `sessions_i_am_in` round-trip per card. Ids are sorted
+ * before joining into the query key so a reordered (but otherwise identical)
+ * `sessionIds` array reuses the same cache entry instead of refetching under a
+ * second key.
+ */
+export function useSessionsIAmIn(sessionIds: string[]) {
+  return useQuery({
+    queryKey: ['sessions_i_am_in', [...sessionIds].sort().join(',')],
+    enabled: sessionIds.length > 0,
+    queryFn: async (): Promise<Set<string>> => {
+      const { data, error } = await supabase.rpc('sessions_i_am_in', { p_sessions: sessionIds })
+      if (error) throw error
+      return new Set((data ?? []) as string[])
+    },
+  })
+}
+
+/**
+ * Sessions I have asked to join and not yet been approved for.
+ *
+ * `enabled` lets a caller that doesn't need this (a card rendered with
+ * `showJoin` off) skip the query entirely rather than firing it pointlessly.
+ */
+export function useMyJoinRequests(enabled: boolean = true) {
   const { user } = useAuth()
   return useQuery({
     queryKey: ['my_join_requests', user?.id],
-    enabled: !!user,
+    enabled: !!user && enabled,
     queryFn: async (): Promise<Set<string>> => {
       const { data, error } = await supabase
         .from('session_join_requests')
@@ -432,6 +460,11 @@ export function useJoinSession() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sessions'] })
       qc.invalidateQueries({ queryKey: ['friends_feed'] })
+      // The RPC deletes the caller's own request row (if any) and can create a
+      // new session for the caller, exactly like every other session-creating
+      // mutation in useSessions.ts.
+      qc.invalidateQueries({ queryKey: ['my_join_requests'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
@@ -441,6 +474,18 @@ export function useRequestToJoinSession() {
   return useMutation({
     mutationFn: async (v: { sessionId: string }) => {
       const { error } = await supabase.rpc('request_to_join_session', { p_session: v.sessionId })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my_join_requests'] }),
+  })
+}
+
+/** Withdraw my own pending request. */
+export function useCancelJoinRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { sessionId: string }) => {
+      const { error } = await supabase.rpc('cancel_join_request', { p_session: v.sessionId })
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my_join_requests'] }),

@@ -834,6 +834,15 @@ Run `npm run dev`. Hooks, components and pages have no automated coverage, so th
 - [ ] Ask to join a session on a day you already logged at that gym, then have the owner approve: **your existing session is attached to the group** rather than a second one being created. Check your sessions list has no duplicate.
 - [ ] The crew feed on `/crews/:crewId` shows session cards with **no** join control — only the home feed opted in.
 - [ ] Nothing anywhere claims you climbed something you did not.
+- [ ] After a crewmate join, the shared boulder list shows the owner's boulders **and the owner's own status against them** — this alone catches the back-fill bug.
+- [ ] The owner's session page still shows its own "Problems (n)" list after someone joins and stamps `group_id` on it.
+- [ ] After a request (before approval), the owner's session still has `group_id` null — the plan's stated key invariant, currently never observed.
+- [ ] Tap the control on a session you are already in — it must read as joined, not offer to join.
+- [ ] A crewmate who already logged that evening at that gym joins — their existing session is attached, not duplicated.
+- [ ] A friend's session whose problems carry a gym but whose location is blank — no join control.
+- [ ] Both notifications arrive and route correctly.
+- [ ] Withdraw a request, then have the owner try to approve it.
+- [ ] On a 375px viewport with a request pending, Yes and No are both ≥44px.
 
 - [ ] **Step 5: Confirm no points were minted**
 

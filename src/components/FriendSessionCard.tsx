@@ -1,14 +1,15 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
-import { Play, UserPlus, Check, Clock } from 'lucide-react'
+import { Play, UserPlus, Check, Clock, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { Chip } from './Chip'
 import { VideoBadge } from './VideoBadge'
 import { SetterBadge } from './SetterBadge'
 import { useAuth } from '../providers/AuthProvider'
 import { joinAffordance } from '../utils/joinEligibility'
 import {
-  useSharedCrewUsers, useMyJoinRequests, useJoinSession, useRequestToJoinSession,
+  useSharedCrewUsers, useMyJoinRequests, useJoinSession, useRequestToJoinSession, useCancelJoinRequest,
 } from '../hooks/useSessionGroup'
 import type { FriendSession } from '../hooks/useFriendsFeed'
 
@@ -17,8 +18,8 @@ function formatDate(iso: string): string {
 }
 
 export function FriendSessionCard({
-  session, to, showJoin = false,
-}: { session: FriendSession; to: string; showJoin?: boolean }) {
+  session, to, showJoin = false, alreadyIn = false,
+}: { session: FriendSession; to: string; showJoin?: boolean; alreadyIn?: boolean }) {
   const photos = session.photos.slice(0, 4)
   const extra = Math.max(0, session.photos.length - 4)
   // Videos we can't badge on a visible photo tile (problems with no photo, or
@@ -27,26 +28,43 @@ export function FriendSessionCard({
   const unbadgedVideos = session.videoCount - badgedVideos
 
   const { user } = useAuth()
-  const { data: crewPeers } = useSharedCrewUsers()
-  const { data: myRequests } = useMyJoinRequests()
+  const navigate = useNavigate()
+  const qc = useQueryClient()
+  // Gated on `showJoin`: a card rendered without it (the crew feed) has no use
+  // for either query, so it must not fire them just because it happens to
+  // mount this component.
+  const { data: crewPeers } = useSharedCrewUsers(showJoin)
+  const { data: myRequests } = useMyJoinRequests(showJoin)
   const join = useJoinSession()
   const ask = useRequestToJoinSession()
+  const cancel = useCancelJoinRequest()
+
+  // `session.gym` comes from `problems.gym`, a different column from the
+  // `sessions.location` both join RPCs actually require -- the two diverge in
+  // practice, so a blank string must count as absent, same as null.
+  const hasGym = !!session.gym?.trim()
 
   // `verdictOut` is always false until the awards move onto session groups; the
   // server refuses the join either way, so the button is never a lie.
   const affordance = joinAffordance({
     isMine: session.userId === user?.id,
-    alreadyIn: false,
+    alreadyIn,
     requested: myRequests?.has(session.sessionId) ?? false,
     sharesCrew: crewPeers?.has(session.userId) ?? false,
     verdictOut: false,
+    hasGym,
   })
 
   const onJoinError = (e: unknown) => {
     const msg = e instanceof Error ? e.message : ''
-    if (msg.includes('ALREADY_LOGGED')) { toast.error('You already logged a session that day at that gym'); return }
     if (msg.includes('VERDICT_OUT')) { toast.error('The awards for that session are already in'); return }
-    if (msg.includes('NEEDS_APPROVAL')) { toast.error('Ask to join instead'); return }
+    if (msg.includes('NEEDS_APPROVAL')) {
+      // This means the cached crew set is stale -- without refreshing it the
+      // button would keep offering "I was there too" forever.
+      qc.invalidateQueries({ queryKey: ['shared_crew_users'] })
+      toast.error('Ask to join instead')
+      return
+    }
     toast.error(msg || 'Could not join')
   }
 
@@ -111,15 +129,24 @@ export function FriendSessionCard({
             </span>
           )}
           {affordance === 'pending' && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-400">
-              <Clock size={14} strokeWidth={2.25} /> Asked to join
-            </span>
+            <button
+              type="button"
+              onClick={() => cancel.mutate({ sessionId: session.sessionId }, {
+                onSuccess: () => toast.success('Request withdrawn'),
+                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not withdraw'),
+              })}
+              disabled={cancel.isPending}
+              title="Withdraw request"
+              className="min-h-11 w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white text-gray-400 text-xs font-semibold disabled:opacity-50"
+            >
+              <Clock size={14} strokeWidth={2.25} /> Asked to join <X size={13} strokeWidth={2.5} className="ml-0.5" />
+            </button>
           )}
           {affordance === 'join' && (
             <button
               type="button"
               onClick={() => join.mutate({ sessionId: session.sessionId }, {
-                onSuccess: () => toast.success('Added to your log'),
+                onSuccess: sessionId => { toast.success('Added to your log'); navigate(`/sessions/${sessionId}`) },
                 onError: onJoinError,
               })}
               disabled={join.isPending}

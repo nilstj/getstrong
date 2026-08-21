@@ -701,6 +701,11 @@ function JoinRequests({ sessionId }: { sessionId: string }) {
   const { data: requests = [] } = useSessionJoinRequests(sessionId)
   const approve = useApproveJoinRequest()
   const decline = useDeclineJoinRequest()
+  // Shared across every row: a double-tapped Yes on the SAME request races two
+  // approvals, the second of which raises the server's raw 'No such request' --
+  // disabling both buttons the moment either mutation is in flight closes that
+  // window.
+  const isPending = approve.isPending || decline.isPending
 
   if (requests.length === 0) return null
 
@@ -722,14 +727,18 @@ function JoinRequests({ sessionId }: { sessionId: string }) {
                 onSuccess: () => toast.success('They’re in'),
                 onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not approve'),
               })}
-              className="min-h-11 px-4 rounded-full bg-sage-700 text-white text-sm font-semibold"
+              disabled={isPending}
+              className="min-h-11 px-4 rounded-full bg-sage-700 text-white text-sm font-semibold disabled:opacity-50"
             >
               Yes
             </button>
             <button
               type="button"
-              onClick={() => decline.mutate({ sessionId, userId: r.user_id }, { onError: () => toast.error('Failed') })}
-              className="min-h-11 px-3 text-sm font-semibold text-gray-400"
+              onClick={() => decline.mutate({ sessionId, userId: r.user_id }, {
+                onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not decline'),
+              })}
+              disabled={isPending}
+              className="min-h-11 px-3 text-sm font-semibold text-gray-400 disabled:opacity-50"
             >
               No
             </button>

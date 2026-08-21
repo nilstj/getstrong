@@ -3,6 +3,7 @@ import { useFriendsFeed } from '../hooks/useFriendsFeed'
 import { useCrewFeed } from '../hooks/useCrewFeed'
 import { useFollowing } from '../hooks/useFollows'
 import { useDiscoverBoulders } from '../hooks/useDiscoverBoulders'
+import { useSessionsIAmIn } from '../hooks/useSessionGroup'
 import { useAuth } from '../providers/AuthProvider'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { FeedCard } from '../components/FeedCard'
@@ -27,6 +28,11 @@ export function DashboardPage() {
   const loading = followLoading || feedLoading
 
   const items = mergeHomeFeed(sessions, betaPages?.pages.flat() ?? [], user?.id)
+  // One call for the whole feed rather than one `sessions_i_am_in` round-trip
+  // per card -- each card's own single-id call would have a distinct query key
+  // and would not dedupe the way `useSharedCrewUsers` does.
+  const sessionIds = items.flatMap(item => item.kind === 'session' ? [item.session.sessionId] : [])
+  const { data: sessionsIAmIn } = useSessionsIAmIn(sessionIds)
 
   return (
     <div className="pb-32 lg:max-w-2xl lg:mx-auto">
@@ -56,6 +62,7 @@ export function DashboardPage() {
                 session={item.session}
                 to={`/friends/sessions/${item.session.sessionId}`}
                 showJoin
+                alreadyIn={sessionsIAmIn?.has(item.session.sessionId) ?? false}
               />
             ) : (
               <FeedCard

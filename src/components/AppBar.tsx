@@ -120,6 +120,8 @@ const ICONS: Record<Notification['type'], string> = {
   crew_send: '🧗',
   crew_stripped: '🧹',
   variation_cleared: '🧩',
+  session_join_request: '🙋',
+  session_join_approved: '✅',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
@@ -173,6 +175,10 @@ function describe(n: Notification, username: string): { text: string; detail?: s
         text: `${username} cleared your variation "${d.challenge_title ?? ''}"`,
         detail: d.video_url ? 'Watch their clip' : undefined,
       }
+    case 'session_join_request':
+      return { text: `${username} wants to join your session at ${d.gym ?? 'the gym'} — say yes or no`, detail: d.date }
+    case 'session_join_approved':
+      return { text: `${username} said yes — you're in the session at ${d.gym ?? 'the gym'}`, detail: d.date }
     default:
       // `notifications` is in the realtime publication, so a stale open tab can
       // receive a type it doesn't know how to render yet. Degrade to a dull row
@@ -187,6 +193,8 @@ function routeFor(n: Notification): string | null {
     case 'problem_comment':
     case 'problem_reaction':
     case 'session_tag':
+    case 'session_join_request':
+    case 'session_join_approved':
       return d.session_id ? `/sessions/${d.session_id}` : null
     case 'session_group_invite':
       // The invitee has no session of their own for this group yet -- a
