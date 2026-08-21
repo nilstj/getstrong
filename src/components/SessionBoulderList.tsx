@@ -114,18 +114,24 @@ export function SessionBoulderList({
             </p>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => setUserCollapsed(!collapsed)}
-            aria-expanded={!collapsed}
-            className="flex w-full min-h-11 items-center justify-between gap-2"
-          >
-            <span className="flex items-center gap-1.5">
-              {collapsed ? <ChevronRight size={16} strokeWidth={2.25} /> : <ChevronDown size={16} strokeWidth={2.25} />}
-              <span className="text-base font-semibold">Boulders ({boulders.length})</span>
-            </span>
-            <span className="text-xs font-semibold text-gray-400 tabular-nums">{summary.label}</span>
-          </button>
+          // The heading wraps the button rather than the reverse: <h2> takes
+          // phrasing content, so a <button> inside it is valid, while an <h2>
+          // inside a <button> is not -- and this keeps the section reachable by
+          // heading navigation in both states.
+          <h2>
+            <button
+              type="button"
+              onClick={() => setUserCollapsed(!collapsed)}
+              aria-expanded={!collapsed}
+              className="flex w-full min-h-11 items-center justify-between gap-2"
+            >
+              <span className="flex items-center gap-1.5">
+                {collapsed ? <ChevronRight size={16} strokeWidth={2.25} /> : <ChevronDown size={16} strokeWidth={2.25} />}
+                <span className="text-base font-semibold">Boulders ({boulders.length})</span>
+              </span>
+              <span className="text-xs font-semibold text-gray-400 tabular-nums">{summary.label}</span>
+            </button>
+          </h2>
         )}
       </div>
 
