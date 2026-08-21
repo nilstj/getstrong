@@ -108,7 +108,7 @@ export function SessionBoulderList({
       <div className="mb-2">
         {sectionState === 'add' ? (
           <>
-            <h2 className="text-base font-semibold">Add boulders</h2>
+            <h2 className="text-base font-semibold">Add existing session boulders</h2>
             <p className="text-xs text-gray-500 mt-1 leading-relaxed">
               Tick off what you climbed. Your tries and sends are your own, separate from what everyone else logged here.
             </p>
@@ -123,11 +123,11 @@ export function SessionBoulderList({
               type="button"
               onClick={() => setUserCollapsed(!collapsed)}
               aria-expanded={!collapsed}
-              className="flex w-full min-h-11 items-center justify-between gap-2"
+              className="flex w-full min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-0.5"
             >
               <span className="flex items-center gap-1.5">
                 {collapsed ? <ChevronRight size={16} strokeWidth={2.25} /> : <ChevronDown size={16} strokeWidth={2.25} />}
-                <span className="text-base font-semibold">Boulders ({boulders.length})</span>
+                <span className="text-base font-semibold">Add existing session boulders</span>
               </span>
               <span className="text-xs font-semibold text-gray-400 tabular-nums">{summary.label}</span>
             </button>
