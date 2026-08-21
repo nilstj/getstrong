@@ -89,9 +89,10 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
   const unlocked = round.unlocked
 
   // get_award_round returns the roster as plain ids. useGroupRoster covers the
-  // same id set (both are "sessions with this group_id") and this page's roster
-  // section has already fetched it under the same key, so the names are in cache
-  // -- no second profile query, and no flicker through 'Someone' on first paint.
+  // same id set (both are "sessions with this group_id"), and this page's roster
+  // section mounts it under the same key on the same render, so the names come
+  // off that one query rather than a second profile fetch chained behind this
+  // one -- which is what used to guarantee a paint of "Someone" for everybody.
   const rosterPeople = round.roster.map(id => {
     const member = groupRoster.find(m => m.user_id === id)
     return {
