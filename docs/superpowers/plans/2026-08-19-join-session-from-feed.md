@@ -232,12 +232,12 @@ end; $$;
 -- their own crew rosters anyway.
 ```
 
-- [ ] **Step 2: Note the renumbering in the spec**
+- [x] **Step 2: Note the renumbering in the spec — ALREADY DONE, skip**
 
-In `docs/superpowers/specs/2026-08-19-shared-sessions-design.md`, find the Migrations section and change the step 2 migration number from **082** to **083**, since 082 is now this plan. Change every occurrence, including the one in "Delivery in two steps".
+This was completed out-of-band when migration 081 (the session-invite notification) took that number. The spec already says **083** for the awards migration and this plan already says **082**. Verify and move on:
 
 Run: `grep -n "082\|083" docs/superpowers/specs/2026-08-19-shared-sessions-design.md`
-Expected: 082 refers only to this join migration; step 2's awards migration is 083 everywhere.
+Expected: step 2's awards migration is 083; no stale 082 in the spec.
 
 - [ ] **Step 3: Check the guards are constraints, and the write policies are absent**
 
@@ -376,7 +376,7 @@ Expected: PASS, 9 tests.
 - [ ] **Step 5: Run the whole suite and the build**
 
 Run: `npx vitest run && npm run build`
-Expected: 220 tests pass (211 after the core plan, plus 9); build clean.
+Expected: 245 tests pass (236 on main, plus 9); build clean.
 
 - [ ] **Step 6: Commit**
 
@@ -693,7 +693,7 @@ Expected: every `<button` line is **outside** the `<Link>`/`</Link>` range. A bu
 - [ ] **Step 5: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 220 tests pass; lint **16 problems**.
+Expected: build clean; 245 tests pass; lint **16 problems**.
 
 - [ ] **Step 6: Commit**
 
@@ -782,7 +782,7 @@ Mount it directly above the `SessionRoster` from the core plan's Task 5:
 - [ ] **Step 3: Verify build, lint and tests**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean; 220 tests pass; lint **16 problems**.
+Expected: build clean; 245 tests pass; lint **16 problems**.
 
 - [ ] **Step 4: Commit**
 
@@ -810,7 +810,7 @@ Expected: both succeed.
 - [ ] **Step 2: Full automated check**
 
 Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
-Expected: build clean, 220 tests pass, lint **16 problems** — the branch baseline. Any increase is yours to fix.
+Expected: build clean, 245 tests pass, lint **16 problems** — the branch baseline. Any increase is yours to fix.
 
 - [ ] **Step 3: Confirm the write policies really are absent**
 
