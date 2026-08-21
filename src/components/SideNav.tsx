@@ -14,7 +14,7 @@ const ITEMS = [
 export function SideNav() {
   return (
     <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 w-56 flex-col gap-1 border-r border-gray-200 bg-[#f7f5f0] px-3 py-5 z-40">
-      <div className="px-3 pb-4 text-lg font-black tracking-tight text-sage-800">GetStrong</div>
+      <div className="px-3 pb-4 text-lg font-black tracking-tight text-sage-800">MoreSends</div>
       {ITEMS.map(({ to, label, Icon }) => (
         <NavLink key={to} to={to}
           className={({ isActive }) =>

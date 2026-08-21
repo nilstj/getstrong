@@ -1,8 +1,8 @@
-# getStrong
+# MoreSends
 
 ## What this app is for
 
-getStrong helps climbers **learn climbing movement** — together, and with some
+MoreSends helps climbers **learn climbing movement** — together, and with some
 mischief. The unit of value is *beta*: the knowledge of how a boulder actually
 goes. Logging a send is how you get credit for participating; sharing what
 worked is the point.
