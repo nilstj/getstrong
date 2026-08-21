@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
-import { awardTally, tagTally, donkeyStreak } from '../sessionAwards'
+import { awardTally, tagTally, donkeyStreak, awardsStartCollapsed, awardsSummary } from '../sessionAwards'
 import type { AwardVoteRow, AwardHistoryRow } from '../sessionAwards'
 
 const vote = (kind: 'goat' | 'donkey', voter: string, subject: string): AwardVoteRow =>
@@ -130,5 +130,64 @@ describe('donkeyStreak', () => {
       ]
       expect(donkeyStreak(rows, 'nils', now)).toBe(2)
     })
+  })
+})
+
+describe('awardsStartCollapsed', () => {
+  // The voting state is the only one that earns the page's whole height, and
+  // only until you have actually voted -- everything else collapses to a line.
+  it('expands while your vote is still missing', () => {
+    expect(awardsStartCollapsed({ unlocked: false, amParticipant: true, myVotesCast: 0 })).toBe(false)
+    expect(awardsStartCollapsed({ unlocked: false, amParticipant: true, myVotesCast: 1 })).toBe(false)
+  })
+
+  it('collapses once both your votes are in', () => {
+    expect(awardsStartCollapsed({ unlocked: false, amParticipant: true, myVotesCast: 2 })).toBe(true)
+  })
+
+  it('collapses for a non-participant, who has nothing to do here', () => {
+    expect(awardsStartCollapsed({ unlocked: false, amParticipant: false, myVotesCast: 0 })).toBe(true)
+  })
+
+  it('collapses once unlocked, because the verdict fits on the one line', () => {
+    expect(awardsStartCollapsed({ unlocked: true, amParticipant: true, myVotesCast: 0 })).toBe(true)
+    expect(awardsStartCollapsed({ unlocked: true, amParticipant: true, myVotesCast: 2 })).toBe(true)
+  })
+})
+
+describe('awardsSummary', () => {
+  const base = {
+    unlocked: false, amParticipant: true, myVotesCast: 2,
+    voted: 2, participants: 3, goatWinners: [], donkeyWinners: [],
+  }
+
+  it('nudges you while your vote is missing, because there is a 24h clock', () => {
+    expect(awardsSummary({ ...base, myVotesCast: 1 })).toEqual({ kind: 'nudge' })
+  })
+
+  it('shows progress once you have voted', () => {
+    expect(awardsSummary(base)).toEqual({ kind: 'progress', voted: 2, participants: 3 })
+  })
+
+  it('never nudges someone who cannot vote', () => {
+    expect(awardsSummary({ ...base, amParticipant: false, myVotesCast: 0 }))
+      .toEqual({ kind: 'progress', voted: 2, participants: 3 })
+  })
+
+  it('is the verdict once unlocked, so the payoff needs no expanding', () => {
+    expect(awardsSummary({
+      ...base, unlocked: true, goatWinners: ['Nils'], donkeyWinners: ['Ola'],
+    })).toEqual({ kind: 'verdict', goat: ['Nils'], donkey: ['Ola'] })
+  })
+
+  it('carries a split verdict through as both names', () => {
+    expect(awardsSummary({
+      ...base, unlocked: true, goatWinners: ['Nils', 'Ida'], donkeyWinners: [],
+    })).toEqual({ kind: 'verdict', goat: ['Nils', 'Ida'], donkey: [] })
+  })
+
+  it('is still a verdict when nobody voted, so the bar does not claim a winner', () => {
+    expect(awardsSummary({ ...base, unlocked: true, voted: 0 }))
+      .toEqual({ kind: 'verdict', goat: [], donkey: [] })
   })
 })

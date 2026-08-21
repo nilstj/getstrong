@@ -87,3 +87,46 @@ export function donkeyStreak(rows: AwardHistoryRow[], userId: string, now: Date)
   }
   return weeklyStreak(dates, now)
 }
+
+/** What the collapsed awards bar says. The component renders the icons and
+ *  formats the deadline; this decides only which of the three it is. */
+export type AwardsSummary =
+  | { kind: 'verdict'; goat: string[]; donkey: string[] }
+  | { kind: 'nudge' }
+  | { kind: 'progress'; voted: number; participants: number }
+
+/**
+ * Whether the awards section starts collapsed on the session page.
+ *
+ * The section is ~1000px expanded, which pushed the session's Problems list
+ * two screens down. Voting is the only state that earns that height, and only
+ * until your own votes are in: a verdict fits on the collapsed bar's one line,
+ * and someone who was not in the session has nothing to do here at all.
+ */
+export function awardsStartCollapsed(input: {
+  unlocked: boolean
+  amParticipant: boolean
+  myVotesCast: number
+}): boolean {
+  if (input.unlocked) return true
+  if (!input.amParticipant) return true
+  return input.myVotesCast >= 2
+}
+
+/** The collapsed bar's content. Nudges only someone who can still act: there is
+ *  a 24h clock on a round, so a missing vote is worth saying out loud. */
+export function awardsSummary(input: {
+  unlocked: boolean
+  amParticipant: boolean
+  myVotesCast: number
+  voted: number
+  participants: number
+  goatWinners: string[]
+  donkeyWinners: string[]
+}): AwardsSummary {
+  if (input.unlocked) {
+    return { kind: 'verdict', goat: input.goatWinners, donkey: input.donkeyWinners }
+  }
+  if (input.amParticipant && input.myVotesCast < 2) return { kind: 'nudge' }
+  return { kind: 'progress', voted: input.voted, participants: input.participants }
+}

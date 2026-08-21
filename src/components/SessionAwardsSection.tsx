@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import toast from 'react-hot-toast'
-import { Check, Clock } from 'lucide-react'
+import { Check, Clock, ChevronDown, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { GoatIcon, DonkeyIcon } from './AwardIcons'
 import { AWARD_TAGS, type AwardTag } from '../types'
@@ -12,7 +12,10 @@ import {
 } from '../hooks/useSessionAwards'
 import { useGroupRoster } from '../hooks/useSessionGroup'
 import { useAuth } from '../providers/AuthProvider'
-import { awardTally, tagTally, donkeyStreak } from '../utils/sessionAwards'
+import {
+  awardTally, tagTally, donkeyStreak, awardsStartCollapsed, awardsSummary,
+} from '../utils/sessionAwards'
+import type { AwardsSummary } from '../utils/sessionAwards'
 import { errorMessage } from '../utils/errors'
 
 const tagMeta = (tag: AwardTag) => AWARD_TAGS.find(t => t.key === tag)
@@ -31,6 +34,11 @@ const SECTION_HEADING = 'text-xs font-bold uppercase tracking-wide text-gray-400
  * one is open and taking votes, or it has unlocked into a verdict. A round
  * withholds votes/tags/notes from the client until `unlocked` -- the RPC is the
  * authority on that, not the device clock.
+ *
+ * Expanded, this section ran to roughly a thousand pixels and pushed the
+ * session's Problems list two screens down, so it collapses to a one-line bar
+ * everywhere except the one state that earns the height: your own vote still
+ * missing, with a 24h clock running. See awardsStartCollapsed.
  */
 export function SessionAwardsSection({ groupId }: { groupId: string }) {
   const { user } = useAuth()
@@ -45,6 +53,14 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
   const toggleTag = useToggleAwardTag()
   const setNote = useSetAwardNote()
   const [editingAwards, setEditingAwards] = useState(false)
+  // null until the viewer explicitly toggles the section; the latched default
+  // applies until then, and their own choice wins forever after.
+  const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null)
+  const [latchedDefaultCollapsed, setLatchedDefaultCollapsed] = useState<boolean | null>(null)
+  // One climber's props open at a time. Eight 44px tag chips wrapping to three
+  // rows plus a comment box, per climber, was the single biggest thing making
+  // this section taller than the page.
+  const [openPropsFor, setOpenPropsFor] = useState<string | null>(null)
 
   if (round === undefined) {
     // Loading and failure look the same to this query; only the second is worth
@@ -52,7 +68,7 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
     if (!isError) return null
     return (
       <div>
-        <h2 className={SECTION_HEADING}>Session awards</h2>
+        <h2 className="text-base font-semibold">Session awards</h2>
         <p className="text-sm text-gray-500">Couldn't load the awards for this session.</p>
       </div>
     )
@@ -67,8 +83,8 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
     if (groupRoster.length < 2) return null
     return (
       <div>
-        <h2 className={SECTION_HEADING}>Session awards</h2>
-        <p className="text-[13px] text-gray-500 mb-2.5">
+        <h2 className="text-base font-semibold">Session awards</h2>
+        <p className="text-[13px] text-gray-500 mt-1 mb-2.5 leading-relaxed">
           GOAT, donkey, and one line on each climber. Everyone in this session votes, and the
           verdict stays hidden until they all have — or 24h after voting opens.
         </p>
@@ -106,37 +122,81 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
   const nameOf = (id: string) =>
     rosterPeople.find(p => p.user_id === id)?.username ?? 'Someone'
 
-  if (!unlocked) {
-    const myGoat = round.mine.votes.find(v => v.kind === 'goat')?.subject_id ?? null
-    const myDonkey = round.mine.votes.find(v => v.kind === 'donkey')?.subject_id ?? null
-    const myTags = new Set(round.mine.tags.map(t => `${t.subject_id}:${t.tag}`))
-    const others = rosterPeople.filter(p => p.user_id !== user?.id)
-    const bothPicked = !!myGoat && !!myDonkey
-    const showFullPickers = !bothPicked || editingAwards
-    const goatPerson = rosterPeople.find(p => p.user_id === myGoat)
-    const donkeyPerson = rosterPeople.find(p => p.user_id === myDonkey)
+  // The collapsed bar shows the verdict, so the tallies are needed before the
+  // expanded/collapsed split. `votes` is absent until unlocked and
+  // awardTally([]) yields no winners, so this is correct in both states.
+  const goat = awardTally(round.votes ?? [], 'goat')
+  const donkey = awardTally(round.votes ?? [], 'donkey')
 
-    const vote = (kind: 'goat' | 'donkey', subjectId: string) => {
-      castVote.mutate({ roundId, groupId, kind, subjectId }, {
-        onError: (e: unknown) => toast.error(errorMessage(e, 'Could not vote')),
-      })
-    }
+  // Latched once rather than derived every render: get_award_round refetches
+  // after every vote, so a derived default would slam the section shut the
+  // instant you cast your second vote -- mid-interaction, with the props you
+  // came to give still untouched. Same technique and reason as
+  // SessionBoulderList's latch.
+  const defaultCollapsed = awardsStartCollapsed({
+    unlocked,
+    amParticipant: round.am_participant,
+    myVotesCast: round.mine.votes.length,
+  })
+  if (latchedDefaultCollapsed === null) setLatchedDefaultCollapsed(defaultCollapsed)
+  const collapsed = userCollapsed ?? latchedDefaultCollapsed ?? defaultCollapsed
 
-    return (
-      <div className="space-y-5">
-        <div>
-          <h2 className={SECTION_HEADING}>Session awards</h2>
-          <div className="flex items-center gap-2">
-            <span className="flex-1 text-xs text-gray-500 tabular-nums">
-              {round.voted} of {round.participants} voted
-            </span>
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-khaki-600">
-              <Clock size={13} strokeWidth={2} /> closes {format(new Date(round.closes_at), 'EEE HH:mm')}
-            </span>
-          </div>
+  const summary = awardsSummary({
+    unlocked,
+    amParticipant: round.am_participant,
+    myVotesCast: round.mine.votes.length,
+    voted: round.voted,
+    participants: round.participants,
+    goatWinners: goat.winners.map(nameOf),
+    donkeyWinners: donkey.winners.map(nameOf),
+  })
+
+  const myGoat = round.mine.votes.find(v => v.kind === 'goat')?.subject_id ?? null
+  const myDonkey = round.mine.votes.find(v => v.kind === 'donkey')?.subject_id ?? null
+  const myTags = new Set(round.mine.tags.map(t => `${t.subject_id}:${t.tag}`))
+  const others = rosterPeople.filter(p => p.user_id !== user?.id)
+  const bothPicked = !!myGoat && !!myDonkey
+  const showFullPickers = !bothPicked || editingAwards
+  const goatPerson = rosterPeople.find(p => p.user_id === myGoat)
+  const donkeyPerson = rosterPeople.find(p => p.user_id === myDonkey)
+
+  const vote = (kind: 'goat' | 'donkey', subjectId: string) => {
+    castVote.mutate({ roundId, groupId, kind, subjectId }, {
+      onError: (e: unknown) => toast.error(errorMessage(e, 'Could not vote')),
+    })
+  }
+
+  const tags = tagTally((round.tags ?? []).map(t => ({ subject_id: t.subject_id, tag: t.tag })))
+  const notes = round.notes ?? []
+  const nobodyVoted = goat.winners.length === 0 && donkey.winners.length === 0
+
+  return (
+    <div>
+      {/* The heading wraps the button rather than the reverse: <h2> takes
+          phrasing content, so a <button> inside it is valid while an <h2>
+          inside a <button> is not -- and this keeps the section reachable by
+          heading navigation in both states. Matches SessionBoulderList. */}
+      <h2>
+        <button
+          type="button"
+          onClick={() => setUserCollapsed(!collapsed)}
+          aria-expanded={!collapsed}
+          className="flex w-full min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-0.5"
+        >
+          <span className="flex items-center gap-1.5">
+            {collapsed ? <ChevronRight size={16} strokeWidth={2.25} /> : <ChevronDown size={16} strokeWidth={2.25} />}
+            <span className="text-base font-semibold">Session awards</span>
+          </span>
+          <AwardsSummaryChip summary={summary} closesAt={round.closes_at} />
+        </button>
+      </h2>
+
+      {!collapsed && !unlocked && (
+        <div className="space-y-5 mt-1">
           {/* Who is still holding it up. A name, not a bare avatar: there is no
-              hover on a phone, so a tooltip would say nothing. */}
-          <ul className="flex flex-wrap gap-1.5 mt-2">
+              hover on a phone, so a tooltip would say nothing. The count and
+              the deadline live on the collapsed bar above, not repeated here. */}
+          <ul className="flex flex-wrap gap-1.5">
             {rosterPeople.map(p => {
               const done = round.voters.includes(p.user_id)
               return (
@@ -160,229 +220,279 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
               )
             })}
           </ul>
-          <p className="text-[11px] text-gray-400 mt-2">
-            Everyone's votes stay hidden until they are all in, or 24h after voting opened.
-          </p>
-        </div>
 
-        {!round.am_participant ? (
-          <p className="text-sm text-gray-600">
-            You weren't logged in for this session, so there's no vote from you here — check back for the
-            verdict once it's in, and feel free to rib whoever was.
-          </p>
-        ) : (
-          <>
-            {showFullPickers ? (
-              <>
-                <AwardPicker
-                  label="GOAT of the session"
-                  hint="Who taught you the most. One vote."
-                  icon={<GoatIcon size={17} />}
-                  accent="sage"
-                  people={others}
-                  picked={myGoat}
-                  onPick={id => vote('goat', id)}
-                />
+          {!round.am_participant ? (
+            <p className="text-sm text-gray-600">
+              You weren't logged in for this session, so there's no vote from you here — check back for the
+              verdict once it's in, and feel free to rib whoever was.
+            </p>
+          ) : (
+            <>
+              {showFullPickers ? (
+                <>
+                  <AwardPicker
+                    label="GOAT of the session"
+                    hint="Who taught you the most. One vote."
+                    icon={<GoatIcon size={17} />}
+                    accent="sage"
+                    people={others}
+                    picked={myGoat}
+                    onPick={id => vote('goat', id)}
+                  />
 
-                <AwardPicker
-                  label="Donkey of the session"
-                  hint="Worst excuse, worst beta, worst timing. Be fair."
-                  icon={<DonkeyIcon size={17} />}
-                  accent="khaki"
-                  people={rosterPeople}
-                  picked={myDonkey}
-                  onPick={id => vote('donkey', id)}
-                />
+                  <AwardPicker
+                    label="Donkey of the session"
+                    hint="Worst excuse, worst beta, worst timing. Be fair."
+                    icon={<DonkeyIcon size={17} />}
+                    accent="khaki"
+                    people={rosterPeople}
+                    picked={myDonkey}
+                    onPick={id => vote('donkey', id)}
+                  />
 
-                {bothPicked && (
+                  {bothPicked && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingAwards(false)}
+                      className="min-h-11 text-sm font-semibold text-sage-700"
+                    >
+                      Done
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center gap-2.5 bg-gray-50 rounded-2xl p-3">
+                  <span className="flex -space-x-2 flex-shrink-0">
+                    <span className="w-8 h-8 rounded-full bg-sage-700 border-2 border-white text-white grid place-items-center overflow-hidden">
+                      {goatPerson?.avatar_url
+                        ? <img src={goatPerson.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : <GoatIcon size={16} />}
+                    </span>
+                    <span className="w-8 h-8 rounded-full bg-khaki-600 border-2 border-white text-white grid place-items-center overflow-hidden">
+                      {donkeyPerson?.avatar_url
+                        ? <img src={donkeyPerson.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : <DonkeyIcon size={16} />}
+                    </span>
+                  </span>
+                  <p className="flex-1 min-w-0 text-sm font-semibold text-gray-800 truncate">
+                    GOAT {goatPerson?.username ?? 'Someone'} · Donkey {donkeyPerson?.username ?? 'Someone'}
+                  </p>
                   <button
                     type="button"
-                    onClick={() => setEditingAwards(false)}
-                    className="min-h-11 text-sm font-semibold text-sage-700"
+                    onClick={() => setEditingAwards(true)}
+                    className="min-h-11 px-2 text-sm font-semibold text-sage-700 flex-shrink-0"
                   >
-                    Done
+                    Edit
                   </button>
-                )}
-              </>
-            ) : (
-              <div className="flex items-center gap-2.5 bg-gray-50 rounded-2xl p-3">
-                <span className="flex -space-x-2 flex-shrink-0">
-                  <span className="w-8 h-8 rounded-full bg-sage-700 border-2 border-white text-white grid place-items-center overflow-hidden">
-                    {goatPerson?.avatar_url
-                      ? <img src={goatPerson.avatar_url} alt="" className="w-full h-full object-cover" />
-                      : <GoatIcon size={16} />}
-                  </span>
-                  <span className="w-8 h-8 rounded-full bg-khaki-600 border-2 border-white text-white grid place-items-center overflow-hidden">
-                    {donkeyPerson?.avatar_url
-                      ? <img src={donkeyPerson.avatar_url} alt="" className="w-full h-full object-cover" />
-                      : <DonkeyIcon size={16} />}
-                  </span>
-                </span>
-                <p className="flex-1 min-w-0 text-sm font-semibold text-gray-800 truncate">
-                  GOAT {goatPerson?.username ?? 'Someone'} · Donkey {donkeyPerson?.username ?? 'Someone'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setEditingAwards(true)}
-                  className="min-h-11 px-2 text-sm font-semibold text-sage-700 flex-shrink-0"
-                >
-                  Edit
-                </button>
-              </div>
-            )}
-
-            <div>
-              <h3 className={SECTION_HEADING}>Props · tag what they did</h3>
-              <div className="space-y-3">
-                {others.map(p => (
-                  <div key={p.user_id} className="bg-gray-50 rounded-2xl p-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-8 h-8 rounded-full bg-sage-100 grid place-items-center text-[13px] font-semibold text-sage-700 overflow-hidden flex-shrink-0">
-                        {p.avatar_url
-                          ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
-                          : (p.username ?? '?').slice(0, 1).toUpperCase()}
-                      </span>
-                      <span className="flex-1 text-sm font-semibold text-gray-800 truncate">
-                        {p.username ?? 'Someone'}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mt-2.5">
-                      {AWARD_TAGS.map(t => {
-                        const on = myTags.has(`${p.user_id}:${t.key}`)
-                        return (
-                          <button
-                            key={t.key}
-                            type="button"
-                            aria-pressed={on}
-                            onClick={() => toggleTag.mutate(
-                              { roundId, groupId, subjectId: p.user_id, tag: t.key },
-                              { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not tag')) },
-                            )}
-                            className={`min-h-11 inline-flex items-center px-3 rounded-full text-[13px] font-semibold border ${
-                              on
-                                ? 'bg-sage-50 border-sage-300 text-sage-800'
-                                : 'bg-white border-gray-200 text-gray-500'
-                            }`}
-                          >
-                            {t.emoji} {t.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    <NoteField
-                      initial={round.mine.notes.find(n => n.subject_id === p.user_id)?.body ?? ''}
-                      onSave={body => setNote.mutate(
-                        { roundId, groupId, subjectId: p.user_id, body },
-                        { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save')) },
-                      )}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    )
-  }
-
-  const goat = awardTally(round.votes ?? [], 'goat')
-  const donkey = awardTally(round.votes ?? [], 'donkey')
-  const tags = tagTally((round.tags ?? []).map(t => ({ subject_id: t.subject_id, tag: t.tag })))
-  const notes = round.notes ?? []
-  const nobodyVoted = goat.winners.length === 0 && donkey.winners.length === 0
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className={SECTION_HEADING}>Session awards</h2>
-        {round.voted > 0 ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-sage-50 text-sage-700 text-[11px] font-semibold px-2.5 py-1">
-            <Check size={12} strokeWidth={2.25} /> Votes in · {round.voted} of {round.participants}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-[11px] font-semibold px-2.5 py-1">
-            Time ran out before anyone voted
-          </span>
-        )}
-      </div>
-
-      {nobodyVoted && (
-        <p className="text-sm text-gray-400">
-          Nobody voted this time — the awards go unclaimed. Bold strategy.
-        </p>
-      )}
-
-      <AwardWinner
-        kind="goat"
-        label="GOAT of the session"
-        winners={goat.winners.map(nameOf)}
-        count={goat.topCount}
-        total={round.participants}
-        note={goat.winners.length === 1 ? notes.find(n => n.subject_id === goat.winners[0]) : undefined}
-        nameOf={nameOf}
-        roundId={roundId}
-      />
-
-      <AwardWinner
-        kind="donkey"
-        label="Donkey of the session"
-        winners={donkey.winners.map(nameOf)}
-        count={donkey.topCount}
-        total={round.participants}
-        note={donkey.winners.length === 1 ? notes.find(n => n.subject_id === donkey.winners[0]) : undefined}
-        nameOf={nameOf}
-        roundId={roundId}
-        streak={donkey.winners.length === 1 ? donkeyStreak(history, donkey.winners[0], new Date()) : 0}
-      />
-
-      <div>
-        <h3 className={SECTION_HEADING}>The verdicts</h3>
-        <div className="space-y-2">
-          {rosterPeople.map(p => (
-            <div key={p.user_id} className="bg-gray-50 rounded-2xl p-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-full bg-sage-100 grid place-items-center text-[13px] font-semibold text-sage-700 overflow-hidden flex-shrink-0">
-                  {p.avatar_url
-                    ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
-                    : (p.username ?? '?').slice(0, 1).toUpperCase()}
-                </span>
-                <span className="flex-1 text-sm font-semibold text-gray-800 truncate">
-                  {p.username ?? 'Someone'}
-                </span>
-                {goat.winners.includes(p.user_id) && (
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-sage-600 bg-sage-50 rounded-full px-2 py-0.5">GOAT</span>
-                )}
-                {donkey.winners.includes(p.user_id) && (
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-khaki-700 bg-khaki-100 rounded-full px-2 py-0.5">Donkey</span>
-                )}
-              </div>
-
-              {(tags[p.user_id] ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2.5">
-                  {(tags[p.user_id] ?? []).map(t => (
-                    <span key={t.tag} className="inline-flex items-center gap-1 rounded-full bg-sage-50 text-sage-700 text-[11px] font-semibold px-2.5 py-1">
-                      {tagMeta(t.tag)?.emoji} {tagMeta(t.tag)?.label}
-                      <span className="text-gray-400 tabular-nums">{t.count}</span>
-                    </span>
-                  ))}
                 </div>
               )}
 
-              {notes.filter(n => n.subject_id === p.user_id).map(n => (
-                <p key={`${n.voter_id}:${n.subject_id}`} className="text-xs text-gray-600 mt-2.5 break-words">
-                  {n.body} <span className="text-gray-400">— {nameOf(n.voter_id)}</span>
-                </p>
+              <div>
+                <h3 className={SECTION_HEADING}>Props · tag what they did</h3>
+                {/* One climber open at a time. The row states what you have
+                    already given them, so the accordion never hides the fact
+                    that you did something. */}
+                <div className="space-y-2">
+                  {others.map(p => {
+                    const myPropCount = round.mine.tags.filter(t => t.subject_id === p.user_id).length
+                    const myNote = round.mine.notes.find(n => n.subject_id === p.user_id)?.body ?? ''
+                    const open = openPropsFor === p.user_id
+                    return (
+                      <div key={p.user_id} className="bg-gray-50 rounded-2xl">
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          onClick={() => setOpenPropsFor(open ? null : p.user_id)}
+                          className="flex w-full min-h-11 items-center gap-2.5 p-3 text-left"
+                        >
+                          <span className="w-8 h-8 rounded-full bg-sage-100 grid place-items-center text-[13px] font-semibold text-sage-700 overflow-hidden flex-shrink-0">
+                            {p.avatar_url
+                              ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                              : (p.username ?? '?').slice(0, 1).toUpperCase()}
+                          </span>
+                          <span className="flex-1 min-w-0 text-sm font-semibold text-gray-800 truncate">
+                            {p.username ?? 'Someone'}
+                          </span>
+                          <span className={`text-[11px] font-semibold flex-shrink-0 ${
+                            myPropCount > 0 || myNote ? 'text-sage-700' : 'text-gray-400'
+                          }`}>
+                            {myPropCount > 0
+                              ? `${myPropCount} prop${myPropCount > 1 ? 's' : ''}`
+                              : 'Add props'}
+                            {myNote && ' · commented'}
+                          </span>
+                          {open
+                            ? <ChevronDown size={16} strokeWidth={2.25} className="text-gray-400 flex-shrink-0" />
+                            : <ChevronRight size={16} strokeWidth={2.25} className="text-gray-400 flex-shrink-0" />}
+                        </button>
+
+                        {open && (
+                          <div className="px-3 pb-3">
+                            {/* One scrolling row, not three wrapped ones: eight
+                                44px chips wrapped cost ~150px per climber. The
+                                scroll is contained here so the page itself
+                                never scrolls sideways. */}
+                            <div className="flex gap-2 overflow-x-auto -mx-3 px-3 pb-0.5">
+                              {AWARD_TAGS.map(t => {
+                                const on = myTags.has(`${p.user_id}:${t.key}`)
+                                return (
+                                  <button
+                                    key={t.key}
+                                    type="button"
+                                    aria-pressed={on}
+                                    onClick={() => toggleTag.mutate(
+                                      { roundId, groupId, subjectId: p.user_id, tag: t.key },
+                                      { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not tag')) },
+                                    )}
+                                    className={`min-h-11 inline-flex flex-shrink-0 items-center whitespace-nowrap px-3 rounded-full text-[13px] font-semibold border ${
+                                      on
+                                        ? 'bg-sage-50 border-sage-300 text-sage-800'
+                                        : 'bg-white border-gray-200 text-gray-500'
+                                    }`}
+                                  >
+                                    {t.emoji} {t.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
+
+                            <NoteField
+                              initial={myNote}
+                              onSave={body => setNote.mutate(
+                                { roundId, groupId, subjectId: p.user_id, body },
+                                { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save')) },
+                              )}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {!collapsed && unlocked && (
+        <div className="space-y-5 mt-1">
+          {nobodyVoted && (
+            <p className="text-sm text-gray-400">
+              Nobody voted this time — the awards go unclaimed. Bold strategy.
+            </p>
+          )}
+
+          <AwardWinner
+            kind="goat"
+            label="GOAT of the session"
+            winners={goat.winners.map(nameOf)}
+            count={goat.topCount}
+            total={round.participants}
+            note={goat.winners.length === 1 ? notes.find(n => n.subject_id === goat.winners[0]) : undefined}
+            nameOf={nameOf}
+            roundId={roundId}
+          />
+
+          <AwardWinner
+            kind="donkey"
+            label="Donkey of the session"
+            winners={donkey.winners.map(nameOf)}
+            count={donkey.topCount}
+            total={round.participants}
+            note={donkey.winners.length === 1 ? notes.find(n => n.subject_id === donkey.winners[0]) : undefined}
+            nameOf={nameOf}
+            roundId={roundId}
+            streak={donkey.winners.length === 1 ? donkeyStreak(history, donkey.winners[0], new Date()) : 0}
+          />
+
+          <div>
+            <h3 className={SECTION_HEADING}>The verdicts</h3>
+            <div className="space-y-2">
+              {rosterPeople.map(p => (
+                <div key={p.user_id} className="bg-gray-50 rounded-2xl p-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-full bg-sage-100 grid place-items-center text-[13px] font-semibold text-sage-700 overflow-hidden flex-shrink-0">
+                      {p.avatar_url
+                        ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : (p.username ?? '?').slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="flex-1 text-sm font-semibold text-gray-800 truncate">
+                      {p.username ?? 'Someone'}
+                    </span>
+                    {goat.winners.includes(p.user_id) && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-sage-600 bg-sage-50 rounded-full px-2 py-0.5">GOAT</span>
+                    )}
+                    {donkey.winners.includes(p.user_id) && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-khaki-700 bg-khaki-100 rounded-full px-2 py-0.5">Donkey</span>
+                    )}
+                  </div>
+
+                  {(tags[p.user_id] ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                      {(tags[p.user_id] ?? []).map(t => (
+                        <span key={t.tag} className="inline-flex items-center gap-1 rounded-full bg-sage-50 text-sage-700 text-[11px] font-semibold px-2.5 py-1">
+                          {tagMeta(t.tag)?.emoji} {tagMeta(t.tag)?.label}
+                          <span className="text-gray-400 tabular-nums">{t.count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {notes.filter(n => n.subject_id === p.user_id).map(n => (
+                    <p key={`${n.voter_id}:${n.subject_id}`} className="text-xs text-gray-600 mt-2.5 break-words">
+                      {n.body} <span className="text-gray-400">— {nameOf(n.voter_id)}</span>
+                    </p>
+                  ))}
+                </div>
               ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      <SessionThread roundId={roundId} />
+          <SessionThread roundId={roundId} />
+        </div>
+      )}
     </div>
+  )
+}
+
+/** What the collapsed bar says on its right-hand side. The verdict is the whole
+ *  payoff and fits on one line, so an unlocked round needs no expanding at all. */
+function AwardsSummaryChip({ summary, closesAt }: { summary: AwardsSummary; closesAt: string }) {
+  if (summary.kind === 'verdict') {
+    if (summary.goat.length === 0 && summary.donkey.length === 0) {
+      return <span className="text-xs font-semibold text-gray-400">No verdict</span>
+    }
+    return (
+      <span className="flex min-w-0 items-center gap-2 text-xs font-semibold text-gray-700">
+        {summary.goat.length > 0 && (
+          <span className="flex min-w-0 items-center gap-1">
+            <GoatIcon size={13} />
+            <span className="truncate">{summary.goat.join(' & ')}</span>
+          </span>
+        )}
+        {summary.donkey.length > 0 && (
+          <span className="flex min-w-0 items-center gap-1">
+            <DonkeyIcon size={13} />
+            <span className="truncate">{summary.donkey.join(' & ')}</span>
+          </span>
+        )}
+      </span>
+    )
+  }
+
+  const closes = `closes ${format(new Date(closesAt), 'EEE HH:mm')}`
+  if (summary.kind === 'nudge') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold text-khaki-700">
+        <Clock size={12} strokeWidth={2.25} /> Your vote is missing · {closes}
+      </span>
+    )
+  }
+  return (
+    <span className="text-xs font-semibold text-gray-400 tabular-nums">
+      {summary.voted} of {summary.participants} voted · {closes}
+    </span>
   )
 }
 
