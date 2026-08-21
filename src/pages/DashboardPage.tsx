@@ -55,6 +55,7 @@ export function DashboardPage() {
                 key={`s:${item.session.sessionId}`}
                 session={item.session}
                 to={`/friends/sessions/${item.session.sessionId}`}
+                showJoin
               />
             ) : (
               <FeedCard
