@@ -183,3 +183,34 @@ export function companionLine(sentNames: string[], projectingNames: string[]): s
   if (projectingNames.length > 0) clauses.push(`${joinNames(projectingNames)} projecting`)
   return clauses.length > 0 ? clauses.join(' · ') : null
 }
+
+/** Whether the shared boulder section should prompt a joiner to add boulders, or show the ordinary list. */
+export type BoulderSectionState = 'add' | 'list'
+
+/**
+ * Joining a session back-fills the group's boulder list from the creator's own
+ * logged climbs, so a joiner arrives with every boulder reading "Not logged" --
+ * not because the list is empty, but because none of it is in their own log
+ * yet. `'add'` prompts exactly that person to tick off what they climbed.
+ *
+ * The creator never sees it: the back-fill already stamped their own statuses,
+ * so `isCreator` alone rules them out regardless of `hasMarkedAny`. Once a
+ * joiner has marked one boulder, the prompt has done its job and the section
+ * reverts to the ordinary list for good -- there's no dismissal to track
+ * because the state is derived from data that only ever moves one direction.
+ *
+ * `groupLoaded: false` always yields `'list'`: `created_by` is unknown until
+ * the group row arrives, so defaulting to `'add'` would flash the prompt at
+ * the creator on every page load. `'list'` is the safe default -- the worst
+ * case is a joiner seeing the neutral heading for a moment.
+ */
+export function boulderSectionState(input: {
+  groupLoaded: boolean
+  isCreator: boolean
+  hasMarkedAny: boolean
+}): BoulderSectionState {
+  if (!input.groupLoaded) return 'list'
+  if (input.isCreator) return 'list'
+  if (input.hasMarkedAny) return 'list'
+  return 'add'
+}
