@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Check, Clock } from 'lucide-react'
 import { format } from 'date-fns'
@@ -13,7 +12,6 @@ import {
 } from '../hooks/useSessionAwards'
 import { useGroupRoster } from '../hooks/useSessionGroup'
 import { useAuth } from '../providers/AuthProvider'
-import { profilesByIds } from '../lib/profiles'
 import { awardTally, tagTally, donkeyStreak } from '../utils/sessionAwards'
 
 const tagMeta = (tag: AwardTag) => AWARD_TAGS.find(t => t.key === tag)
@@ -33,28 +31,31 @@ const SECTION_HEADING = 'text-xs font-bold uppercase tracking-wide text-gray-400
  * withholds votes/tags/notes from the client until `unlocked` -- the RPC is the
  * authority on that, not the device clock.
  */
-export function SessionAwardsSection({ groupId, crewId }: { groupId: string; crewId: string | null }) {
+export function SessionAwardsSection({ groupId }: { groupId: string }) {
   const { user } = useAuth()
-  const { data: round } = useAwardRoundForGroup(groupId)
+  const { data: round, isError } = useAwardRoundForGroup(groupId)
   const { data: groupRoster = [] } = useGroupRoster(groupId)
   const openRound = useOpenAwardRound()
-  const { data: history = [] } = useCrewAwardHistory(crewId ?? '')
+  // Crew-scoped where a crew exists: 083 sets crew_award_rounds.crew_id only
+  // when every climber in the session shares exactly one crew. Null in a mixed
+  // group, which disables the query and leaves the streak absent by design.
+  const { data: history = [] } = useCrewAwardHistory(round?.crew_id ?? '')
   const castVote = useCastAwardVote()
   const toggleTag = useToggleAwardTag()
   const setNote = useSetAwardNote()
   const [editingAwards, setEditingAwards] = useState(false)
 
-  // Batch-resolve the round's roster -- get_award_round returns it as plain
-  // ids -- into names/avatars in one query, the same way useAwardMessages and
-  // useGroupRoster already do for a list of ids.
-  const rosterIds = round?.roster ?? []
-  const { data: profilesById } = useQuery({
-    queryKey: ['award_round_roster_profiles', [...rosterIds].sort().join(',')],
-    queryFn: () => profilesByIds(rosterIds),
-    enabled: rosterIds.length > 0,
-  })
-
-  if (round === undefined) return null // still loading
+  if (round === undefined) {
+    // Loading and failure look the same to this query; only the second is worth
+    // saying out loud, otherwise the whole section silently vanishes.
+    if (!isError) return null
+    return (
+      <div>
+        <h2 className={SECTION_HEADING}>Session awards</h2>
+        <p className="text-sm text-gray-500">Couldn't load the awards for this session.</p>
+      </div>
+    )
+  }
 
   if (round === null) {
     // Nobody has opened a round for this group yet. open_award_round raises
@@ -66,6 +67,10 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
     return (
       <div>
         <h2 className={SECTION_HEADING}>Session awards</h2>
+        <p className="text-[13px] text-gray-500 mb-2.5">
+          GOAT, donkey, and one line on each climber. Everyone in this session votes, and the
+          verdict stays hidden until they all have — or 24h after voting opens.
+        </p>
         <button
           type="button"
           onClick={() => openRound.mutate({ groupId }, {
@@ -83,11 +88,18 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
   const roundId = round.round_id
   const unlocked = round.unlocked
 
-  const rosterPeople = round.roster.map(id => ({
-    user_id: id,
-    username: profilesById?.get(id)?.username ?? null,
-    avatar_url: profilesById?.get(id)?.avatar_url ?? null,
-  }))
+  // get_award_round returns the roster as plain ids. useGroupRoster covers the
+  // same id set (both are "sessions with this group_id") and this page's roster
+  // section has already fetched it under the same key, so the names are in cache
+  // -- no second profile query, and no flicker through 'Someone' on first paint.
+  const rosterPeople = round.roster.map(id => {
+    const member = groupRoster.find(m => m.user_id === id)
+    return {
+      user_id: id,
+      username: member?.username ?? null,
+      avatar_url: member?.avatar_url ?? null,
+    }
+  })
 
   const nameOf = (id: string) =>
     rosterPeople.find(p => p.user_id === id)?.username ?? 'Someone'
@@ -103,7 +115,7 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
     const donkeyPerson = rosterPeople.find(p => p.user_id === myDonkey)
 
     const vote = (kind: 'goat' | 'donkey', subjectId: string) => {
-      castVote.mutate({ roundId, kind, subjectId }, {
+      castVote.mutate({ roundId, groupId, kind, subjectId }, {
         onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not vote'),
       })
     }
@@ -120,6 +132,35 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
               <Clock size={13} strokeWidth={2} /> closes {format(new Date(round.closes_at), 'EEE HH:mm')}
             </span>
           </div>
+          {/* Who is still holding it up. A name, not a bare avatar: there is no
+              hover on a phone, so a tooltip would say nothing. */}
+          <ul className="flex flex-wrap gap-1.5 mt-2">
+            {rosterPeople.map(p => {
+              const done = round.voters.includes(p.user_id)
+              return (
+                <li
+                  key={p.user_id}
+                  className={`inline-flex items-center gap-1 rounded-full pl-1 pr-2.5 py-1 text-[11px] font-semibold ${
+                    done ? 'bg-sage-50 text-sage-700' : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  <span className={`w-5 h-5 rounded-full grid place-items-center overflow-hidden text-[9px] flex-shrink-0 ${
+                    done ? 'bg-sage-200 text-sage-800' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {p.avatar_url
+                      ? <img src={p.avatar_url} alt="" className={`w-full h-full object-cover ${done ? '' : 'opacity-60'}`} />
+                      : (p.username ?? '?').slice(0, 1).toUpperCase()}
+                  </span>
+                  {p.username ?? 'Someone'}
+                  {done && <Check size={10} strokeWidth={3} />}
+                  <span className="sr-only">{done ? 'has voted' : 'has not voted yet'}</span>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="text-[11px] text-gray-400 mt-2">
+            Everyone's votes stay hidden until they are all in, or 24h after voting opened.
+          </p>
         </div>
 
         {!round.am_participant ? (
@@ -189,9 +230,7 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
             )}
 
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">
-                Props · tag what they did
-              </h3>
+              <h3 className={SECTION_HEADING}>Props · tag what they did</h3>
               <div className="space-y-3">
                 {others.map(p => (
                   <div key={p.user_id} className="bg-gray-50 rounded-2xl p-3">
@@ -215,7 +254,7 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
                             type="button"
                             aria-pressed={on}
                             onClick={() => toggleTag.mutate(
-                              { roundId, subjectId: p.user_id, tag: t.key },
+                              { roundId, groupId, subjectId: p.user_id, tag: t.key },
                               { onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not tag') },
                             )}
                             className={`min-h-11 inline-flex items-center px-3 rounded-full text-[13px] font-semibold border ${
@@ -233,7 +272,7 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
                     <NoteField
                       initial={round.mine.notes.find(n => n.subject_id === p.user_id)?.body ?? ''}
                       onSave={body => setNote.mutate(
-                        { roundId, subjectId: p.user_id, body },
+                        { roundId, groupId, subjectId: p.user_id, body },
                         { onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Could not save') },
                       )}
                     />
@@ -298,7 +337,7 @@ export function SessionAwardsSection({ groupId, crewId }: { groupId: string; cre
       />
 
       <div>
-        <h2 className={SECTION_HEADING}>The verdicts</h2>
+        <h3 className={SECTION_HEADING}>The verdicts</h3>
         <div className="space-y-2">
           {rosterPeople.map(p => (
             <div key={p.user_id} className="bg-gray-50 rounded-2xl p-3">
@@ -448,7 +487,12 @@ function AwardDigChips({ roundId, kind }: { roundId: string; kind: 'goat' | 'don
             <div className="fixed inset-0 z-10" onClick={() => setPickerOpen(false)} />
             <div className="absolute z-20 bottom-full mb-1 left-0 flex gap-1 rounded-full bg-white shadow-lg border border-gray-200 px-2 py-1">
               {DIG_EMOJIS.map(e => (
-                <button key={e} type="button" onClick={() => dig(e)} className="text-lg hover:scale-125 transition-transform">
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => dig(e)}
+                  className="min-w-11 min-h-11 grid place-items-center text-lg hover:scale-125 transition-transform"
+                >
                   {e}
                 </button>
               ))}
@@ -476,7 +520,7 @@ function SessionThread({ roundId }: { roundId: string }) {
 
   return (
     <div>
-      <h2 className={SECTION_HEADING}>On the session</h2>
+      <h3 className={SECTION_HEADING}>On the session</h3>
       <div className="bg-gray-50 rounded-2xl p-3 space-y-2.5">
         {messages.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-2">Nobody has said anything yet. 🔥</p>
@@ -500,12 +544,12 @@ function SessionThread({ roundId }: { roundId: string }) {
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
             placeholder="Say something…"
             aria-label="Say something about the session"
-            className="flex-1 text-sm border rounded-lg px-2.5 py-1.5"
+            className="flex-1 min-h-11 text-sm border rounded-lg px-2.5"
           />
           <button
             onClick={send}
             disabled={!text.trim() || post.isPending}
-            className="text-sm px-3 py-1.5 bg-sage-700 text-white rounded-lg font-medium disabled:opacity-50"
+            className="min-h-11 text-sm px-3 bg-sage-700 text-white rounded-lg font-medium disabled:opacity-50"
           >
             Send
           </button>

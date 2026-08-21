@@ -33,7 +33,7 @@ import { SessionRoster } from '../components/SessionRoster'
 import { SessionBoulderList } from '../components/SessionBoulderList'
 import { SessionAwardsSection } from '../components/SessionAwardsSection'
 import { useAuth } from '../providers/AuthProvider'
-import { useSessionJoinRequests, useApproveJoinRequest, useDeclineJoinRequest, useSessionGroupRow } from '../hooks/useSessionGroup'
+import { useSessionJoinRequests, useApproveJoinRequest, useDeclineJoinRequest } from '../hooks/useSessionGroup'
 
 type SheetTab = 'problem' | 'challenge'
 
@@ -81,7 +81,6 @@ export function SessionDetailPage() {
   const setSessionPartners = useSetSessionPartners(id!)
   const setActiveSessionId = useSessionStore(s => s.setActiveSessionId)
   const claimGymProblem = useClaimGymProblem()
-  const { data: sessionGroup } = useSessionGroupRow(session?.group_id ?? null)
 
   useEffect(() => {
     setActiveSessionId(id ?? null)
@@ -188,8 +187,10 @@ export function SessionDetailPage() {
         <SessionBoulderList sessionId={id!} groupId={session.group_id} />
       )}
 
-      {isOwner && session.group_id && (
-        <SessionAwardsSection groupId={session.group_id} crewId={sessionGroup?.crew_id ?? null} />
+      {/* Not on a planned session: opening a round starts a 24h clock, so a
+          future-dated session would unlock its verdict before anyone climbed. */}
+      {!planned && isOwner && session.group_id && (
+        <SessionAwardsSection groupId={session.group_id} />
       )}
 
       {problems.length > 0 && (

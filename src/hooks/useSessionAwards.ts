@@ -17,6 +17,11 @@ export interface AwardRoundState {
   am_participant: boolean
   /** Every user id with live group membership for this round's session. */
   roster: string[]
+  /** NOT from `get_award_round` -- injected by `useAwardRoundForGroup` from the
+   *  round row. 083 derives the streak's crew onto `crew_award_rounds.crew_id`
+   *  (exactly one crew every climber shares, else null); `session_groups.crew_id`
+   *  is written by nothing, so reading the crew there would always be null. */
+  crew_id: string | null
   /** Always present: what you personally submitted, so you can change it. */
   mine: {
     votes: { kind: 'goat' | 'donkey'; subject_id: string }[]
@@ -53,19 +58,6 @@ export function useOpenAwardRound() {
   })
 }
 
-/** One round's progress, your own picks, and — once unlocked — everyone's. */
-export function useAwardRound(roundId: string | null) {
-  return useQuery({
-    queryKey: ['award_round', roundId],
-    enabled: !!roundId,
-    queryFn: async (): Promise<AwardRoundState> => {
-      const { data, error } = await supabase.rpc('get_award_round', { p_round: roundId })
-      if (error) throw error
-      return data as AwardRoundState
-    },
-  })
-}
-
 /** The award round for a session's group, or null if nobody has opened one. */
 export function useAwardRoundForGroup(groupId: string | null) {
   return useQuery({
@@ -74,14 +66,14 @@ export function useAwardRoundForGroup(groupId: string | null) {
     queryFn: async (): Promise<AwardRoundState | null> => {
       const { data: round, error } = await supabase
         .from('crew_award_rounds')
-        .select('id')
+        .select('id, crew_id')
         .eq('group_id', groupId)
         .maybeSingle()
       if (error) throw error
       if (!round) return null
       const { data, error: rErr } = await supabase.rpc('get_award_round', { p_round: round.id })
       if (rErr) throw rErr
-      return data as AwardRoundState
+      return { ...(data as AwardRoundState), crew_id: round.crew_id as string | null }
     },
   })
 }
@@ -153,40 +145,40 @@ export function useToggleAwardReaction() {
 export function useCastAwardVote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { roundId: string; kind: 'goat' | 'donkey'; subjectId: string }) => {
+    mutationFn: async (v: { roundId: string; groupId: string; kind: 'goat' | 'donkey'; subjectId: string }) => {
       const { error } = await supabase.rpc('cast_award_vote', {
         p_round: v.roundId, p_kind: v.kind, p_subject: v.subjectId,
       })
       if (error) throw error
     },
-    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_round', v.roundId] }),
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_round_for_group', v.groupId] }),
   })
 }
 
 export function useToggleAwardTag() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { roundId: string; subjectId: string; tag: AwardTag }): Promise<boolean> => {
+    mutationFn: async (v: { roundId: string; groupId: string; subjectId: string; tag: AwardTag }): Promise<boolean> => {
       const { data, error } = await supabase.rpc('toggle_award_tag', {
         p_round: v.roundId, p_subject: v.subjectId, p_tag: v.tag,
       })
       if (error) throw error
       return data as boolean
     },
-    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_round', v.roundId] }),
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_round_for_group', v.groupId] }),
   })
 }
 
 export function useSetAwardNote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { roundId: string; subjectId: string; body: string }) => {
+    mutationFn: async (v: { roundId: string; groupId: string; subjectId: string; body: string }) => {
       const { error } = await supabase.rpc('set_award_note', {
         p_round: v.roundId, p_subject: v.subjectId, p_body: v.body,
       })
       if (error) throw error
     },
-    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_round', v.roundId] }),
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['award_round_for_group', v.groupId] }),
   })
 }
 

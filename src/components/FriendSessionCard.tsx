@@ -44,8 +44,11 @@ export function FriendSessionCard({
   // practice, so a blank string must count as absent, same as null.
   const hasGym = !!session.gym?.trim()
 
-  // `verdictOut` is always false until the awards move onto session groups; the
-  // server refuses the join either way, so the button is never a lie.
+  // Hardcoded false, and it stays that way: the awards now live on session
+  // groups, but reading another group's round requires membership in it, so a
+  // client looking at a friend's card cannot know whether the verdict is out.
+  // join_session refuses with VERDICT_OUT and onJoinError below says so, which
+  // is why offering the button is never a lie.
   const affordance = joinAffordance({
     isMine: session.userId === user?.id,
     alreadyIn,
