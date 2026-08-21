@@ -31,6 +31,7 @@ import { GymThumb } from '../components/GymThumb'
 import { HoldGraphic, ProblemColorIcons } from '../components/Chip'
 import { SessionRoster } from '../components/SessionRoster'
 import { SessionBoulderList } from '../components/SessionBoulderList'
+import { SessionAwardsSection } from '../components/SessionAwardsSection'
 import { useAuth } from '../providers/AuthProvider'
 import { useSessionJoinRequests, useApproveJoinRequest, useDeclineJoinRequest } from '../hooks/useSessionGroup'
 
@@ -184,6 +185,12 @@ export function SessionDetailPage() {
 
       {isOwner && session.group_id && (
         <SessionBoulderList sessionId={id!} groupId={session.group_id} />
+      )}
+
+      {/* Not on a planned session: opening a round starts a 24h clock, so a
+          future-dated session would unlock its verdict before anyone climbed. */}
+      {!planned && isOwner && session.group_id && (
+        <SessionAwardsSection groupId={session.group_id} />
       )}
 
       {problems.length > 0 && (
