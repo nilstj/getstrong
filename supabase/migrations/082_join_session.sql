@@ -38,9 +38,9 @@ create policy "join requests readable by requester or session owner" on session_
 -- DEFINER because crew_members is readable only to fellow members, and the caller
 -- may need to ask about someone in a crew they are not both in.
 --
--- Referenced from a policy? No — only from the functions below, so it is safe to
--- keep out of client reach. It is NOT revoked here only because the join UI needs
--- it to decide which affordance to show; see shares_crew_with's grant note.
+-- Referenced from a policy? No — only from the functions below. It stays
+-- client-callable on purpose: the feed needs it to decide which affordance to
+-- show ("Join" vs "Ask to join") before the user taps; see the grant note below.
 create or replace function public.shares_crew_with(p_user uuid)
 returns boolean language sql security definer stable set search_path = public as $$
   select exists (
@@ -82,9 +82,15 @@ returns uuid language plpgsql security definer set search_path = public as $$
 declare v_user uuid := auth.uid(); v_owner uuid; v_date date; v_gym text; v_group uuid; v_session uuid;
 begin
   if v_user is null then raise exception 'Not authenticated'; end if;
+
+  -- for update: two crewmates tapping Join on the same group-less session at the
+  -- same moment must not each read group_id = null, each insert a session_groups
+  -- row and stamp the owner's session, splitting the group in two -- see
+  -- create_session_group in 080 for the identical race and fix.
   select s.user_id, s.date, nullif(trim(s.location), ''), s.group_id
     into v_owner, v_date, v_gym, v_group
-    from sessions s where s.id = p_session;
+    from sessions s where s.id = p_session
+    for update;
   if v_owner is null then raise exception 'No such session'; end if;
   if v_owner = v_user then raise exception 'That is already your session'; end if;
   if v_gym is null then raise exception 'That session has no gym to share'; end if;
@@ -94,7 +100,16 @@ begin
   if v_group is not null and session_group_verdict_is_out(v_group) then
     raise exception 'VERDICT_OUT: the awards for that session are already in';
   end if;
-  if exists (select 1 from sessions where user_id = v_user and date = v_date and trim(location) = v_gym) then
+
+  -- Case-insensitive, and scoped to ungrouped sessions only (group_id is null):
+  -- a session already tied to a *different* shared group at the same gym/date is
+  -- a genuinely different evening and must not be blocked here. See 080's
+  -- identical guard in accept_session_group.
+  if exists (
+    select 1 from sessions
+     where user_id = v_user and date = v_date and lower(trim(location)) = lower(v_gym)
+       and group_id is null
+  ) then
     raise exception 'ALREADY_LOGGED: you already logged a session that day at that gym';
   end if;
 
@@ -104,9 +119,19 @@ begin
     update sessions set group_id = v_group where id = p_session;
   end if;
 
+  -- on conflict: a concurrent duplicate call must not surface a raw
+  -- duplicate-key error against the partial unique index on
+  -- (group_id, user_id); recover the existing row's id instead, as 080's
+  -- accept_session_group does for the identical case.
   insert into sessions (user_id, date, location, group_id)
     values (v_user, v_date, v_gym, v_group)
+    on conflict (group_id, user_id) where group_id is not null do nothing
     returning id into v_session;
+
+  if v_session is null then
+    select id into v_session from sessions where group_id = v_group and user_id = v_user;
+  end if;
+
   delete from session_join_requests where session_id = p_session and user_id = v_user;
   return v_session;
 end; $$;
@@ -115,12 +140,13 @@ end; $$;
 -- Same null-auth guard as join_session, for the same reason.
 create or replace function public.request_to_join_session(p_session uuid)
 returns void language plpgsql security definer set search_path = public as $$
-declare v_user uuid := auth.uid(); v_owner uuid; v_group uuid;
+declare v_user uuid := auth.uid(); v_owner uuid; v_gym text; v_group uuid;
 begin
   if v_user is null then raise exception 'Not authenticated'; end if;
-  select s.user_id, s.group_id into v_owner, v_group from sessions s where s.id = p_session;
+  select s.user_id, nullif(trim(s.location), ''), s.group_id into v_owner, v_gym, v_group from sessions s where s.id = p_session;
   if v_owner is null then raise exception 'No such session'; end if;
   if v_owner = v_user then raise exception 'That is already your session'; end if;
+  if v_gym is null then raise exception 'That session has no gym to share'; end if;
   if v_group is not null and session_group_verdict_is_out(v_group) then
     raise exception 'VERDICT_OUT: the awards for that session are already in';
   end if;
@@ -135,28 +161,41 @@ end; $$;
 -- joined": the group gets created here if it still does not exist.
 --
 -- v_user captures auth.uid() and the ownership check uses `is distinct from`
--- rather than `<>`: with the un-hardened `if v_owner is null or v_owner <>
--- auth.uid()`, an unauthenticated caller makes `auth.uid()` NULL, so
--- `v_owner <> auth.uid()` evaluates to NULL, the whole OR-condition can evaluate
--- to NULL instead of true, and plpgsql treats a NULL `if` condition as false —
--- silently skipping the "Only the session owner can approve" guard instead of
--- raising it. Migration 080 hit exactly this and fixed it with `is distinct
+-- rather than `<>`: with the un-hardened `v_owner <> auth.uid()`, an
+-- unauthenticated caller makes `auth.uid()` NULL, so the comparison evaluates
+-- to NULL, and plpgsql treats a NULL `if` condition as false — silently
+-- skipping the "Only the session owner can approve" guard instead of raising
+-- it. `is distinct from` already covers a NULL v_owner (no such session), which
+-- is why that case is raised separately above rather than folded into this
+-- disjunct. Migration 080 hit exactly this and fixed it with `is distinct
 -- from`; the same fix applies here.
 create or replace function public.approve_join_request(p_session uuid, p_user uuid)
 returns void language plpgsql security definer set search_path = public as $$
 declare v_user uuid := auth.uid(); v_owner uuid; v_date date; v_gym text; v_group uuid;
 begin
   if v_user is null then raise exception 'Not authenticated'; end if;
+
+  -- for update: this call can create the group exactly like join_session does,
+  -- so it needs the identical lock against a simultaneous join/approve on the
+  -- same group-less session -- see join_session above.
   select s.user_id, s.date, nullif(trim(s.location), ''), s.group_id
     into v_owner, v_date, v_gym, v_group
-    from sessions s where s.id = p_session;
-  if v_owner is null or v_owner is distinct from v_user then
+    from sessions s where s.id = p_session
+    for update;
+  if v_owner is null then raise exception 'No such session'; end if;
+  if v_owner is distinct from v_user then
     raise exception 'Only the session owner can approve';
   end if;
   if not exists (select 1 from session_join_requests where session_id = p_session and user_id = p_user) then
     raise exception 'No such request';
   end if;
   if v_gym is null then raise exception 'That session has no gym to share'; end if;
+
+  -- Only an already-existing group can have a verdict out; a group this call is
+  -- about to create cannot, so this must come before the group-creation block.
+  if v_group is not null and session_group_verdict_is_out(v_group) then
+    raise exception 'VERDICT_OUT: the awards for that session are already in';
+  end if;
 
   if v_group is null then
     insert into session_groups (date, gym, created_by) values (v_date, v_gym, v_owner)
@@ -166,12 +205,31 @@ begin
 
   -- The approved climber may already have logged that evening themselves; leaving
   -- their existing session alone and adding a second one is the out-of-scope merge
-  -- case, so attach the one they have rather than duplicating it.
-  if exists (select 1 from sessions where user_id = p_user and date = v_date and trim(location) = v_gym and group_id is null) then
+  -- case, so attach the one they have rather than duplicating it. Case-insensitive
+  -- and scoped to ungrouped sessions only, for the same reason as join_session's
+  -- ALREADY_LOGGED guard.
+  if exists (
+    select 1 from sessions
+     where user_id = p_user and date = v_date and lower(trim(location)) = lower(v_gym)
+       and group_id is null
+  ) then
+    -- Constrained to a single row via the id subquery + limit 1: a climber with
+    -- two ungrouped sessions that day at that gym must not have both matched,
+    -- which would violate the partial unique index on (group_id, user_id).
     update sessions set group_id = v_group
-     where user_id = p_user and date = v_date and trim(location) = v_gym and group_id is null;
+     where id = (
+       select id from sessions
+        where user_id = p_user and date = v_date and lower(trim(location)) = lower(v_gym)
+          and group_id is null
+        order by created_at
+        limit 1
+     );
   elsif not exists (select 1 from sessions where user_id = p_user and group_id = v_group) then
-    insert into sessions (user_id, date, location, group_id) values (p_user, v_date, v_gym, v_group);
+    -- on conflict: mirrors join_session's recovery for a concurrent duplicate
+    -- call against the partial unique index on (group_id, user_id).
+    insert into sessions (user_id, date, location, group_id)
+      values (p_user, v_date, v_gym, v_group)
+      on conflict (group_id, user_id) where group_id is not null do nothing;
   end if;
 
   delete from session_join_requests where session_id = p_session and user_id = p_user;
@@ -198,3 +256,13 @@ end; $$;
 -- between "Join" and "Ask to join" before the user taps anything. It leaks only one
 -- boolean about the caller's own crew overlap, which the caller could compute from
 -- their own crew rosters anyway.
+
+-- session_group_verdict_is_out is referenced only from join_session and
+-- approve_join_request above, never from an RLS policy, so it is safe to close
+-- off. As established in 079: revoking only `from anon, authenticated` leaves
+-- the PUBLIC grant standing (CREATE FUNCTION grants EXECUTE to PUBLIC by
+-- default), so it must also be revoked `from public` to actually close it off.
+-- The `from anon, authenticated` revoke is kept too, redundant but explicit
+-- about which roles this is defending against.
+revoke execute on function public.session_group_verdict_is_out(uuid) from anon, authenticated;
+revoke execute on function public.session_group_verdict_is_out(uuid) from public;
