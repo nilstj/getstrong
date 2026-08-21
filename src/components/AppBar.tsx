@@ -47,7 +47,7 @@ export function AppBar() {
             <ArrowLeft size={20} strokeWidth={1.75} />
           </button>
         ) : (
-          <Link to="/dashboard" className="px-2 text-base font-black tracking-tight text-sage-800">GetStrong</Link>
+          <Link to="/dashboard" className="px-2 text-base font-black tracking-tight text-sage-800">MoreSends</Link>
         )}
 
         <button

@@ -36,7 +36,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-black tracking-tight text-center mb-8 text-sage-800">GetStrong</h1>
+        <h1 className="text-3xl font-black tracking-tight text-center mb-8 text-sage-800">MoreSends</h1>
 
         <div className="flex rounded-2xl overflow-hidden border mb-6">
           {(['login', 'register'] as const).map(t => (

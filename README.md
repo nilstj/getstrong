@@ -1,2 +1,2 @@
-# getstrong
+# MoreSends
 training for bouldering
