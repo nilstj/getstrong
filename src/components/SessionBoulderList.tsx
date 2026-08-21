@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Check } from 'lucide-react'
+import { Plus, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { HoldGraphic, ProblemColorIcons } from './Chip'
 import { BottomSheet } from './BottomSheet'
@@ -44,6 +44,12 @@ export function SessionBoulderList({
   const setEntry = useSetMyBoulderEntry()
   const [pickerOpen, setPickerOpen] = useState(false)
   const addBoulder = useAddGroupBoulder()
+  // null until the user explicitly toggles the section; the latched default
+  // applies until then.
+  const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null)
+  // null until the group row has loaded and a default has been latched (see
+  // below); true/false thereafter, and never reset.
+  const [latchedDefaultCollapsed, setLatchedDefaultCollapsed] = useState<boolean | null>(null)
   const { user } = useAuth()
   const boulderIds = boulders.map(b => b.id)
   const { data: companionData } = useGroupBoulderEntries(boulderIds)
@@ -66,6 +72,19 @@ export function SessionBoulderList({
   const isCreator = group?.created_by === user?.id
   const hasMarkedAny = rows.some(row => row.entryId !== null)
   const sectionState = boulderSectionState({ groupLoaded, isCreator, hasMarkedAny })
+
+  // Latch the collapsed default once, the first time the group row has
+  // loaded, from sectionState at that moment -- and never again. sectionState
+  // flips 'add' -> 'list' the instant the user ticks their first boulder; if
+  // collapsed-ness were derived from it on every render, the list would slam
+  // shut mid-interaction. Before the row loads, groupLoaded is false and
+  // nothing is latched (this guard fires exactly once: `latchedDefaultCollapsed`
+  // is only ever null beforehand). A user's own toggle (userCollapsed) always
+  // wins over this latched default.
+  if (groupLoaded && latchedDefaultCollapsed === null) {
+    setLatchedDefaultCollapsed(sectionState === 'list')
+  }
+  const collapsed = sectionState === 'list' && (userCollapsed ?? latchedDefaultCollapsed ?? false)
 
   const save = (
     row: (typeof rows)[number],
@@ -95,97 +114,115 @@ export function SessionBoulderList({
             </p>
           </>
         ) : (
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-base font-semibold">Boulders ({boulders.length})</h2>
-            <span className="text-xs font-semibold text-gray-400 tabular-nums">{summary.label}</span>
-          </div>
+          // The heading wraps the button rather than the reverse: <h2> takes
+          // phrasing content, so a <button> inside it is valid, while an <h2>
+          // inside a <button> is not -- and this keeps the section reachable by
+          // heading navigation in both states.
+          <h2>
+            <button
+              type="button"
+              onClick={() => setUserCollapsed(!collapsed)}
+              aria-expanded={!collapsed}
+              className="flex w-full min-h-11 items-center justify-between gap-2"
+            >
+              <span className="flex items-center gap-1.5">
+                {collapsed ? <ChevronRight size={16} strokeWidth={2.25} /> : <ChevronDown size={16} strokeWidth={2.25} />}
+                <span className="text-base font-semibold">Boulders ({boulders.length})</span>
+              </span>
+              <span className="text-xs font-semibold text-gray-400 tabular-nums">{summary.label}</span>
+            </button>
+          </h2>
         )}
       </div>
 
-      <div className="space-y-2">
-        {rows.map(row => {
-          const chip = CHIP[row.status]
-          const companion = companions[row.boulder.id]
-          const line = companion
-            ? companionLine(
-                companion.sentIds.map(id => namesById[id] ?? 'Someone'),
-                companion.projectingIds.map(id => namesById[id] ?? 'Someone'),
-              )
-            : null
-          return (
-            <div
-              key={row.boulder.id}
-              className={`rounded-2xl p-3 border ${row.status === 'none' ? 'bg-white border-dashed border-gray-300' : 'bg-gray-50 border-gray-100'}`}
-            >
-              <div className="flex items-start gap-2.5">
-                <div className="w-14 h-14 rounded-xl bg-gray-100 grid place-items-center flex-shrink-0">
-                  {row.boulder.image_url
-                    ? <img src={row.boulder.image_url} alt="" className="w-full h-full object-cover rounded-xl" />
-                    : <HoldGraphic color={row.boulder.hold_color} size={36} />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {row.boulder.grade_value && (
-                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold tracking-tight bg-sage-700 text-white">
-                        {row.boulder.grade_value}
-                      </span>
-                    )}
-                    <ProblemColorIcons color={row.boulder.color} holdColor={row.boulder.hold_color} size={16} />
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${chip.className}`}>
-                      {chip.label}
-                    </span>
+      {!collapsed && (
+        <>
+          <div className="space-y-2">
+            {rows.map(row => {
+              const chip = CHIP[row.status]
+              const companion = companions[row.boulder.id]
+              const line = companion
+                ? companionLine(
+                    companion.sentIds.map(id => namesById[id] ?? 'Someone'),
+                    companion.projectingIds.map(id => namesById[id] ?? 'Someone'),
+                  )
+                : null
+              return (
+                <div
+                  key={row.boulder.id}
+                  className={`rounded-2xl p-3 border ${row.status === 'none' ? 'bg-white border-dashed border-gray-300' : 'bg-gray-50 border-gray-100'}`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-14 h-14 rounded-xl bg-gray-100 grid place-items-center flex-shrink-0">
+                      {row.boulder.image_url
+                        ? <img src={row.boulder.image_url} alt="" className="w-full h-full object-cover rounded-xl" />
+                        : <HoldGraphic color={row.boulder.hold_color} size={36} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {row.boulder.grade_value && (
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold tracking-tight bg-sage-700 text-white">
+                            {row.boulder.grade_value}
+                          </span>
+                        )}
+                        <ProblemColorIcons color={row.boulder.color} holdColor={row.boulder.hold_color} size={16} />
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${chip.className}`}>
+                          {chip.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        {row.attempts === 0 ? 'no tries logged' : `${row.attempts} ${row.attempts === 1 ? 'try' : 'tries'}`}
+                      </p>
+                      {line && (
+                        <p className="text-xs text-gray-500 mt-0.5">{line}</p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    {row.attempts === 0 ? 'no tries logged' : `${row.attempts} ${row.attempts === 1 ? 'try' : 'tries'}`}
-                  </p>
-                  {line && (
-                    <p className="text-xs text-gray-500 mt-0.5">{line}</p>
-                  )}
+
+                  <div className="flex items-center gap-2 mt-2.5">
+                    <button
+                      type="button"
+                      disabled={setEntry.isPending || !gymKnown}
+                      onClick={() => save(row, { attempts: row.attempts + 1, sent: row.status === 'sent' })}
+                      className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white border border-gray-200 text-gray-600 text-sm font-semibold disabled:opacity-50"
+                    >
+                      <Plus size={15} strokeWidth={2.25} />
+                      {row.attempts === 0 ? 'Add a try' : `${row.attempts} ${row.attempts === 1 ? 'try' : 'tries'}`}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={setEntry.isPending || !gymKnown}
+                      onClick={() => save(row, {
+                        attempts: row.attempts === 0 ? 1 : row.attempts,
+                        sent: row.status !== 'sent',
+                      })}
+                      aria-pressed={row.status === 'sent'}
+                      className={`min-h-11 min-w-11 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold disabled:opacity-50 ${
+                        row.status === 'sent'
+                          ? 'bg-sage-50 border-sage-300 text-sage-800'
+                          : 'bg-white border-gray-200 text-gray-400'
+                      }`}
+                    >
+                      <Check size={16} strokeWidth={2.5} />
+                      Sent
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )
+            })}
+          </div>
 
-              <div className="flex items-center gap-2 mt-2.5">
-                <button
-                  type="button"
-                  disabled={setEntry.isPending || !gymKnown}
-                  onClick={() => save(row, { attempts: row.attempts + 1, sent: row.status === 'sent' })}
-                  className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white border border-gray-200 text-gray-600 text-sm font-semibold disabled:opacity-50"
-                >
-                  <Plus size={15} strokeWidth={2.25} />
-                  {row.attempts === 0 ? 'Add a try' : `${row.attempts} ${row.attempts === 1 ? 'try' : 'tries'}`}
-                </button>
-                <button
-                  type="button"
-                  disabled={setEntry.isPending || !gymKnown}
-                  onClick={() => save(row, {
-                    attempts: row.attempts === 0 ? 1 : row.attempts,
-                    sent: row.status !== 'sent',
-                  })}
-                  aria-pressed={row.status === 'sent'}
-                  className={`min-h-11 min-w-11 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold disabled:opacity-50 ${
-                    row.status === 'sent'
-                      ? 'bg-sage-50 border-sage-300 text-sage-800'
-                      : 'bg-white border-gray-200 text-gray-400'
-                  }`}
-                >
-                  <Check size={16} strokeWidth={2.5} />
-                  Sent
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <button
-        type="button"
-        disabled={!gymKnown}
-        onClick={() => setPickerOpen(true)}
-        className="w-full min-h-12 mt-2 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-gray-300 text-gray-600 text-sm font-semibold disabled:opacity-50"
-      >
-        <Plus size={16} strokeWidth={2.25} />
-        Add a boulder to the session
-      </button>
+          <button
+            type="button"
+            disabled={!gymKnown}
+            onClick={() => setPickerOpen(true)}
+            className="w-full min-h-12 mt-2 inline-flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-gray-300 text-gray-600 text-sm font-semibold disabled:opacity-50"
+          >
+            <Plus size={16} strokeWidth={2.25} />
+            Add a boulder to the session
+          </button>
+        </>
+      )}
 
       <BottomSheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Add a boulder">
         <p className="text-xs text-gray-500 mb-3 leading-relaxed">
