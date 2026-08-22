@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Play, Trophy } from 'lucide-react'
+import { ArrowLeft, Play, Trophy, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { useSessionProblems } from '../hooks/useProblems'
 import { useSessionChallengeAttempts } from '../hooks/useChallenges'
@@ -13,11 +13,29 @@ import { VideoBadge } from '../components/VideoBadge'
 import { SetterBadge } from '../components/SetterBadge'
 import { WatchVideoLink } from '../components/WatchVideoLink'
 import type { Problem } from '../types'
+import type { BoulderNavState } from '../utils/boulderNav'
 
 function SendBadge({ p }: { p: Problem }) {
   if (!p.sent) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-200 text-gray-600">Project</span>
   if (p.attempts === 1) return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-yellow-300 text-yellow-900">Flash ⚡</span>
   return <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Sent</span>
+}
+
+/** The part of a problem row that reads the same whether or not the problem was
+ *  published: grade, colours, how it went, and the climber's own note. */
+function ProblemInfo({ p }: { p: Problem }) {
+  return (
+    <>
+      <div className="flex items-center gap-2 flex-wrap">
+        {(p.grade_value_font ?? p.grade_value) && (
+          <Chip label={(p.grade_value_font ?? p.grade_value)!} variant="grade" />
+        )}
+        <ProblemColorIcons color={p.color} holdColor={p.hold_color} size={16} />
+        <SendBadge p={p} />
+      </div>
+      {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
+    </>
+  )
 }
 
 export function FriendSessionPage() {
@@ -41,6 +59,15 @@ export function FriendSessionPage() {
     })),
     challenges: attempts.map((a): FriendActivityRow => ({ user_id: a.user_id, session_id: a.session_id, created_at: a.created_at })),
   })
+
+  // Paging state for the boulder page, built from this session's published
+  // boulders in display order -- the same affordance the Gym problems list
+  // passes, so prev/next walks the friend's shared boulders from here too.
+  const navState: BoulderNavState = {
+    boulderIds: problems
+      .map(p => p.gym_problem_id)
+      .filter((id): id is string => !!id),
+  }
 
   const firstCreated = problems[0]?.created_at ?? attempts[0]?.created_at
   const date = (() => {
@@ -72,7 +99,12 @@ export function FriendSessionPage() {
       {problems.length > 0 && (
         <div className="px-4 space-y-2">
           {problems.map(p => (
-            <div key={p.id} className="flex gap-3 bg-gray-50 rounded-2xl p-3">
+            <div
+              key={p.id}
+              className={`flex gap-3 bg-gray-50 rounded-2xl p-3 ${
+                p.gym_problem_id ? 'hover:bg-gray-100 transition-colors' : ''
+              }`}
+            >
               <div className="relative flex-shrink-0">
                 {p.image_url ? (
                   <button type="button" onClick={() => setLightbox(p.image_url!)}
@@ -98,14 +130,26 @@ export function FriendSessionPage() {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(p.grade_value_font ?? p.grade_value) && (
-                    <Chip label={(p.grade_value_font ?? p.grade_value)!} variant="grade" />
-                  )}
-                  <ProblemColorIcons color={p.color} holdColor={p.hold_color} size={16} />
-                  <SendBadge p={p} />
-                </div>
-                {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
+                {/* A published problem is a doorway to the shared boulder, where
+                    the beta lives -- so it becomes a link to /gym-problems/:id,
+                    with the same hover state and trailing chevron as the rows on
+                    the Gym problems list. The photo button and the video link
+                    stay siblings of that link rather than children: nesting
+                    either inside an <a> is invalid markup and swallows the tap. */}
+                {p.gym_problem_id ? (
+                  <Link
+                    to={`/gym-problems/${p.gym_problem_id}`}
+                    state={navState}
+                    className="block min-h-11 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500"
+                  >
+                    <ProblemInfo p={p} />
+                    <span className="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-sage-700">
+                      Gym problem <ChevronRight size={12} strokeWidth={2.5} />
+                    </span>
+                  </Link>
+                ) : (
+                  <ProblemInfo p={p} />
+                )}
                 {p.beta_video_url && <WatchVideoLink href={p.beta_video_url} className="mt-1" />}
               </div>
             </div>
