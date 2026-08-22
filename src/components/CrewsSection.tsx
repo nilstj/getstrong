@@ -26,8 +26,12 @@ function BoulderRow({ b, boulderIds, archived = false }: { b: BoulderSummary; bo
         <GymThumb gym={b.gym} compact className="w-11 h-11 rounded-lg flex-shrink-0" />
       )}
       <div className="flex-1 min-w-0">
+        {/* The grade alone. This used to lead with boulderTitle ("Black · 6A"),
+            but `name` and `wall_angle` are written null everywhere now, so that
+            reduced to the colour word -- which ProblemColorIcons on this same
+            row already shows as a swatch, and names for screen readers. */}
         <p className="text-sm font-medium text-gray-800 truncate">
-          {b.title}{b.community_grade ? ` · ${b.community_grade}` : ''}
+          {b.community_grade ?? 'No grade yet'}
         </p>
         <p className="text-xs text-gray-400 truncate">{b.gym}</p>
       </div>
