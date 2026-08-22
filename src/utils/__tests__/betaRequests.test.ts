@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildBetaRequests } from '../betaRequests'
+import { buildBetaRequests, betaRequestKey, visibleBetaRequests, pruneDismissals } from '../betaRequests'
+import type { BetaRequest } from '../betaRequests'
 import type { BoulderSummary } from '../../types'
 
 function boulder(id: string): BoulderSummary {
@@ -106,5 +107,76 @@ describe('buildBetaRequests', () => {
     expect(buildBetaRequests(
       [row('gp1', 'u1', '2026-07-20T10:00:00+00:00')], [], profiles, 'me',
     )).toEqual([])
+  })
+})
+
+describe('betaRequestKey', () => {
+  it('is per ask, not per boulder -- two climbers stuck on the same one are two asks', () => {
+    expect(betaRequestKey('b1', 'u1')).not.toBe(betaRequestKey('b1', 'u2'))
+  })
+
+  it('is stable for the same ask', () => {
+    expect(betaRequestKey('b1', 'u1')).toBe(betaRequestKey('b1', 'u1'))
+  })
+})
+
+describe('visibleBetaRequests', () => {
+  const ask = (gymProblemId: string, askerId: string): BetaRequest => ({
+    gymProblemId, askerId, askerName: askerId, note: null, createdAt: '2026-08-01T00:00:00+00:00',
+    boulder: { id: gymProblemId } as BetaRequest['boulder'],
+  })
+
+  it('hides a dismissed ask', () => {
+    const out = visibleBetaRequests([ask('b1', 'u1')], new Set([betaRequestKey('b1', 'u1')]))
+    expect(out).toEqual([])
+  })
+
+  it('keeps another climber stuck on the same boulder', () => {
+    const out = visibleBetaRequests(
+      [ask('b1', 'u1'), ask('b1', 'u2')],
+      new Set([betaRequestKey('b1', 'u1')]),
+    )
+    expect(out.map(r => r.askerId)).toEqual(['u2'])
+  })
+
+  it('keeps the same climber stuck on a different boulder', () => {
+    const out = visibleBetaRequests(
+      [ask('b1', 'u1'), ask('b2', 'u1')],
+      new Set([betaRequestKey('b1', 'u1')]),
+    )
+    expect(out.map(r => r.gymProblemId)).toEqual(['b2'])
+  })
+
+  it('keeps everything when nothing is dismissed', () => {
+    const rows = [ask('b1', 'u1'), ask('b2', 'u2')]
+    expect(visibleBetaRequests(rows, new Set())).toEqual(rows)
+  })
+})
+
+describe('pruneDismissals', () => {
+  const now = new Date('2026-08-22T12:00:00Z')
+
+  it('keeps a recent dismissal', () => {
+    expect(pruneDismissals({ 'b1:u1': '2026-08-20T12:00:00Z' }, now))
+      .toEqual({ 'b1:u1': '2026-08-20T12:00:00Z' })
+  })
+
+  it('drops one older than the window, so the store cannot grow forever', () => {
+    expect(pruneDismissals({ 'b1:u1': '2026-01-01T12:00:00Z' }, now)).toEqual({})
+  })
+
+  it('drops an unparseable timestamp rather than keeping it forever', () => {
+    expect(pruneDismissals({ 'b1:u1': 'not a date' }, now)).toEqual({})
+    expect(pruneDismissals({ 'b1:u1': '' }, now)).toEqual({})
+  })
+
+  it('honours a custom window', () => {
+    expect(pruneDismissals({ 'b1:u1': '2026-08-20T12:00:00Z' }, now, 1)).toEqual({})
+  })
+
+  it('does not mutate the input', () => {
+    const input = { 'b1:u1': '2026-01-01T12:00:00Z' }
+    pruneDismissals(input, now)
+    expect(input).toEqual({ 'b1:u1': '2026-01-01T12:00:00Z' })
   })
 })

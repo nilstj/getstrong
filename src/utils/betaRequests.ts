@@ -40,3 +40,50 @@ export function buildBetaRequests(
     }))
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
 }
+
+/**
+ * A dismissal is per ask, not per boulder: two climbers stuck on the same
+ * boulder are two separate asks, and hiding one must leave the other standing.
+ */
+export function betaRequestKey(gymProblemId: string, askerId: string): string {
+  return `${gymProblemId}:${askerId}`
+}
+
+/**
+ * The asks still worth showing this viewer.
+ *
+ * Dismissing means "not me, I don't know this one" -- it hides the ask from the
+ * viewer's own home page and does NOT touch `resolved_at`. Only the asker owns
+ * that: closing someone else's request for help because you personally can't
+ * answer it would cancel it for every climber who could.
+ */
+export function visibleBetaRequests(
+  requests: BetaRequest[],
+  dismissedKeys: Set<string>,
+): BetaRequest[] {
+  return requests.filter(r => !dismissedKeys.has(betaRequestKey(r.gymProblemId, r.askerId)))
+}
+
+/**
+ * Drops dismissals older than `maxAgeDays`, so the stored map stays bounded
+ * however long someone uses the app. An unparseable timestamp is dropped too:
+ * keeping it would hide that ask forever with no way to tell how old the
+ * decision was.
+ *
+ * The window also gives a long-unanswered ask one more chance to be seen -- a
+ * boulder usually turns over well before then, so in practice a dismissal
+ * outlives the thing it hid.
+ */
+export function pruneDismissals(
+  entries: Record<string, string>,
+  now: Date,
+  maxAgeDays = 90,
+): Record<string, string> {
+  const cutoff = now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000
+  const out: Record<string, string> = {}
+  for (const [key, at] of Object.entries(entries)) {
+    const t = new Date(at).getTime()
+    if (Number.isFinite(t) && t >= cutoff) out[key] = at
+  }
+  return out
+}
