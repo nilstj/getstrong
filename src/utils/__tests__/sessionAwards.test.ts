@@ -1,23 +1,25 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
-import { awardTally, tagTally, donkeyStreak, awardsStartCollapsed, awardsSummary } from '../sessionAwards'
-import type { AwardVoteRow, AwardHistoryRow } from '../sessionAwards'
+import { describe, it, expect } from 'vitest'
+import { awardTally, tagTally, awardsStartCollapsed, awardsSummary } from '../sessionAwards'
+import type { AwardVoteRow } from '../sessionAwards'
 
 const vote = (kind: 'goat' | 'donkey', voter: string, subject: string): AwardVoteRow =>
   ({ kind, voter_id: voter, subject_id: subject })
 
 describe('awardTally', () => {
   it('has no winner with no votes', () => {
-    expect(awardTally([], 'goat')).toEqual({ winners: [], counts: {}, topCount: 0 })
+    expect(awardTally([])).toEqual({ winners: [], counts: {}, topCount: 0 })
   })
 
-  it('counts only the requested award', () => {
+  // The donkey award is gone, but rounds voted on before it went still hold
+  // 'donkey' rows -- counting them would credit a GOAT vote nobody cast.
+  it('ignores the retired donkey rows older rounds still hold', () => {
     const votes = [vote('goat', 'a', 'ida'), vote('donkey', 'a', 'nils')]
-    expect(awardTally(votes, 'goat')).toEqual({ winners: ['ida'], counts: { ida: 1 }, topCount: 1 })
+    expect(awardTally(votes)).toEqual({ winners: ['ida'], counts: { ida: 1 }, topCount: 1 })
   })
 
   it('picks the climber with the most votes', () => {
     const votes = [vote('goat', 'a', 'ida'), vote('goat', 'b', 'ida'), vote('goat', 'c', 'thea')]
-    const r = awardTally(votes, 'goat')
+    const r = awardTally(votes)
     expect(r.winners).toEqual(['ida'])
     expect(r.topCount).toBe(2)
     expect(r.counts).toEqual({ ida: 2, thea: 1 })
@@ -25,12 +27,12 @@ describe('awardTally', () => {
 
   it('awards everyone tied — a split verdict, never an arbitrary pick', () => {
     const votes = [vote('goat', 'a', 'ida'), vote('goat', 'b', 'thea')]
-    expect(awardTally(votes, 'goat').winners.slice().sort()).toEqual(['ida', 'thea'])
+    expect(awardTally(votes).winners.slice().sort()).toEqual(['ida', 'thea'])
   })
 
   it('orders tied winners by who was voted for first, which is the order they display in', () => {
     const votes = [vote('goat', 'a', 'thea'), vote('goat', 'b', 'ida')]
-    expect(awardTally(votes, 'goat').winners).toEqual(['thea', 'ida'])
+    expect(awardTally(votes).winners).toEqual(['thea', 'ida'])
   })
 })
 
@@ -62,86 +64,19 @@ describe('tagTally', () => {
   })
 })
 
-describe('donkeyStreak', () => {
-  // A fixed "now" (a Tuesday) so week math is deterministic.
-  const now = new Date('2026-08-18T12:00:00Z')
-  const donkey = (round: string, date: string, subject: string, votes = 2): AwardHistoryRow =>
-    ({ round_id: round, round_date: date, kind: 'donkey', subject_id: subject, votes })
-
-  it('is 0 with no history', () => {
-    expect(donkeyStreak([], 'nils', now)).toBe(0)
-  })
-
-  it('counts this week when the user is this week’s donkey', () => {
-    expect(donkeyStreak([donkey('r1', '2026-08-17', 'nils')], 'nils', now)).toBe(1)
-  })
-
-  it('counts consecutive weeks', () => {
-    const rows = [
-      donkey('r1', '2026-08-17', 'nils'),
-      donkey('r2', '2026-08-10', 'nils'),
-      donkey('r3', '2026-08-03', 'nils'),
-    ]
-    expect(donkeyStreak(rows, 'nils', now)).toBe(3)
-  })
-
-  it('breaks the streak on a week someone else was donkey', () => {
-    const rows = [
-      donkey('r1', '2026-08-17', 'nils'),
-      donkey('r2', '2026-08-10', 'ida'),
-      donkey('r3', '2026-08-03', 'nils'),
-    ]
-    expect(donkeyStreak(rows, 'nils', now)).toBe(1)
-  })
-
-  it('ignores GOAT rows entirely', () => {
-    const rows: AwardHistoryRow[] = [
-      { round_id: 'r1', round_date: '2026-08-17', kind: 'goat', subject_id: 'nils', votes: 3 },
-    ]
-    expect(donkeyStreak(rows, 'nils', now)).toBe(0)
-  })
-
-  it('counts a tied donkey week for everyone tied', () => {
-    const rows = [donkey('r1', '2026-08-17', 'nils', 1), donkey('r1', '2026-08-17', 'ida', 1)]
-    expect(donkeyStreak(rows, 'nils', now)).toBe(1)
-    expect(donkeyStreak(rows, 'ida', now)).toBe(1)
-  })
-
-  // The rest of this file's round_dates all land on a Monday-Saturday, which is
-  // exactly why the bug below was invisible: `new Date(round_date)` parses a
-  // bare 'YYYY-MM-DD' as UTC midnight, and shifting a Mon-Sat date backward by
-  // a few hours into a negative-offset timezone still lands on a day within
-  // that same Sun-Sat calendar week. A Sunday date is the one day where that
-  // backward shift crosses into the *previous* week (Sunday → Saturday), since
-  // Sunday is the first day of the week date-fns buckets by.
-  describe('in a negative-offset timezone', () => {
-    beforeAll(() => { vi.stubEnv('TZ', 'America/Los_Angeles') })
-    afterAll(() => { vi.unstubAllEnvs() })
-
-    it('keeps a streak running through a Sunday-dated round', () => {
-      // Un-normalised, '2026-08-16' (a Sunday, this week) parses as UTC
-      // midnight and reads back as Saturday 2026-08-15 in America/Los_Angeles
-      // — the last day of *last* week, not this week. That collapses onto the
-      // same week bucket as the '2026-08-11' (Tuesday, last week) round below,
-      // so the two donkey weeks are miscounted as one instead of two.
-      const rows = [
-        donkey('r1', '2026-08-11', 'nils'), // Tuesday, last week
-        donkey('r2', '2026-08-16', 'nils'), // Sunday, this week
-      ]
-      expect(donkeyStreak(rows, 'nils', now)).toBe(2)
-    })
-  })
-})
-
 describe('awardsStartCollapsed', () => {
   // The voting state is the only one that earns the page's whole height, and
   // only until you have actually voted -- everything else collapses to a line.
   it('expands while your vote is still missing', () => {
     expect(awardsStartCollapsed({ unlocked: false, amParticipant: true, myVotesCast: 0 })).toBe(false)
-    expect(awardsStartCollapsed({ unlocked: false, amParticipant: true, myVotesCast: 1 })).toBe(false)
   })
 
-  it('collapses once both your votes are in', () => {
+  it('collapses once your vote is in', () => {
+    expect(awardsStartCollapsed({ unlocked: false, amParticipant: true, myVotesCast: 1 })).toBe(true)
+  })
+
+  // An older round can hold a second, retired donkey vote of yours.
+  it('collapses on an older round that also holds a donkey vote', () => {
     expect(awardsStartCollapsed({ unlocked: false, amParticipant: true, myVotesCast: 2 })).toBe(true)
   })
 
@@ -151,18 +86,18 @@ describe('awardsStartCollapsed', () => {
 
   it('collapses once unlocked, because the verdict fits on the one line', () => {
     expect(awardsStartCollapsed({ unlocked: true, amParticipant: true, myVotesCast: 0 })).toBe(true)
-    expect(awardsStartCollapsed({ unlocked: true, amParticipant: true, myVotesCast: 2 })).toBe(true)
+    expect(awardsStartCollapsed({ unlocked: true, amParticipant: true, myVotesCast: 1 })).toBe(true)
   })
 })
 
 describe('awardsSummary', () => {
   const base = {
-    unlocked: false, amParticipant: true, myVotesCast: 2,
-    voted: 2, participants: 3, goatWinners: [], donkeyWinners: [],
+    unlocked: false, amParticipant: true, myVotesCast: 1,
+    voted: 2, participants: 3, goatWinners: [],
   }
 
   it('nudges you while your vote is missing, because there is a 24h clock', () => {
-    expect(awardsSummary({ ...base, myVotesCast: 1 })).toEqual({ kind: 'nudge' })
+    expect(awardsSummary({ ...base, myVotesCast: 0 })).toEqual({ kind: 'nudge' })
   })
 
   it('shows progress once you have voted', () => {
@@ -175,19 +110,17 @@ describe('awardsSummary', () => {
   })
 
   it('is the verdict once unlocked, so the payoff needs no expanding', () => {
-    expect(awardsSummary({
-      ...base, unlocked: true, goatWinners: ['Nils'], donkeyWinners: ['Ola'],
-    })).toEqual({ kind: 'verdict', goat: ['Nils'], donkey: ['Ola'] })
+    expect(awardsSummary({ ...base, unlocked: true, goatWinners: ['Nils'] }))
+      .toEqual({ kind: 'verdict', goat: ['Nils'] })
   })
 
   it('carries a split verdict through as both names', () => {
-    expect(awardsSummary({
-      ...base, unlocked: true, goatWinners: ['Nils', 'Ida'], donkeyWinners: [],
-    })).toEqual({ kind: 'verdict', goat: ['Nils', 'Ida'], donkey: [] })
+    expect(awardsSummary({ ...base, unlocked: true, goatWinners: ['Nils', 'Ida'] }))
+      .toEqual({ kind: 'verdict', goat: ['Nils', 'Ida'] })
   })
 
   it('is still a verdict when nobody voted, so the bar does not claim a winner', () => {
     expect(awardsSummary({ ...base, unlocked: true, voted: 0 }))
-      .toEqual({ kind: 'verdict', goat: [], donkey: [] })
+      .toEqual({ kind: 'verdict', goat: [] })
   })
 })

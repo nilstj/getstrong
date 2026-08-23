@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { profilesByIds } from '../lib/profiles'
 import { useAuth } from '../providers/AuthProvider'
 import type { AwardTag } from '../types'
-import type { AwardVoteRow, AwardTagRow, AwardHistoryRow } from '../utils/sessionAwards'
+import type { AwardVoteRow, AwardTagRow } from '../utils/sessionAwards'
 
 export interface AwardRoundState {
   round_id: string
@@ -17,12 +17,9 @@ export interface AwardRoundState {
   am_participant: boolean
   /** Every user id with live group membership for this round's session. */
   roster: string[]
-  /** NOT from `get_award_round` -- injected by `useAwardRoundForGroup` from the
-   *  round row. 083 derives the streak's crew onto `crew_award_rounds.crew_id`
-   *  (exactly one crew every climber shares, else null); `session_groups.crew_id`
-   *  is written by nothing, so reading the crew there would always be null. */
-  crew_id: string | null
-  /** Always present: what you personally submitted, so you can change it. */
+  /** Always present: what you personally submitted, so you can change it. A
+   *  vote's kind can still read 'donkey' on a round voted on before that award
+   *  was removed; nothing writes that kind any more. */
   mine: {
     votes: { kind: 'goat' | 'donkey'; subject_id: string }[]
     tags: AwardTagRow[]
@@ -66,14 +63,14 @@ export function useAwardRoundForGroup(groupId: string | null) {
     queryFn: async (): Promise<AwardRoundState | null> => {
       const { data: round, error } = await supabase
         .from('crew_award_rounds')
-        .select('id, crew_id')
+        .select('id')
         .eq('group_id', groupId)
         .maybeSingle()
       if (error) throw error
       if (!round) return null
       const { data, error: rErr } = await supabase.rpc('get_award_round', { p_round: round.id })
       if (rErr) throw rErr
-      return { ...(data as AwardRoundState), crew_id: round.crew_id as string | null }
+      return data as AwardRoundState
     },
   })
 }
@@ -85,31 +82,30 @@ export interface AwardReactionSummary {
   mine: boolean
 }
 
-/** Dig reactions on a round's GOAT and donkey verdict cards, by kind. */
+/** Dig reactions on a round's GOAT verdict card. Filtered on `kind` rather
+ *  than read whole: a round from before the donkey award was removed can still
+ *  hold digs aimed at that card, and those are not digs at the GOAT. */
 export function useAwardReactions(roundId: string | null) {
   const { user } = useAuth()
   return useQuery({
     queryKey: ['award_reactions', roundId],
     enabled: !!roundId,
-    queryFn: async (): Promise<Record<'goat' | 'donkey', AwardReactionSummary[]>> => {
+    queryFn: async (): Promise<AwardReactionSummary[]> => {
       const { data, error } = await supabase
         .from('crew_award_reactions')
-        .select('kind, emoji, user_id')
+        .select('emoji, user_id')
         .eq('round_id', roundId)
+        .eq('kind', 'goat')
       if (error) throw error
-      const rows = (data ?? []) as { kind: 'goat' | 'donkey'; emoji: string; user_id: string }[]
-      const byKind: Record<'goat' | 'donkey', Map<string, AwardReactionSummary>> = {
-        goat: new Map(),
-        donkey: new Map(),
-      }
+      const rows = (data ?? []) as { emoji: string; user_id: string }[]
+      const byEmoji = new Map<string, AwardReactionSummary>()
       for (const r of rows) {
-        const map = byKind[r.kind]
-        const entry = map.get(r.emoji) ?? { emoji: r.emoji, count: 0, mine: false }
+        const entry = byEmoji.get(r.emoji) ?? { emoji: r.emoji, count: 0, mine: false }
         entry.count += 1
         if (r.user_id === user?.id) entry.mine = true
-        map.set(r.emoji, entry)
+        byEmoji.set(r.emoji, entry)
       }
-      return { goat: Array.from(byKind.goat.values()), donkey: Array.from(byKind.donkey.values()) }
+      return Array.from(byEmoji.values())
     },
   })
 }
@@ -119,22 +115,20 @@ export function useToggleAwardReaction() {
   const qc = useQueryClient()
   const { user } = useAuth()
   return useMutation({
-    mutationFn: async (v: { roundId: string; kind: 'goat' | 'donkey'; emoji: string }) => {
-      const cached = qc.getQueryData<Record<'goat' | 'donkey', AwardReactionSummary[]>>([
-        'award_reactions', v.roundId,
-      ])
-      const mine = cached?.[v.kind]?.some(r => r.emoji === v.emoji && r.mine) ?? false
+    mutationFn: async (v: { roundId: string; emoji: string }) => {
+      const cached = qc.getQueryData<AwardReactionSummary[]>(['award_reactions', v.roundId])
+      const mine = cached?.some(r => r.emoji === v.emoji && r.mine) ?? false
 
       if (mine) {
         const { error } = await supabase
           .from('crew_award_reactions')
           .delete()
-          .eq('round_id', v.roundId).eq('user_id', user!.id).eq('kind', v.kind).eq('emoji', v.emoji)
+          .eq('round_id', v.roundId).eq('user_id', user!.id).eq('kind', 'goat').eq('emoji', v.emoji)
         if (error) throw error
       } else {
         const { error } = await supabase
           .from('crew_award_reactions')
-          .insert({ round_id: v.roundId, user_id: user!.id, kind: v.kind, emoji: v.emoji })
+          .insert({ round_id: v.roundId, user_id: user!.id, kind: 'goat', emoji: v.emoji })
         if (error && error.code !== '23505') throw error // ignore "already reacted"
       }
     },
@@ -145,9 +139,9 @@ export function useToggleAwardReaction() {
 export function useCastAwardVote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { roundId: string; groupId: string; kind: 'goat' | 'donkey'; subjectId: string }) => {
+    mutationFn: async (v: { roundId: string; groupId: string; subjectId: string }) => {
       const { error } = await supabase.rpc('cast_award_vote', {
-        p_round: v.roundId, p_kind: v.kind, p_subject: v.subjectId,
+        p_round: v.roundId, p_kind: 'goat', p_subject: v.subjectId,
       })
       if (error) throw error
     },
@@ -218,15 +212,3 @@ export function usePostAwardMessage() {
   })
 }
 
-/** Unlocked rounds' raw vote counts, for the repeat-donkey streak. */
-export function useCrewAwardHistory(crewId: string) {
-  return useQuery({
-    queryKey: ['award_history', crewId],
-    enabled: !!crewId,
-    queryFn: async (): Promise<AwardHistoryRow[]> => {
-      const { data, error } = await supabase.rpc('crew_award_history', { p_crew: crewId, p_limit: 12 })
-      if (error) throw error
-      return (data ?? []) as AwardHistoryRow[]
-    },
-  })
-}

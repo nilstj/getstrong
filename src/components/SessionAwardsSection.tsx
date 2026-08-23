@@ -3,24 +3,22 @@ import type { ReactNode } from 'react'
 import toast from 'react-hot-toast'
 import { Check, Clock, ChevronDown, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
-import { GoatIcon, DonkeyIcon } from './AwardIcons'
+import { GoatIcon } from './AwardIcons'
 import { AWARD_TAGS, type AwardTag } from '../types'
 import {
   useAwardRoundForGroup, useOpenAwardRound, useCastAwardVote, useToggleAwardTag,
-  useSetAwardNote, useAwardMessages, usePostAwardMessage, useCrewAwardHistory,
+  useSetAwardNote, useAwardMessages, usePostAwardMessage,
   useAwardReactions, useToggleAwardReaction,
 } from '../hooks/useSessionAwards'
 import { useGroupRoster } from '../hooks/useSessionGroup'
 import { useAuth } from '../providers/AuthProvider'
-import {
-  awardTally, tagTally, donkeyStreak, awardsStartCollapsed, awardsSummary,
-} from '../utils/sessionAwards'
+import { awardTally, tagTally, awardsStartCollapsed, awardsSummary } from '../utils/sessionAwards'
 import type { AwardsSummary } from '../utils/sessionAwards'
 import { errorMessage } from '../utils/errors'
 
 const tagMeta = (tag: AwardTag) => AWARD_TAGS.find(t => t.key === tag)
 
-/** The emoji set for digging at a GOAT or donkey verdict. Same vocabulary as
+/** The emoji set for digging at a GOAT verdict. Same vocabulary as
  *  ReactionDigBar's picker, but this surface has its own reactions table and
  *  toggle shape, so it gets its own small chip UI rather than reusing that
  *  component's like/comment/save-shaped props. */
@@ -29,7 +27,7 @@ const DIG_EMOJIS = ['🔥', '💪', '😂', '🐒', '🪨']
 const SECTION_HEADING = 'text-xs font-bold uppercase tracking-wide text-gray-400 mb-2'
 
 /**
- * The GOAT/donkey session awards, inline on the session page. A round belongs
+ * The GOAT session awards, inline on the session page. A round belongs
  * to the session's group, so this has three states: nobody has opened one yet,
  * one is open and taking votes, or it has unlocked into a verdict. A round
  * withholds votes/tags/notes from the client until `unlocked` -- the RPC is the
@@ -45,10 +43,6 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
   const { data: round, isError } = useAwardRoundForGroup(groupId)
   const { data: groupRoster = [] } = useGroupRoster(groupId)
   const openRound = useOpenAwardRound()
-  // Crew-scoped where a crew exists: 083 sets crew_award_rounds.crew_id only
-  // when every climber in the session shares exactly one crew. Null in a mixed
-  // group, which disables the query and leaves the streak absent by design.
-  const { data: history = [] } = useCrewAwardHistory(round?.crew_id ?? '')
   const castVote = useCastAwardVote()
   const toggleTag = useToggleAwardTag()
   const setNote = useSetAwardNote()
@@ -85,7 +79,7 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
       <div>
         <h2 className="text-base font-semibold">Session awards</h2>
         <p className="text-[13px] text-gray-500 mt-1 mb-2.5 leading-relaxed">
-          GOAT, donkey, and one line on each climber. Everyone in this session votes, and the
+          A GOAT vote and one line on each climber. Everyone in this session votes, and the
           verdict stays hidden until they all have — or 24h after voting opens.
         </p>
         <button
@@ -125,8 +119,7 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
   // The collapsed bar shows the verdict, so the tallies are needed before the
   // expanded/collapsed split. `votes` is absent until unlocked and
   // awardTally([]) yields no winners, so this is correct in both states.
-  const goat = awardTally(round.votes ?? [], 'goat')
-  const donkey = awardTally(round.votes ?? [], 'donkey')
+  const goat = awardTally(round.votes ?? [])
 
   // Latched once rather than derived every render: get_award_round refetches
   // after every vote, so a derived default would slam the section shut the
@@ -148,27 +141,23 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
     voted: round.voted,
     participants: round.participants,
     goatWinners: goat.winners.map(nameOf),
-    donkeyWinners: donkey.winners.map(nameOf),
   })
 
   const myGoat = round.mine.votes.find(v => v.kind === 'goat')?.subject_id ?? null
-  const myDonkey = round.mine.votes.find(v => v.kind === 'donkey')?.subject_id ?? null
   const myTags = new Set(round.mine.tags.map(t => `${t.subject_id}:${t.tag}`))
   const others = rosterPeople.filter(p => p.user_id !== user?.id)
-  const bothPicked = !!myGoat && !!myDonkey
-  const showFullPickers = !bothPicked || editingAwards
+  const showFullPickers = !myGoat || editingAwards
   const goatPerson = rosterPeople.find(p => p.user_id === myGoat)
-  const donkeyPerson = rosterPeople.find(p => p.user_id === myDonkey)
 
-  const vote = (kind: 'goat' | 'donkey', subjectId: string) => {
-    castVote.mutate({ roundId, groupId, kind, subjectId }, {
+  const vote = (subjectId: string) => {
+    castVote.mutate({ roundId, groupId, subjectId }, {
       onError: (e: unknown) => toast.error(errorMessage(e, 'Could not vote')),
     })
   }
 
   const tags = tagTally((round.tags ?? []).map(t => ({ subject_id: t.subject_id, tag: t.tag })))
   const notes = round.notes ?? []
-  const nobodyVoted = goat.winners.length === 0 && donkey.winners.length === 0
+  const nobodyVoted = goat.winners.length === 0
 
   return (
     <div>
@@ -234,23 +223,12 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
                     label="GOAT of the session"
                     hint="Who taught you the most. One vote."
                     icon={<GoatIcon size={17} />}
-                    accent="sage"
                     people={others}
                     picked={myGoat}
-                    onPick={id => vote('goat', id)}
+                    onPick={vote}
                   />
 
-                  <AwardPicker
-                    label="Donkey of the session"
-                    hint="Worst excuse, worst beta, worst timing. Be fair."
-                    icon={<DonkeyIcon size={17} />}
-                    accent="khaki"
-                    people={rosterPeople}
-                    picked={myDonkey}
-                    onPick={id => vote('donkey', id)}
-                  />
-
-                  {bothPicked && (
+                  {myGoat && (
                     <button
                       type="button"
                       onClick={() => setEditingAwards(false)}
@@ -262,20 +240,13 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
                 </>
               ) : (
                 <div className="flex items-center gap-2.5 bg-gray-50 rounded-2xl p-3">
-                  <span className="flex -space-x-2 flex-shrink-0">
-                    <span className="w-8 h-8 rounded-full bg-sage-700 border-2 border-white text-white grid place-items-center overflow-hidden">
-                      {goatPerson?.avatar_url
-                        ? <img src={goatPerson.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : <GoatIcon size={16} />}
-                    </span>
-                    <span className="w-8 h-8 rounded-full bg-khaki-600 border-2 border-white text-white grid place-items-center overflow-hidden">
-                      {donkeyPerson?.avatar_url
-                        ? <img src={donkeyPerson.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : <DonkeyIcon size={16} />}
-                    </span>
+                  <span className="w-8 h-8 rounded-full bg-sage-700 text-white grid place-items-center overflow-hidden flex-shrink-0">
+                    {goatPerson?.avatar_url
+                      ? <img src={goatPerson.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : <GoatIcon size={16} />}
                   </span>
                   <p className="flex-1 min-w-0 text-sm font-semibold text-gray-800 truncate">
-                    GOAT {goatPerson?.username ?? 'Someone'} · Donkey {donkeyPerson?.username ?? 'Someone'}
+                    GOAT {goatPerson?.username ?? 'Someone'}
                   </p>
                   <button
                     type="button"
@@ -379,12 +350,11 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
         <div className="space-y-5 mt-1">
           {nobodyVoted && (
             <p className="text-sm text-gray-400">
-              Nobody voted this time — the awards go unclaimed. Bold strategy.
+              Nobody voted this time — the GOAT goes unclaimed. Bold strategy.
             </p>
           )}
 
           <AwardWinner
-            kind="goat"
             label="GOAT of the session"
             winners={goat.winners.map(nameOf)}
             count={goat.topCount}
@@ -392,18 +362,6 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
             note={goat.winners.length === 1 ? notes.find(n => n.subject_id === goat.winners[0]) : undefined}
             nameOf={nameOf}
             roundId={roundId}
-          />
-
-          <AwardWinner
-            kind="donkey"
-            label="Donkey of the session"
-            winners={donkey.winners.map(nameOf)}
-            count={donkey.topCount}
-            total={round.participants}
-            note={donkey.winners.length === 1 ? notes.find(n => n.subject_id === donkey.winners[0]) : undefined}
-            nameOf={nameOf}
-            roundId={roundId}
-            streak={donkey.winners.length === 1 ? donkeyStreak(history, donkey.winners[0], new Date()) : 0}
           />
 
           <div>
@@ -422,9 +380,6 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
                     </span>
                     {goat.winners.includes(p.user_id) && (
                       <span className="text-[10px] font-bold uppercase tracking-wide text-sage-600 bg-sage-50 rounded-full px-2 py-0.5">GOAT</span>
-                    )}
-                    {donkey.winners.includes(p.user_id) && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-khaki-700 bg-khaki-100 rounded-full px-2 py-0.5">Donkey</span>
                     )}
                   </div>
 
@@ -460,23 +415,13 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
  *  payoff and fits on one line, so an unlocked round needs no expanding at all. */
 function AwardsSummaryChip({ summary, closesAt }: { summary: AwardsSummary; closesAt: string }) {
   if (summary.kind === 'verdict') {
-    if (summary.goat.length === 0 && summary.donkey.length === 0) {
+    if (summary.goat.length === 0) {
       return <span className="text-xs font-semibold text-gray-400">No verdict</span>
     }
     return (
-      <span className="flex min-w-0 items-center gap-2 text-xs font-semibold text-gray-700">
-        {summary.goat.length > 0 && (
-          <span className="flex min-w-0 items-center gap-1">
-            <GoatIcon size={13} />
-            <span className="truncate">{summary.goat.join(' & ')}</span>
-          </span>
-        )}
-        {summary.donkey.length > 0 && (
-          <span className="flex min-w-0 items-center gap-1">
-            <DonkeyIcon size={13} />
-            <span className="truncate">{summary.donkey.join(' & ')}</span>
-          </span>
-        )}
+      <span className="flex min-w-0 items-center gap-1 text-xs font-semibold text-gray-700">
+        <GoatIcon size={13} />
+        <span className="truncate">{summary.goat.join(' & ')}</span>
       </span>
     )
   }
@@ -497,9 +442,8 @@ function AwardsSummaryChip({ summary, closesAt }: { summary: AwardsSummary; clos
 }
 
 function AwardWinner({
-  kind, label, winners, count, total, note, nameOf, roundId, streak = 0,
+  label, winners, count, total, note, nameOf, roundId,
 }: {
-  kind: 'goat' | 'donkey'
   label: string
   winners: string[]
   count: number
@@ -507,64 +451,50 @@ function AwardWinner({
   note?: { voter_id: string; body: string }
   nameOf: (id: string) => string
   roundId: string
-  streak?: number
 }) {
   if (winners.length === 0) return null
-  const goat = kind === 'goat'
   const split = winners.length > 1
   return (
-    <div className={goat
-      ? 'bg-sage-50 border border-sage-100 rounded-2xl p-3.5'
-      : 'bg-khaki-100 border border-khaki-200 rounded-2xl p-3.5'}>
+    <div className="bg-sage-50 border border-sage-100 rounded-2xl p-3.5">
       <div className="flex items-center gap-3">
-        <span className={`w-11 h-11 rounded-full grid place-items-center text-white flex-shrink-0 ${goat ? 'bg-sage-700' : 'bg-khaki-600'}`}>
-          {goat ? <GoatIcon size={26} /> : <DonkeyIcon size={26} />}
+        <span className="w-11 h-11 rounded-full bg-sage-700 grid place-items-center text-white flex-shrink-0">
+          <GoatIcon size={26} />
         </span>
         <div className="flex-1 min-w-0">
-          <p className={`text-[10px] font-bold uppercase tracking-wider ${goat ? 'text-sage-600' : 'text-khaki-700'}`}>
-            {label}
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-sage-600">{label}</p>
           <p className="text-[17px] font-extrabold tracking-tight leading-snug truncate">
             {winners.join(' & ')}
           </p>
           {split && <p className="text-[11px] text-gray-500">Split verdict</p>}
         </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          {split ? (
-            <span className={`text-[15px] font-extrabold tabular-nums ${goat ? 'text-sage-700' : 'text-khaki-700'}`}>
-              {count} each
-            </span>
-          ) : (
-            <span className={`text-[15px] font-extrabold tabular-nums ${goat ? 'text-sage-700' : 'text-khaki-700'}`}>
-              {count}<span className="text-[11px] font-semibold text-gray-400">/{total}</span>
-            </span>
+        <span className="text-[15px] font-extrabold tabular-nums text-sage-700 flex-shrink-0">
+          {split ? `${count} each` : (
+            <>{count}<span className="text-[11px] font-semibold text-gray-400">/{total}</span></>
           )}
-          {streak > 1 && <span className="text-[10px] font-semibold text-khaki-600">{streak} weeks running 🏅</span>}
-        </div>
+        </span>
       </div>
       {note && (
-        <div className={`mt-3 border-l-2 pl-2.5 ${goat ? 'border-sage-200' : 'border-khaki-300'}`}>
+        <div className="mt-3 border-l-2 border-sage-200 pl-2.5">
           <p className="text-[13px] leading-snug text-gray-700">{note.body}</p>
           <p className="text-[11px] text-gray-400 mt-1">— {nameOf(note.voter_id)}</p>
         </div>
       )}
-      <AwardDigChips roundId={roundId} kind={kind} />
+      <AwardDigChips roundId={roundId} />
     </div>
   )
 }
 
-/** Dig chips on a GOAT/donkey verdict card. Same visual vocabulary and emoji
+/** Dig chips on the GOAT verdict card. Same visual vocabulary and emoji
  *  set as ReactionDigBar (rounded-full pill, sage when it's yours), but its
  *  own component: ReactionDigBar's props are shaped for a like/comment/save
  *  post, not a two-way toggle on a round's verdict. */
-function AwardDigChips({ roundId, kind }: { roundId: string; kind: 'goat' | 'donkey' }) {
-  const { data } = useAwardReactions(roundId)
+function AwardDigChips({ roundId }: { roundId: string }) {
+  const { data: reactions = [] } = useAwardReactions(roundId)
   const toggle = useToggleAwardReaction()
   const [pickerOpen, setPickerOpen] = useState(false)
-  const reactions = data?.[kind] ?? []
 
   const dig = (emoji: string) => {
-    toggle.mutate({ roundId, kind, emoji }, {
+    toggle.mutate({ roundId, emoji }, {
       onError: (e: unknown) => toast.error(errorMessage(e, 'Could not dig')),
     })
     setPickerOpen(false)
@@ -672,19 +602,18 @@ function SessionThread({ roundId }: { roundId: string }) {
 }
 
 function AwardPicker({
-  label, hint, icon, accent, people, picked, onPick,
+  label, hint, icon, people, picked, onPick,
 }: {
   label: string
   hint: string
   icon: ReactNode
-  accent: 'sage' | 'khaki'
   people: { user_id: string; username: string | null; avatar_url: string | null }[]
   picked: string | null
   onPick: (id: string) => void
 }) {
-  const badge = accent === 'sage' ? 'bg-sage-700' : 'bg-khaki-600'
-  const ring = accent === 'sage' ? 'ring-sage-700' : 'ring-khaki-600'
-  const avatar = accent === 'sage' ? 'bg-sage-100 text-sage-700' : 'bg-khaki-100 text-khaki-700'
+  const badge = 'bg-sage-700'
+  const ring = 'ring-sage-700'
+  const avatar = 'bg-sage-100 text-sage-700'
   return (
     <div>
       <div className="flex items-center gap-2">

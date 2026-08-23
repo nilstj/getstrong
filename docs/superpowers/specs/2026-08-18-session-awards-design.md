@@ -1,8 +1,30 @@
 # Session awards — GOAT, donkey, props and a session thread
 
 **Date:** 2026-08-18
-**Status:** design, approved from mockup
+**Status:** shipped, then amended — **the donkey award was removed on 2026-08-23**
 **Mockup:** https://claude.ai/code/artifact/755bc208-794e-4174-afc7-765b216621d3
+
+> **2026-08-23 — donkey removed.** Nominating a climber the session's worst was
+> cruel for what it paid back, and the caveat below says as much: it was the one
+> surface here that ranked a climber without any knowledge moving. The GOAT vote,
+> the props chips (`🩹 Worst excuse` and `🎥 Beta vulture` still carry the
+> ribbing, per-moment and voluntary), the notes and the session thread all stay.
+>
+> `crew_award_votes` and `crew_award_reactions` keep their `kind` column and
+> their existing `'donkey'` rows; the readers filter that kind out (`awardTally`,
+> `useAwardReactions`). Round progress and unlocking already counted
+> `kind = 'goat'` only, so neither changed. Everything below describing a donkey
+> vote, the khaki verdict card or the repeat-offender streak is history, not the
+> current app.
+>
+> This note first said "client-side only — no migration". **Migration 085**
+> followed, so the capability is removed rather than merely unrendered: without
+> it `cast_award_vote` still accepts `p_kind = 'donkey'`, and anything holding a
+> session's round id could keep minting votes that no surface would ever show.
+> 085 restricts it to `'goat'`, filters legacy donkey rows out of
+> `get_award_round`'s payload, and drops `crew_award_history` — which existed
+> only to feed the streak. The tables, the checks and the rows all stay, matching
+> how outdoor bouldering and exercise logging were retired here.
 
 ## How this serves learning
 
