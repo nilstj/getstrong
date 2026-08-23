@@ -44,8 +44,6 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
   const { data: groupRoster = [] } = useGroupRoster(groupId)
   const openRound = useOpenAwardRound()
   const castVote = useCastAwardVote()
-  const toggleTag = useToggleAwardTag()
-  const setNote = useSetAwardNote()
   const [editingAwards, setEditingAwards] = useState(false)
   // null until the viewer explicitly toggles the section; the latched default
   // applies until then, and their own choice wins forever after.
@@ -299,40 +297,12 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
 
                         {open && (
                           <div className="px-3 pb-3">
-                            {/* One scrolling row, not three wrapped ones: eight
-                                44px chips wrapped cost ~150px per climber. The
-                                scroll is contained here so the page itself
-                                never scrolls sideways. */}
-                            <div className="flex gap-2 overflow-x-auto -mx-3 px-3 pb-0.5">
-                              {AWARD_TAGS.map(t => {
-                                const on = myTags.has(`${p.user_id}:${t.key}`)
-                                return (
-                                  <button
-                                    key={t.key}
-                                    type="button"
-                                    aria-pressed={on}
-                                    onClick={() => toggleTag.mutate(
-                                      { roundId, groupId, subjectId: p.user_id, tag: t.key },
-                                      { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not tag')) },
-                                    )}
-                                    className={`min-h-11 inline-flex flex-shrink-0 items-center whitespace-nowrap px-3 rounded-full text-[13px] font-semibold border ${
-                                      on
-                                        ? 'bg-sage-50 border-sage-300 text-sage-800'
-                                        : 'bg-white border-gray-200 text-gray-500'
-                                    }`}
-                                  >
-                                    {t.emoji} {t.label}
-                                  </button>
-                                )
-                              })}
-                            </div>
-
-                            <NoteField
-                              initial={myNote}
-                              onSave={body => setNote.mutate(
-                                { roundId, groupId, subjectId: p.user_id, body },
-                                { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save')) },
-                              )}
+                            <PropsPanel
+                              roundId={roundId}
+                              groupId={groupId}
+                              subjectId={p.user_id}
+                              myTags={myTags}
+                              myNote={myNote}
                             />
                           </div>
                         )}
@@ -399,6 +369,48 @@ export function SessionAwardsSection({ groupId }: { groupId: string }) {
                       {n.body} <span className="text-gray-400">— {nameOf(n.voter_id)}</span>
                     </p>
                   ))}
+
+                  {/* The verdict settling does not close the props. Voting has a
+                      deadline because the result has to settle; recognition does
+                      not, and a 🧠 Best beta remembered the next morning is
+                      still worth giving. Not on your own card -- a tag on
+                      yourself is refused by crew_award_tags_not_self. */}
+                  {round.am_participant && p.user_id !== user?.id && (() => {
+                    const open = openPropsFor === p.user_id
+                    const myPropCount = round.mine.tags.filter(t => t.subject_id === p.user_id).length
+                    const myNote = round.mine.notes.find(n => n.subject_id === p.user_id)?.body ?? ''
+                    return (
+                      <div className="mt-2.5 border-t border-gray-200 pt-1">
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          onClick={() => setOpenPropsFor(open ? null : p.user_id)}
+                          className="flex w-full min-h-11 items-center gap-1 text-left"
+                        >
+                          <span className={`flex-1 text-[11px] font-semibold ${
+                            myPropCount > 0 || myNote ? 'text-sage-700' : 'text-gray-400'
+                          }`}>
+                            {myPropCount > 0
+                              ? `You gave ${myPropCount} prop${myPropCount > 1 ? 's' : ''}`
+                              : 'Give props'}
+                            {myNote && ' · commented'}
+                          </span>
+                          {open
+                            ? <ChevronDown size={15} strokeWidth={2.25} className="text-gray-400" />
+                            : <ChevronRight size={15} strokeWidth={2.25} className="text-gray-400" />}
+                        </button>
+                        {open && (
+                          <PropsPanel
+                            roundId={roundId}
+                            groupId={groupId}
+                            subjectId={p.user_id}
+                            myTags={myTags}
+                            myNote={myNote}
+                          />
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               ))}
             </div>
@@ -653,6 +665,68 @@ function AwardPicker({
         ))}
       </div>
     </div>
+  )
+}
+
+/**
+ * The props chips and the comment for one climber. Shared by the voting
+ * accordion and the unlocked verdict card, so the two cannot drift into
+ * offering different tags or saving differently.
+ *
+ * It owns its own mutations rather than taking them as props: React Query is
+ * happy with an instance per climber, and threading two mutation objects through
+ * both call sites bought nothing.
+ */
+function PropsPanel({
+  roundId, groupId, subjectId, myTags, myNote,
+}: {
+  roundId: string
+  groupId: string
+  subjectId: string
+  /** Keyed `${subject_id}:${tag}` -- the caller already has the whole set. */
+  myTags: Set<string>
+  myNote: string
+}) {
+  const toggleTag = useToggleAwardTag()
+  const setNote = useSetAwardNote()
+
+  return (
+    <>
+      {/* One scrolling row, not three wrapped ones: eight 44px chips wrapped
+          cost ~150px per climber. The scroll is contained here so the page
+          itself never scrolls sideways. */}
+      <div className="flex gap-2 overflow-x-auto -mx-3 px-3 pb-0.5">
+        {AWARD_TAGS.map(t => {
+          const on = myTags.has(`${subjectId}:${t.key}`)
+          return (
+            <button
+              key={t.key}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggleTag.mutate(
+                { roundId, groupId, subjectId, tag: t.key },
+                { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not tag')) },
+              )}
+              className={`min-h-11 inline-flex flex-shrink-0 items-center whitespace-nowrap px-3 rounded-full text-[13px] font-semibold border ${
+                on
+                  ? 'bg-sage-50 border-sage-300 text-sage-800'
+                  : 'bg-white border-gray-200 text-gray-500'
+              }`}
+            >
+              {t.emoji} {t.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <NoteField
+        initial={myNote}
+        onSave={body => setNote.mutate(
+          { roundId, groupId, subjectId, body },
+          { onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save')) },
+        )}
+      />
+    </>
   )
 }
 

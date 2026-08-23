@@ -25,6 +25,14 @@
 > `get_award_round`'s payload, and drops `crew_award_history` — which existed
 > only to feed the streak. The tables, the checks and the rows all stay, matching
 > how outdoor bouldering and exercise logging were retired here.
+>
+> **2026-08-23 — props outlive the vote.** `assert_award_voter` guarded all three
+> write paths and refused everything once `closes_at` passed, so giving props and
+> writing a comment died with voting. **Migration 086** moves that check into
+> `cast_award_vote` alone: a verdict still has to settle, but recognition is a
+> record of what someone did, not a ballot. The verdict card now carries a "Give
+> props" row per climber (not your own — `crew_award_tags_not_self`), sharing one
+> `PropsPanel` with the voting accordion so the two cannot drift.
 
 ## How this serves learning
 
