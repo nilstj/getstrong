@@ -16,6 +16,24 @@ interface Payload {
   promptTemplate?: string
 }
 
+/**
+ * Groq retires models with little notice -- `llama-3.3-70b-versatile` was
+ * hardcoded here and started returning model_not_found, the same way Maverick
+ * went in Feb 2026 (see video-coach.ts).
+ *
+ * So the model is configurable: set GROQ_MODEL in Vercel to pin one, and no
+ * deploy is needed the next time one is retired. With nothing set, these are
+ * tried in order and a model this account cannot reach is skipped. All three
+ * are text-only, which is what this endpoint wants -- the vision models live in
+ * video-coach.ts.
+ *
+ * To see what the key can actually reach:
+ *   curl -H "Authorization: Bearer $GROQ_API_KEY" https://api.groq.com/openai/v1/models
+ */
+const MODELS = process.env.GROQ_MODEL
+  ? [process.env.GROQ_MODEL]
+  : ['openai/gpt-oss-120b', 'llama-3.1-8b-instant', 'meta-llama/llama-4-scout-17b-16e-instruct']
+
 const DEFAULT_INSTRUCTION = `You are an expert climbing coach. Analyze this athlete's last 90 days and provide a focused coaching report. Be specific and concise. Respond in exactly three sections with these exact headings:
 
 ## Insights
@@ -104,30 +122,37 @@ export default async function handler(req: Request): Promise<Response> {
 
   const prompt = buildPrompt(payload)
 
-  const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      stream: false,
-      max_tokens: 1000,
-      temperature: 0.7,
-    }),
-  })
+  let lastErr = ''
+  for (const model of MODELS) {
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        stream: false,
+        max_tokens: 1000,
+        temperature: 0.7,
+      }),
+    })
 
-  if (!groqRes.ok) {
-    const err = await groqRes.text()
-    return new Response(`Groq error: ${err}`, { status: 503 })
+    if (groqRes.ok) {
+      const json = await groqRes.json() as { choices: { message: { content: string } }[] }
+      const content = json.choices?.[0]?.message?.content ?? ''
+      return new Response(content, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      })
+    }
+
+    lastErr = await groqRes.text()
+    // model_not_found is the ONLY error that advances the list. A rate limit, a
+    // bad key or a malformed prompt must surface as itself rather than being
+    // retried against every candidate and reported as the last one's failure.
+    if (!lastErr.includes('model_not_found')) break
   }
 
-  const json = await groqRes.json() as { choices: { message: { content: string } }[] }
-  const content = json.choices?.[0]?.message?.content ?? ''
-
-  return new Response(content, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-  })
+  return new Response(`Groq error: ${lastErr}`, { status: 503 })
 }

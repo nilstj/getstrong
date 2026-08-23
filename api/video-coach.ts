@@ -4,7 +4,12 @@ export const config = { runtime: 'edge' }
 // Groq vision model. Llama 4 Scout accepts up to 5 images per request.
 // (Maverick was deprecated Feb 2026; gpt-oss is text-only — Scout is the
 // vision option on GroqCloud.)
-const MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'
+//
+// Overridable for the same reason as coach.ts's MODELS: Scout will be retired
+// too, and GROQ_VISION_MODEL means a Vercel setting rather than a deploy. No
+// fallback list here -- a replacement has to accept images, and there is no
+// second confirmed vision model to fall back to.
+const MODEL = process.env.GROQ_VISION_MODEL ?? 'meta-llama/llama-4-scout-17b-16e-instruct'
 const MAX_FRAMES = 5
 
 interface VideoCoachPayload {
