@@ -337,7 +337,11 @@ export function SessionDetailPage() {
       )}
 
       {/* Wisdom */}
-      {!planned && <WisdomSection session={session} />}
+      {/* Owner-only: migration 032 lets a follower read this row, so without the
+          guard someone opening a friend's /sessions/:id got the composer too --
+          an editor whose save RLS would refuse. They read it on
+          /friends/sessions/:id instead. */}
+      {!planned && isOwner && <WisdomSection session={session} />}
 
       {/* Delete session — low prominence, at the bottom */}
       <div className="pt-4 pb-2 flex justify-center">

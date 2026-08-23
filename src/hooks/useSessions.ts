@@ -91,32 +91,33 @@ export function useUpdateSession() {
   })
 }
 
-export interface FriendWisdom {
-  id: string
-  user_id: string
-  date: string
-  location: string
-  wisdom: string
-}
-
-export function useFriendsWisdoms(followingIds: string[]) {
+/**
+ * A friend's shared wisdom for one session, or null.
+ *
+ * Migration 032's policy is the entire gate: it permits a SELECT on `sessions`
+ * only when `wisdom_shared` is true AND the caller follows the owner. An
+ * unshared session, or a stranger's, therefore comes back with no row at all --
+ * nothing needs checking here. `wisdom_shared` is repeated in the filter anyway
+ * so the intent is legible without going to read the migration.
+ *
+ * This replaces useFriendsWisdoms, a 14-day batch query across everyone you
+ * follow that was written for a surface that never shipped: it had no callers
+ * anywhere, so "Shared with friends" wrote a flag nothing read.
+ */
+export function useSharedSessionWisdom(sessionId: string) {
   return useQuery({
-    queryKey: ['friends_wisdoms', [...followingIds].sort().join(',')],
-    queryFn: async () => {
-      const since = new Date()
-      since.setDate(since.getDate() - 14)
+    queryKey: ['shared_session_wisdom', sessionId],
+    enabled: !!sessionId,
+    queryFn: async (): Promise<string | null> => {
       const { data, error } = await supabase
         .from('sessions')
-        .select('id, user_id, date, location, wisdom')
-        .in('user_id', followingIds)
+        .select('wisdom')
+        .eq('id', sessionId)
         .eq('wisdom_shared', true)
-        .not('wisdom', 'is', null)
-        .gte('date', since.toISOString().split('T')[0])
-        .order('date', { ascending: false })
+        .maybeSingle()
       if (error) throw error
-      return (data ?? []) as FriendWisdom[]
+      return (data?.wisdom as string | null) ?? null
     },
-    enabled: followingIds.length > 0,
   })
 }
 

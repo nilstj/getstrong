@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Play, Trophy, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { useSessionProblems } from '../hooks/useProblems'
+import { useSharedSessionWisdom } from '../hooks/useSessions'
 import { useSessionChallengeAttempts } from '../hooks/useChallenges'
 import { useProfile } from '../hooks/useProfile'
 import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow } from '../utils/friendSessions'
@@ -42,6 +43,7 @@ export function FriendSessionPage() {
   const { sessionId = '' } = useParams<{ sessionId: string }>()
   const { data: problems = [], isLoading: pLoading } = useSessionProblems(sessionId)
   const { data: attempts = [], isLoading: cLoading } = useSessionChallengeAttempts(sessionId)
+  const { data: wisdom } = useSharedSessionWisdom(sessionId)
   const authorId = problems[0]?.user_id ?? attempts[0]?.user_id
   const { data: profile } = useProfile(authorId)
   const [lightbox, setLightbox] = useState<string | null>(null)
@@ -95,6 +97,18 @@ export function FriendSessionPage() {
         <span>{summaryParts.join(' · ')}</span>
         {summary?.topGrade && <Chip label={`up to ${summary.topGrade}`} variant="grade" />}
       </div>
+
+      {/* The one thing on this page the climber wrote for other people rather
+          than for their own log -- so it sits above the problems, in the same
+          amber the composer uses on their own session page. Absent unless they
+          turned "Share with friends" on: migration 032's policy returns no row
+          otherwise. */}
+      {wisdom && (
+        <div className="mx-4 mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-xs font-semibold text-amber-800">🧠 Spraying Wisdom</p>
+          <p className="mt-1 text-sm italic text-amber-900 break-words">"{wisdom}"</p>
+        </div>
+      )}
 
       {problems.length > 0 && (
         <div className="px-4 space-y-2">
