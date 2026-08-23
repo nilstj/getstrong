@@ -10,6 +10,7 @@ export function StoryRing({
   color,
   helpWanted = false,
   hasVideo = false,
+  hasVariation = false,
   seen = false,
   onClick,
 }: {
@@ -25,6 +26,10 @@ export function StoryRing({
   fallbackGym?: string | null
   helpWanted?: boolean
   hasVideo?: boolean
+  /** An anchored challenge has been set on this boulder. Shown as 🧩 on the
+   *  bottom-right corner -- the caption used to say "· Variation" instead, which
+   *  wrapped the 64px tile to a second line and pushed the whole strip taller. */
+  hasVariation?: boolean
   /** Already opened by this user — the ring goes grey. Unseen rings are blue. */
   seen?: boolean
   onClick?: () => void
@@ -58,8 +63,21 @@ export function StoryRing({
           <span className="block w-full h-full rounded-full border-2 border-white bg-sage-100" />
         )}
         {hasVideo && <VideoBadge variant="corner" className="absolute -top-0.5 -right-0.5 border-2 border-white" />}
+        {/* Four corners, one signal each: ask top-left, video top-right, tape
+            colour bottom-left, variation bottom-right. All aria-hidden or
+            title-only -- the button's own aria-label carries every one of them,
+            since an explicit aria-label hides its subtree from screen readers. */}
         {color && (
-          <ProblemColorIcons color={color} size={13} className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-1 py-0.5 shadow-sm" />
+          <ProblemColorIcons color={color} size={13} className="absolute -bottom-0.5 -left-0.5 rounded-full bg-white/90 px-1 py-0.5 shadow-sm" />
+        )}
+        {hasVariation && (
+          <span
+            aria-hidden
+            title="Has a variation"
+            className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border border-gray-200 bg-white text-[10px] leading-none shadow-sm"
+          >
+            🧩
+          </span>
         )}
       </span>
       <span className="text-[10px] leading-tight text-gray-600 text-center line-clamp-2 max-w-[64px]">{label}</span>

@@ -7,7 +7,7 @@ import { useProfile } from '../hooks/useProfile'
 import { StoryRing } from './StoryRing'
 import { AddGymBoulderSheet } from './AddGymBoulderSheet'
 import type { BoulderNavState } from '../utils/boulderNav'
-import { boulderStripLabel } from '../utils/boulderStripLabel'
+import { boulderStripLabel, boulderStripAriaLabel } from '../utils/boulderStripLabel'
 
 /**
  * The "Latest Gym Problems" story strip: your boulders + the ones in your gyms,
@@ -34,10 +34,10 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
       <div className="flex gap-3 overflow-x-auto -mx-1 px-1">
         <AddBoulderTile onClick={() => setAddOpen(true)} />
         {stories.map(b => {
-          const label = boulderStripLabel(b.community_grade, b.hasVariation)
-          // The caption already says "· Variation" — honour what drew the tap
-          // and land on that tab. openTab applies on mount, which is always the
-          // case arriving from the dashboard.
+          const label = boulderStripLabel(b.community_grade)
+          // The 🧩 on the corner is what drew the tap — honour it and land on
+          // that tab. openTab applies on mount, which is always the case
+          // arriving from the dashboard.
           const navState: BoulderNavState = b.hasVariation
             ? { boulderIds: storyIds, openTab: 'variations' }
             : { boulderIds: storyIds }
@@ -45,12 +45,18 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
             <StoryRing
               key={b.id}
               label={label}
-              ariaLabel={label ? `${b.title} (${label})` : b.title}
+              ariaLabel={boulderStripAriaLabel({
+                title: b.title,
+                grade: b.community_grade,
+                hasVariation: b.hasVariation,
+                helpWanted: b.helpWanted,
+              })}
               imageUrl={b.image_url}
               fallbackGym={b.gym}
               color={b.color}
               helpWanted={b.helpWanted}
               hasVideo={!!b.beta_video_url}
+              hasVariation={b.hasVariation}
               seen={seen?.has(b.id) ?? false}
               onClick={() => navigate(`/gym-problems/${b.id}`, { state: navState })}
             />
