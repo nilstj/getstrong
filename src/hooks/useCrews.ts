@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { profilesByIds } from '../lib/profiles'
+import { sharedWisdomSessionIds } from '../lib/sharedWisdom'
 import { useAuth } from '../providers/AuthProvider'
 import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow, type FriendSessionSummary } from '../utils/friendSessions'
 
@@ -224,7 +225,7 @@ export function useCrewBoulderProgress(gymProblemId: string) {
   })
 }
 
-export type CrewSession = FriendSessionSummary & { authorName: string | null; authorAvatarUrl: string | null }
+export type CrewSession = FriendSessionSummary & { authorName: string | null; authorAvatarUrl: string | null; hasWisdom: boolean }
 
 /** Recent sessions of a crew's members, for the crew home feed. */
 export function useCrewActivityFeed(memberIds: string[]) {
@@ -232,7 +233,7 @@ export function useCrewActivityFeed(memberIds: string[]) {
     queryKey: ['crew_feed', [...memberIds].sort().join(',')],
     enabled: memberIds.length > 0,
     queryFn: async (): Promise<CrewSession[]> => {
-      const [problemsRes, challengesRes] = await Promise.all([
+      const [problemsRes, challengesRes, wisdomIds] = await Promise.all([
         supabase
           .from('problems')
           .select('user_id, session_id, gym, grade_value, grade_value_font, sent, image_url, beta_video_url, created_at')
@@ -246,6 +247,9 @@ export function useCrewActivityFeed(memberIds: string[]) {
           .in('user_id', memberIds)
           .order('created_at', { ascending: false })
           .limit(300),
+        // A crewmate you don't follow contributes nothing: migration 032 gates
+        // shared wisdom on a follow, not on crew membership.
+        sharedWisdomSessionIds(memberIds),
       ])
       if (problemsRes.error) throw problemsRes.error
       if (challengesRes.error) throw challengesRes.error
@@ -253,7 +257,12 @@ export function useCrewActivityFeed(memberIds: string[]) {
       return summarizeFriendSessions({
         problems: (problemsRes.data ?? []) as FriendProblemRow[],
         challenges: (challengesRes.data ?? []) as FriendActivityRow[],
-      }).map(s => ({ ...s, authorName: byId.get(s.userId)?.username ?? null, authorAvatarUrl: byId.get(s.userId)?.avatar_url ?? null }))
+      }).map(s => ({
+        ...s,
+        authorName: byId.get(s.userId)?.username ?? null,
+        authorAvatarUrl: byId.get(s.userId)?.avatar_url ?? null,
+        hasWisdom: wisdomIds.has(s.sessionId),
+      }))
     },
   })
 }

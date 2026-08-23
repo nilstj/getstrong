@@ -3,10 +3,15 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useFollowing } from './useFollows'
 import { summarizeFriendSessions, type FriendProblemRow, type FriendActivityRow, type FriendSessionSummary } from '../utils/friendSessions'
+import { sharedWisdomSessionIds } from '../lib/sharedWisdom'
 
 export type FriendSession = FriendSessionSummary & {
   authorName: string | null
   authorAvatarUrl: string | null
+  /** The climber shared wisdom on this session, readable on its page. Cannot be
+   *  derived from the problem rows the rest of this summary is built from — see
+   *  sharedWisdomSessionIds. */
+  hasWisdom: boolean
 }
 
 // Pull the most recent N problems and challenge attempts across everyone you
@@ -23,7 +28,7 @@ export function useFriendsFeed() {
     queryKey: ['friends_feed', followingIds.slice().sort().join(',')],
     enabled: followingIds.length > 0,
     queryFn: async (): Promise<FriendSession[]> => {
-      const [problemsRes, challengesRes, { data: profs }] = await Promise.all([
+      const [problemsRes, challengesRes, { data: profs }, wisdomIds] = await Promise.all([
         supabase
           .from('problems')
           .select('user_id, session_id, gym, grade_value, grade_value_font, sent, image_url, beta_video_url, created_at')
@@ -41,6 +46,7 @@ export function useFriendsFeed() {
           .from('profiles')
           .select('id, username, avatar_url')
           .in('id', followingIds),
+        sharedWisdomSessionIds(followingIds),
       ])
       if (problemsRes.error) throw problemsRes.error
 
@@ -55,6 +61,7 @@ export function useFriendsFeed() {
         ...s,
         authorName: profileById.get(s.userId)?.username ?? null,
         authorAvatarUrl: profileById.get(s.userId)?.avatar_url ?? null,
+        hasWisdom: wisdomIds.has(s.sessionId),
       }))
     },
   })

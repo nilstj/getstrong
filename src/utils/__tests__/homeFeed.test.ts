@@ -7,7 +7,7 @@ function session(sessionId: string, date: string): FriendSession {
   return {
     sessionId, userId: 'u1', gym: 'Boulders Oslo', date,
     problemCount: 3, sendCount: 2, challengeCount: 0, topGrade: '6C',
-    photos: [], videoCount: 0, authorName: 'ola', authorAvatarUrl: null,
+    photos: [], videoCount: 0, authorName: 'ola', authorAvatarUrl: null, hasWisdom: false,
   }
 }
 

@@ -106,6 +106,17 @@ export function FriendSessionCard({
               </span>
             </span>
           )}
+          {/* The only thing on this card the climber wrote for other people, so
+              it is the one part worth colouring -- and the reason to tap through
+              rather than read the counts and scroll on. */}
+          {session.hasWisdom && (
+            <span className="inline-flex items-center gap-2">
+              <span className="text-gray-300">·</span>
+              <span className="inline-flex items-center gap-1 font-medium text-amber-700">
+                <span aria-hidden>🧠</span> wisdom
+              </span>
+            </span>
+          )}
         </div>
 
         {photos.length > 0 && (
