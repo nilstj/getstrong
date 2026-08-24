@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, Shield, BarChart2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { LogOut, Shield, BarChart2, Download, Trash2 } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile, useUpdateProfile, useUploadAvatar, useSearchUsers, useSetUserSetter } from '../hooks/useProfile'
@@ -15,6 +15,9 @@ import {
 } from '../hooks/useFollows'
 import toast from 'react-hot-toast'
 import { DefaultGymsEditor } from '../components/DefaultGymsEditor'
+import { BottomSheet } from '../components/BottomSheet'
+import { useExportMyData, downloadExport, useDeleteMyAccount } from '../hooks/useMyData'
+import { summariseExport, deletionConfirmationMatches } from '../utils/myData'
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -31,17 +34,52 @@ export function ProfilePage() {
   const acceptRequest = useAcceptFollowRequest()
   const declineRequest = useDeclineFollowRequest()
   const setUserSetter = useSetUserSetter()
+  const navigate = useNavigate()
+  const exportMyData = useExportMyData()
+  const deleteAccount = useDeleteMyAccount()
 
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [gyms, setGyms] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setGyms(profile?.default_gyms ?? []) }, [profile?.default_gyms])
 
   const { data: searchResults = [] } = useSearchUsers(searchQuery)
+
+  const handleExport = () => {
+    exportMyData.mutate(undefined, {
+      onSuccess: envelope => {
+        const summary = summariseExport(envelope)
+        downloadExport(envelope, new Date())
+        toast.success(`${summary.rowCount} rows across ${summary.tableCount} tables`)
+        if (summary.unmapped.length > 0) {
+          // Surfaced rather than swallowed: this is the export telling you it
+          // has a blind spot, which is the whole point of the field.
+          toast(`Not yet covered by the export: ${summary.unmapped.join(', ')}`, { duration: 8000 })
+        }
+      },
+      onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Export failed'),
+    })
+  }
+
+  const handleDelete = () => {
+    deleteAccount.mutate(undefined, {
+      onSuccess: async () => {
+        toast.success('Your account is gone. Thanks for the beta.')
+        // The session is already invalid server-side; signOut still clears it
+        // locally, and we leave either way.
+        try { await supabase.auth.signOut() } catch { /* already gone */ }
+        navigate('/login', { replace: true })
+      },
+      onError: (e: unknown) =>
+        toast.error(e instanceof Error ? e.message : 'Could not delete the account'),
+    })
+  }
 
   const isFollowing = (userId: string) => following.some(f => f.following_id === userId)
   const isPending = (userId: string) => sentRequests.has(userId)
@@ -291,6 +329,28 @@ export function ProfilePage() {
         </div>
       )}
 
+      {/* Your data */}
+      <div>
+        <h2 className="text-base font-semibold mb-2">Your data</h2>
+        <div className="space-y-2">
+          <button
+            onClick={handleExport}
+            disabled={exportMyData.isPending}
+            className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm hover:border-gray-300 transition-colors disabled:opacity-60"
+          >
+            <Download size={16} strokeWidth={1.75} />
+            {exportMyData.isPending ? 'Gathering your data…' : 'Download my data'}
+          </button>
+          <button
+            onClick={() => { setConfirmText(''); setDeleteOpen(true) }}
+            className="w-full flex items-center gap-3 bg-white border border-red-200 text-red-600 rounded-2xl px-4 py-3 text-sm hover:border-red-300 transition-colors"
+          >
+            <Trash2 size={16} strokeWidth={1.75} />
+            Delete my account
+          </button>
+        </div>
+      </div>
+
       {/* Log out */}
       <div className="flex justify-center pt-2 pb-4">
         <button
@@ -334,6 +394,34 @@ export function ProfilePage() {
           <span className="ml-auto text-gray-400 text-base">›</span>
         </Link>
       )}
+      {/* A BottomSheet inside a heading inherits its font weight and is invalid
+          markup, so the confirmation lives here as a sibling of the sections. */}
+      <BottomSheet open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete my account">
+        <p className="text-sm text-gray-600 mb-3">
+          This deletes your log, your sessions, your photos and your account. It cannot be undone.
+        </p>
+        <p className="text-sm text-gray-600 mb-4">
+          Beta, boulders and variations you published stay on the wall for the climbers using
+          them, with your name taken off.
+        </p>
+        <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="delete-confirm">
+          Type <span className="font-bold">{profile?.username}</span> to confirm
+        </label>
+        <input
+          id="delete-confirm"
+          value={confirmText}
+          onChange={e => setConfirmText(e.target.value)}
+          autoComplete="off"
+          className="w-full border rounded-xl px-3 py-2 text-sm mb-4"
+        />
+        <button
+          onClick={handleDelete}
+          disabled={!deletionConfirmationMatches(confirmText, profile?.username) || deleteAccount.isPending}
+          className="w-full bg-red-600 text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-40"
+        >
+          {deleteAccount.isPending ? 'Deleting…' : 'Delete my account for good'}
+        </button>
+      </BottomSheet>
     </div>
   )
 }
