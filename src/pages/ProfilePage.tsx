@@ -348,6 +348,9 @@ export function ProfilePage() {
             <Trash2 size={16} strokeWidth={1.75} />
             Delete my account
           </button>
+          <Link to="/privacy" className="block text-xs text-gray-400 hover:text-gray-600 pt-1">
+            What we do with your data
+          </Link>
         </div>
       </div>
 

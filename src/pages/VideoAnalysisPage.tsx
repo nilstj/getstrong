@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { Sparkles, RefreshCw, Upload, Film } from 'lucide-react'
 import { extractFrames } from '../utils/extractFrames'
 import { useVideoCoach } from '../hooks/useVideoCoach'
@@ -51,6 +52,12 @@ export function VideoAnalysisPage() {
           Upload a short attempt clip. We sample 5 frames and an AI coach reviews your technique.
         </p>
       </div>
+
+      <p className="text-xs text-gray-500 leading-relaxed">
+        Five stills from your clip are sent to{' '}
+        <Link to="/privacy" className="underline">Groq, an AI provider in the US</Link>, and
+        aren't stored. Please don't upload video of other climbers without asking them first.
+      </p>
 
       <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-4">
         <input
