@@ -23,8 +23,12 @@ describe('betaSort', () => {
     expect([...list].sort(betaSort).map(b => b.id)).toEqual(['caution', 'tip'])
   })
 
-  it('ranks cautions among themselves by how many climbers confirmed them', () => {
-    const list = [beta('one', 1, '2026-01-02', 'caution'), beta('four', 4, '2026-01-01', 'caution')]
-    expect([...list].sort(betaSort).map(b => b.id)).toEqual(['four', 'one'])
+  it('pins cautions above tips even when tips have higher worked count', () => {
+    const list = [
+      beta('caution_low', 1, '2026-01-02', 'caution'),
+      beta('tip_high', 9, '2026-01-01'),
+      beta('caution_mid', 4, '2026-01-03', 'caution')
+    ]
+    expect([...list].sort(betaSort).map(b => b.id)).toEqual(['caution_mid', 'caution_low', 'tip_high'])
   })
 })
