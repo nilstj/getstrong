@@ -122,6 +122,7 @@ const ICONS: Record<Notification['type'], string> = {
   variation_cleared: '🧩',
   session_join_request: '🙋',
   session_join_approved: '✅',
+  boulder_caution: '⚠️',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {

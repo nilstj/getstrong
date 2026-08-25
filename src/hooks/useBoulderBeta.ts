@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { BetaSection, BetaBodyType } from '../types'
+import type { BetaSection, BetaBodyType, BetaKind } from '../types'
+import { betaSort } from '../utils/betaSort'
 
 // ── View types ───────────────────────────────────────────────────────────────
 export interface ReactionAgg { emoji: string; count: number; mine: boolean }
@@ -23,6 +24,8 @@ export interface BetaThread {
   video_url: string | null
   section: BetaSection | null
   body_type: BetaBodyType | null
+  kind: BetaKind
+  risk_move: string | null
   created_at: string
   worked_count: number
   worked_by_me: boolean
@@ -70,7 +73,7 @@ export function useBoulderBetaThread(gymProblemId: string) {
       const [betasRes, helpRes] = await Promise.all([
         supabase
           .from('boulder_beta')
-          .select('id, gym_problem_id, user_id, body, video_url, section, body_type, created_at')
+          .select('id, gym_problem_id, user_id, body, video_url, section, body_type, kind, risk_move, created_at')
           .eq('gym_problem_id', gymProblemId),
         supabase
           .from('gym_problem_help')
@@ -81,7 +84,8 @@ export function useBoulderBetaThread(gymProblemId: string) {
       if (betasRes.error) throw betasRes.error
       const betas = (betasRes.data ?? []) as {
         id: string; gym_problem_id: string; user_id: string; body: string | null
-        video_url: string | null; section: BetaSection | null; body_type: BetaBodyType | null; created_at: string
+        video_url: string | null; section: BetaSection | null; body_type: BetaBodyType | null
+        kind: BetaKind; risk_move: string | null; created_at: string
       }[]
       const betaIds = betas.map(b => b.id)
 
@@ -145,6 +149,8 @@ export function useBoulderBetaThread(gymProblemId: string) {
         video_url: b.video_url,
         section: b.section,
         body_type: b.body_type,
+        kind: b.kind,
+        risk_move: b.risk_move,
         created_at: b.created_at,
         worked_count: workedByBeta.get(b.id)?.count ?? 0,
         worked_by_me: workedByBeta.get(b.id)?.mine ?? false,
@@ -161,8 +167,10 @@ export function useBoulderBetaThread(gymProblemId: string) {
           reactions: aggregate(rxByComment.get(c.id) ?? [], myId),
         })),
       }))
-      // Top beta first: most "worked for me", then most recent.
-      threads.sort((a, b) => b.worked_count - a.worked_count || (a.created_at < b.created_at ? 1 : -1))
+      // Cautions first, then most "worked for me", then most recent — see
+      // betaSort, which was written for this list. The comparator that used to
+      // be inlined here was a duplicate of it and outranked nothing.
+      threads.sort(betaSort)
 
       const asking: AskingPerson[] = helpRows.map(h => ({ ...person(h.user_id), note: h.note, videoUrl: h.video_url }))
       return { threads, asking, worked: workedUserIds.map(person) }
