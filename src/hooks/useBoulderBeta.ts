@@ -182,11 +182,26 @@ export function useBoulderBetaThread(gymProblemId: string) {
 export function useAddBoulderBeta() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { gymProblemId: string; body: string | null; videoUrl: string | null; section: BetaSection | null; bodyType: BetaBodyType | null }) => {
+    mutationFn: async (v: {
+      gymProblemId: string
+      body: string | null
+      videoUrl: string | null
+      section: BetaSection | null
+      bodyType: BetaBodyType | null
+      kind: BetaKind
+      riskMove: string | null
+    }) => {
       const { data: { user } } = await supabase.auth.getUser()
       const { error } = await supabase
         .from('boulder_beta')
-        .insert({ gym_problem_id: v.gymProblemId, user_id: user?.id, body: v.body, video_url: v.videoUrl, section: v.section, body_type: v.bodyType })
+        .insert({
+          gym_problem_id: v.gymProblemId, user_id: user?.id, body: v.body,
+          video_url: v.videoUrl, section: v.section, body_type: v.bodyType,
+          // boulder_beta_caution_shape (090) rejects a caution with no move or
+          // no words, and a plain beta that carries a move. The composer
+          // disables submit on the same rule; this is the server's guard.
+          kind: v.kind, risk_move: v.kind === 'caution' ? v.riskMove : null,
+        })
       if (error) throw error
     },
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] }),

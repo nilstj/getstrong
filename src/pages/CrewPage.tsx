@@ -41,6 +41,7 @@ import { useMarkGymProblemViewed } from '../hooks/useGymProblemViews'
 import { daysUntil } from '../utils/gymProblems'
 import { crewTitles } from '../utils/crewTitles'
 import { boulderToPrefill } from '../utils/boulderPrefill'
+import { RISK_MOVES } from '../utils/riskMoves'
 import { gradeSystemFor } from '../utils/grades'
 import type { BoulderNavState, BoulderTab } from '../utils/boulderNav'
 import { todayDateString } from '../utils/dates'
@@ -237,6 +238,10 @@ export function CrewPage() {
   const [draftVideo, setDraftVideo] = useState('')
   const [draftSection, setDraftSection] = useState<BetaSection | null>(null)
   const [draftBody, setDraftBody] = useState<BetaBodyType | null>(null)
+  // "Watch out" mode: the beta names the move that hurts people and what to do
+  // instead. Both parts are required — see boulder_beta_caution_shape (090).
+  const [draftCaution, setDraftCaution] = useState(false)
+  const [draftRiskMove, setDraftRiskMove] = useState<string | null>(null)
   const [askOpen, setAskOpen] = useState(false)
   const [askNote, setAskNote] = useState('')
   const [askVideo, setAskVideo] = useState('')
@@ -271,12 +276,29 @@ export function CrewPage() {
   const submitBeta = () => {
     const body = draft.trim()
     const videoUrl = draftVideo.trim() || null
-    if (!body && !videoUrl) return
+    if (draftCaution) {
+      // A caution with no move, or no words about it, is just "be careful".
+      if (!body || !draftRiskMove) return
+    } else if (!body && !videoUrl) {
+      return
+    }
     addBeta.mutate(
-      { gymProblemId: id, body: body || null, videoUrl, section: draftSection, bodyType: draftBody },
       {
-        onSuccess: () => { setDraft(''); setDraftVideo(''); setDraftSection(null); setDraftBody(null); toast.success('Beta shared') },
-        onError: () => toast.error('Could not post beta'),
+        gymProblemId: id,
+        body: body || null,
+        videoUrl,
+        section: draftSection,
+        bodyType: draftBody,
+        kind: draftCaution ? 'caution' : 'beta',
+        riskMove: draftCaution ? draftRiskMove : null,
+      },
+      {
+        onSuccess: () => {
+          setDraft(''); setDraftVideo(''); setDraftSection(null); setDraftBody(null)
+          setDraftCaution(false); setDraftRiskMove(null)
+          toast.success(draftCaution ? 'Watch-out posted' : 'Beta shared')
+        },
+        onError: () => toast.error(draftCaution ? 'Could not post the watch-out' : 'Could not post beta'),
       },
     )
   }
@@ -667,11 +689,15 @@ export function CrewPage() {
             </div>
 
             {/* Share beta */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-2">
+            <div className={`rounded-2xl border bg-white p-3 space-y-2 ${
+              draftCaution ? 'border-amber-300 ring-1 ring-amber-300' : 'border-gray-200'
+            }`}>
               <textarea
                 value={draft}
                 onChange={e => setDraft(e.target.value)}
-                placeholder="Share beta — how does the move go?"
+                placeholder={draftCaution
+                  ? 'What should people do instead?'
+                  : 'Share beta — how does the move go?'}
                 rows={2}
                 className="w-full resize-none text-sm focus:outline-none placeholder:text-gray-400"
               />
@@ -681,6 +707,32 @@ export function CrewPage() {
                 placeholder="Beta video link (optional)"
                 className="w-full text-xs text-gray-600 focus:outline-none placeholder:text-gray-400"
               />
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
+                <button type="button"
+                  onClick={() => { setDraftCaution(!draftCaution); setDraftRiskMove(null) }}
+                  aria-pressed={draftCaution}
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                    draftCaution ? 'bg-amber-400 text-amber-950' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                  ⚠️ Watch out
+                </button>
+                {draftCaution && RISK_MOVES.map(m => (
+                  <button key={m.id} type="button"
+                    onClick={() => setDraftRiskMove(draftRiskMove === m.id ? null : m.id)}
+                    aria-pressed={draftRiskMove === m.id}
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      draftRiskMove === m.id ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-900 border border-amber-200'
+                    }`}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              {draftCaution && (
+                <p className="text-[11px] leading-snug text-amber-700">
+                  Pick the move, then say what to do instead. Everyone at this gym
+                  sees it, and the setters get told.
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
                 <span className="text-[11px] text-gray-400">Section</span>
                 {SECTIONS.map(s => (
@@ -698,9 +750,11 @@ export function CrewPage() {
                 ))}
                 <span className="flex-1" />
                 <button type="button" onClick={submitBeta}
-                  disabled={addBeta.isPending || (!draft.trim() && !draftVideo.trim())}
+                  disabled={addBeta.isPending || (draftCaution
+                    ? (!draft.trim() || !draftRiskMove)
+                    : (!draft.trim() && !draftVideo.trim()))}
                   className="inline-flex items-center gap-1.5 rounded-full bg-sage-700 px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-40">
-                  <Send size={14} /> Post beta
+                  <Send size={14} /> {draftCaution ? 'Post watch-out' : 'Post beta'}
                 </button>
               </div>
             </div>
