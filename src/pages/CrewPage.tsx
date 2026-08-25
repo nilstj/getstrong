@@ -278,6 +278,10 @@ export function CrewPage() {
   // answers "how many different things bite here". Corroboration belongs to
   // each caution and is shown on its own card.
   const cautionCount = threads.filter(t => t.kind === 'caution').length
+  // "Top beta" belongs to the top-ranked TIP, not whatever sorts to index 0 —
+  // cautions sort first (betaSort), so a positional check hides the star on
+  // any boulder that has one, however well an actual tip worked.
+  const topBetaId = threads.find(t => t.kind === 'beta')?.id
   const asking = betaData?.asking ?? []
   const workedPeople = betaData?.worked ?? []
 
@@ -792,11 +796,11 @@ export function CrewPage() {
             {threads.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">Be the first to crack it — share your beta.</p>
             ) : (
-              threads.map((t, i) => (
+              threads.map(t => (
                 <BetaThreadCard
                   key={t.id}
                   thread={t}
-                  best={i === 0 && t.worked_count > 0}
+                  best={t.id === topBetaId && t.worked_count > 0}
                   currentUserId={user?.id}
                   onToggleWorked={() => toggleWorked(t.id, t.worked_by_me)}
                   onReactBeta={(emoji, mine) => toggleBetaReaction.mutate({ betaId: t.id, gymProblemId: id, emoji, mine })}

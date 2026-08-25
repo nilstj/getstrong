@@ -276,8 +276,12 @@ function NotificationRow({ notification, onClose }: { notification: Notification
     // CrewPage opens on the Sendtrain tab by default, but a variation's clip
     // lives on the Variations tab — land there directly instead of leaving it
     // three taps away. openTab only applies on mount, which is exactly right here.
+    // A caution notification is the same story: the watch-out lives on the
+    // Beta tab, not Sendtrain.
     const navState = notification.type === 'variation_cleared'
       ? { state: { openTab: 'variations' } satisfies BoulderNavState }
+      : notification.type === 'boulder_caution'
+      ? { state: { openTab: 'beta' } satisfies BoulderNavState }
       : undefined
     return (
       <button onClick={() => { navigate(route, navState); onClose() }} className={className}>

@@ -111,7 +111,13 @@ export function useBoulderBetaThread(gymProblemId: string) {
       }
 
       const helpRows = (helpRes.data ?? []) as { user_id: string; note: string | null; video_url: string | null }[]
-      const workedUserIds = Array.from(new Set(worked.map(w => w.user_id)))
+      // "Found working beta" means a tip worked, not that a caution got a
+      // me-too — a caution's me-too is corroboration on the caution itself,
+      // shown as its own count, not evidence anyone found working beta.
+      const betaKindById = new Map(betas.map(b => [b.id, b.kind]))
+      const workedUserIds = Array.from(new Set(
+        worked.filter(w => betaKindById.get(w.beta_id) === 'beta').map(w => w.user_id)
+      ))
       const allIds = Array.from(new Set([
         ...betas.map(b => b.user_id),
         ...comments.map(c => c.user_id),

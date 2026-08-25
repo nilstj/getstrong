@@ -31,9 +31,16 @@ alter table boulder_beta add constraint boulder_beta_caution_shape check (
       and body is not null and btrim(body) <> '')
 );
 
--- Mirrors gym_problem_help_open_idx (057): the badge counts cautions per boulder.
-create index if not exists boulder_beta_caution_idx
-  on boulder_beta (gym_problem_id) where kind = 'caution';
+-- One climber, one caution per move per boulder. Without this, one account can
+-- post the whole vocabulary as seven cautions on the same boulder — inflating
+-- the ⚠️ badge and paging every setter at the gym seven times — at zero point
+-- cost, since award_beta_posted only ever pays once per boulder.
+-- gym_problem_id leads the column list, so this index also serves any count
+-- query filtered on (gym_problem_id, kind = 'caution') — the plain single-column
+-- partial index that query would otherwise need is a redundant subset of this
+-- one and is deliberately not added.
+create unique index if not exists boulder_beta_caution_unique_idx
+  on boulder_beta (gym_problem_id, user_id, risk_move) where kind = 'caution';
 
 -- ── 2. "me too" is free ──────────────────────────────────────────────────────
 -- Reproduces 074 §4c's mark_beta_worked and adds ONE guard: a caution pays
@@ -94,6 +101,31 @@ begin
   end if;
 end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
+
+-- ── 2b. a "me too" on a caution must not close someone's help request ────────
+-- resolve_help_on_beta_worked (057) fires AFTER INSERT on boulder_beta_worked
+-- for every mark, including a caution's "me too" — and that insert happens
+-- before mark_beta_worked's own caution guard above ever runs, so the trigger
+-- fires regardless. Left alone: Alice asks for beta help, then taps "Me too"
+-- on someone else's caution, and her still-unanswered help request silently
+-- resolves. Faithful reproduction of 057's body, plus one early-return guard.
+create or replace function public.resolve_help_on_beta_worked()
+returns trigger as $$
+declare
+  v_gpid uuid;
+  v_kind text;
+begin
+  select gym_problem_id, kind into v_gpid, v_kind from boulder_beta where id = new.beta_id;
+  if v_kind = 'caution' then
+    return new;
+  end if;
+  if v_gpid is not null then
+    update gym_problem_help set resolved_at = now()
+     where gym_problem_id = v_gpid and user_id = new.user_id and resolved_at is null;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
 
 -- ── 3. tell the gym's setters ────────────────────────────────────────────────
 -- gym_problems.setter is a community-editable TEXT NAME (056), not a user
@@ -173,6 +205,92 @@ $$;
 revoke all on function public.admin_delete_beta(uuid) from public, anon;
 grant execute on function public.admin_delete_beta(uuid) to authenticated;
 
+-- ── 4b. a "me too" on a caution isn't a feed brag ────────────────────────────
+-- get_crew_feed's `beta_worked` branch (055, carried through 072) fires for
+-- every boulder_beta_worked row. Left alone, a caution's "me too" reads on the
+-- home feed as "<name> nailed the beta on <boulder>" with the caution's own
+-- words as the snippet — exactly backwards for a watch-out.
+--
+-- Faithful reproduction of 072's body — the return type is unchanged this time,
+-- so no drop is needed — with one added predicate: the `beta_worked` branch now
+-- joins only betas of kind = 'beta'. `beta_added` is untouched: a caution
+-- showing up there as "shared beta on" is still true, since it is a kind of
+-- beta; only "worked" is the wrong word for a caution's corroboration.
+create or replace function public.get_crew_feed(
+  p_limit  int default 20,
+  p_before timestamptz default null
+)
+returns table (
+  event_type         text,
+  event_at           timestamptz,
+  actor_id           uuid,
+  gym_problem_id     uuid,
+  boulder_name       text,
+  boulder_color      text,
+  boulder_hold_color text,
+  boulder_grade      text,
+  boulder_image_url  text,
+  gym                text,
+  beta_id            uuid,
+  beta_snippet       text,
+  beta_video_url     text
+) as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_before  timestamptz := coalesce(p_before, now());
+begin
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  return query
+  with my_gyms as (
+    select distinct gym from problems
+     where user_id = v_user_id and gym is not null
+  )
+  select * from (
+    -- new boulder
+    select 'boulder_new'::text, gp.created_at, gp.created_by, gp.id,
+           gp.name, gp.color, gp.hold_color, gp.community_grade, gp.image_url, gp.gym,
+           null::uuid, null::text, null::text
+      from gym_problems gp
+     where gp.gym in (select gym from my_gyms) and gp.created_by is not null
+
+    union all
+    -- send (someone logged a sent problem linked to a boulder)
+    select 'send'::text, p.created_at, p.user_id, gp.id,
+           gp.name, gp.color, gp.hold_color, gp.community_grade, gp.image_url, gp.gym,
+           null::uuid, null::text, null::text
+      from problems p
+      join gym_problems gp on gp.id = p.gym_problem_id
+     where gp.gym in (select gym from my_gyms) and p.sent = true
+
+    union all
+    -- beta added
+    select 'beta_added'::text, bb.created_at, bb.user_id, gp.id,
+           gp.name, gp.color, gp.hold_color, gp.community_grade, gp.image_url, gp.gym,
+           bb.id, left(bb.body, 140), bb.video_url
+      from boulder_beta bb
+      join gym_problems gp on gp.id = bb.gym_problem_id
+     where gp.gym in (select gym from my_gyms)
+
+    union all
+    -- beta worked for someone (a plain tip only — a caution's "me too" is
+    -- corroboration, not a climber reporting that the caution "worked")
+    select 'beta_worked'::text, w.created_at, w.user_id, gp.id,
+           gp.name, gp.color, gp.hold_color, gp.community_grade, gp.image_url, gp.gym,
+           bb.id, left(bb.body, 140), bb.video_url
+      from boulder_beta_worked w
+      join boulder_beta bb on bb.id = w.beta_id
+      join gym_problems gp on gp.id = bb.gym_problem_id
+     where gp.gym in (select gym from my_gyms) and bb.kind = 'beta'
+  ) feed
+  where feed.event_at < v_before
+  order by feed.event_at desc
+  limit greatest(1, least(coalesce(p_limit, 20), 50));
+end;
+$$ language plpgsql security definer;
+
 -- ── 5. smoke test ────────────────────────────────────────────────────────────
 -- A plpgsql body is NOT validated at create time: this can all apply perfectly
 -- clean and still raise on the first real call. Exercise it here.
@@ -203,9 +321,11 @@ begin
     values (v_gp, v_uid, 'caution with no move', 'caution');
     raise exception 'boulder_beta_caution_shape did not fire';
   exception
+    -- The expected pass: the shape constraint rejected the insert.
     when check_violation then null;
-    when others then
-      if sqlerrm = 'boulder_beta_caution_shape did not fire' then raise; end if;
+    -- Anything else — including the sentinel above, meaning the constraint
+    -- didn't fire, or any unrelated real error — must not read as a pass.
+    when others then raise;
   end;
 
   raise notice '090 ok: caution insert, setter fan-out and shape constraint all behaved';
