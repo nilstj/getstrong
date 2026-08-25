@@ -23,18 +23,32 @@ alter table boulder_beta add constraint boulder_beta_kind_check
 -- A caution needs a move AND words about it; a plain beta carries no move.
 -- Existing rows take kind='beta' with risk_move null, so this validates against
 -- live data with no backfill.
+--
+-- risk_move must also be one of the ids in src/utils/riskMoves.ts's RISK_MOVES
+-- (precedent: 058's `check (body_type in ('tall', 'short', 'neutral'))`).
+-- Without this, an anon-key caller can insert arbitrary risk_move strings,
+-- which bypasses the unique index below entirely (each insert has a "new"
+-- value), fans out an unbounded number of setter notifications, and — since
+-- the client's label helper falls back to the raw stored value — can put
+-- arbitrary text, including injury or body-part wording, into the visible
+-- chip label. Deliberate consequence: the vocabulary now lives in both the
+-- client util and this constraint, so adding a move later needs a migration.
 alter table boulder_beta drop constraint if exists boulder_beta_caution_shape;
 alter table boulder_beta add constraint boulder_beta_caution_shape check (
   (kind = 'beta' and risk_move is null)
   or (kind = 'caution'
       and risk_move is not null and btrim(risk_move) <> ''
+      and risk_move in ('heel_hook', 'big_span', 'crimp', 'slap', 'top_out', 'swing', 'landing')
       and body is not null and btrim(body) <> '')
 );
 
--- One climber, one caution per move per boulder. Without this, one account can
--- post the whole vocabulary as seven cautions on the same boulder — inflating
--- the ⚠️ badge and paging every setter at the gym seven times — at zero point
--- cost, since award_beta_posted only ever pays once per boulder.
+-- One climber, one caution per move per boulder. This stops the SAME climber
+-- posting the SAME move twice on the same boulder (a double-tap, a retry, or
+-- deliberate re-posting) — it does NOT cap the number of distinct-move
+-- cautions one account can post. That total is bounded instead by the
+-- risk_move value constraint above: with only seven valid moves, one account
+-- can post at most seven cautions per boulder, ever, which in turn bounds the
+-- ⚠️ badge inflation and setter notification fan-out one account can cause.
 -- gym_problem_id leads the column list, so this index also serves any count
 -- query filtered on (gym_problem_id, kind = 'caution') — the plain single-column
 -- partial index that query would otherwise need is a redundant subset of this
@@ -296,8 +310,9 @@ $$ language plpgsql security definer;
 -- clean and still raise on the first real call. Exercise it here.
 do $$
 declare
-  v_uid uuid;
-  v_gp  uuid;
+  v_uid     uuid;
+  v_gp      uuid;
+  v_beta_id uuid;
 begin
   select id into v_uid from auth.users limit 1;
   select id into v_gp  from gym_problems limit 1;
@@ -308,7 +323,28 @@ begin
 
   begin
     insert into boulder_beta (gym_problem_id, user_id, body, kind, risk_move)
-    values (v_gp, v_uid, 'smoke test', 'caution', 'heel_hook');
+    values (v_gp, v_uid, 'smoke test', 'caution', 'heel_hook')
+    returning id into v_beta_id;
+
+    -- Also exercise resolve_help_on_beta_worked (057, reproduced in §2b above):
+    -- open a help request for this same user/boulder, then mark the caution
+    -- "worked" as that same user, and assert the request is STILL open. If
+    -- the kind = 'caution' early-return guard in §2b were missing or wrong,
+    -- this "me too" would wrongly close it.
+    insert into gym_problem_help (gym_problem_id, user_id, created_at, resolved_at)
+    values (v_gp, v_uid, now(), null)
+    on conflict (gym_problem_id, user_id) do update set resolved_at = null;
+
+    insert into boulder_beta_worked (beta_id, user_id)
+    values (v_beta_id, v_uid);
+
+    if not exists (
+      select 1 from gym_problem_help
+       where gym_problem_id = v_gp and user_id = v_uid and resolved_at is null
+    ) then
+      raise exception '090 smoke test: a caution "me too" wrongly resolved an open help request';
+    end if;
+
     -- This BEGIN block is an implicit savepoint, so raising here undoes the
     -- insert AND every notification the trigger just wrote. No residue.
     raise exception 'rollback smoke test';
@@ -328,5 +364,5 @@ begin
     when others then raise;
   end;
 
-  raise notice '090 ok: caution insert, setter fan-out and shape constraint all behaved';
+  raise notice '090 ok: caution insert, setter fan-out, help guard and shape constraint all behaved';
 end $$;
