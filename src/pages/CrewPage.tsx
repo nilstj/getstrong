@@ -270,6 +270,10 @@ export function CrewPage() {
   for (const r of reviewsData?.reviews ?? []) starsByUser[r.user_id] = r.stars
 
   const threads = betaData?.threads ?? []
+  // Distinct cautions on this boulder, not the sum of their me-toos: the badge
+  // answers "how many different things bite here". Corroboration belongs to
+  // each caution and is shown on its own card.
+  const cautionCount = threads.filter(t => t.kind === 'caution').length
   const asking = betaData?.asking ?? []
   const workedPeople = betaData?.worked ?? []
 
@@ -463,6 +467,11 @@ export function CrewPage() {
               {displayGrade && <Chip label={displayGrade} variant="grade" />}
               <ProblemColorIcons color={boulder.color} holdColor={boulder.hold_color} size={18} />
               {help?.open && <span className="inline-flex items-center rounded-md bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950">🆘 Help wanted</span>}
+              {cautionCount > 0 && (
+                <span className="inline-flex items-center rounded-md bg-amber-500 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  ⚠️ Watch out{cautionCount > 1 ? ` ×${cautionCount}` : ''}
+                </span>
+              )}
             </div>
           </div>
         </div>

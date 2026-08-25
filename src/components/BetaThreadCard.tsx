@@ -4,6 +4,7 @@ import { EmojiReactions } from './EmojiReactions'
 import { SetterBadge } from './SetterBadge'
 import type { BetaThread } from '../hooks/useBoulderBeta'
 import type { BetaSection, BetaBodyType } from '../types'
+import { riskMoveLabel } from '../utils/riskMoves'
 
 const SECTION_LABEL: Record<BetaSection, string> = { start: 'Start', crux: 'Crux', top: 'Top-out' }
 const BODY_LABEL: Record<BetaBodyType, string> = { tall: 'for tall', short: 'for short', neutral: 'any height' }
@@ -33,6 +34,7 @@ export function BetaThreadCard({
   onDeleteReply: (commentId: string) => void
   onReactReply: (commentId: string, emoji: string, mine: boolean) => void
 }) {
+  const caution = thread.kind === 'caution'
   const [reply, setReply] = useState('')
   const submitReply = () => {
     const body = reply.trim()
@@ -42,17 +44,30 @@ export function BetaThreadCard({
   }
 
   return (
-    <div className={`rounded-2xl bg-white p-3 border ${best ? 'border-sage-500 ring-1 ring-sage-500' : 'border-gray-200'}`}>
+    <div className={`rounded-2xl p-3 border ${
+      caution
+        ? 'bg-amber-50 border-amber-300'
+        : best ? 'bg-white border-sage-500 ring-1 ring-sage-500' : 'bg-white border-gray-200'
+    }`}>
       <div className="flex items-center gap-2 mb-1.5">
         <Avatar url={thread.authorAvatarUrl} name={thread.authorName} />
         <span className="text-sm font-semibold">{thread.authorName ?? 'Someone'}</span>
         <SetterBadge userId={thread.user_id} />
-        {best && (
+        {caution ? (
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400 text-amber-950 px-2 py-0.5 text-[10px] font-bold">
+            ⚠️ Watch out
+          </span>
+        ) : best && (
           <span className="inline-flex items-center gap-0.5 rounded-full bg-sage-700 text-white px-2 py-0.5 text-[10px] font-bold">
             <Star size={10} fill="currentColor" /> Top beta
           </span>
         )}
         <span className="flex-1" />
+        {caution && thread.risk_move && (
+          <span className="rounded-md bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+            {riskMoveLabel(thread.risk_move)}
+          </span>
+        )}
         {thread.section && <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">{SECTION_LABEL[thread.section]}</span>}
         {thread.body_type && <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">{BODY_LABEL[thread.body_type]}</span>}
       </div>
@@ -69,9 +84,13 @@ export function BetaThreadCard({
       <div className="mt-2 flex items-center gap-3">
         <button type="button" onClick={onToggleWorked}
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-            thread.worked_by_me ? 'bg-sage-700 text-white' : 'bg-sage-50 text-sage-800 border border-sage-200'
+            thread.worked_by_me
+              ? caution ? 'bg-amber-500 text-white' : 'bg-sage-700 text-white'
+              : caution ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-sage-50 text-sage-800 border border-sage-200'
           }`}>
-          ✓ {thread.worked_by_me ? 'Worked for you' : 'Worked for me'}
+          {caution
+            ? (thread.worked_by_me ? 'You said me too' : 'Me too')
+            : `✓ ${thread.worked_by_me ? 'Worked for you' : 'Worked for me'}`}
           {thread.worked_count > 0 && <span className="opacity-80">· {thread.worked_count}</span>}
         </button>
         <EmojiReactions reactions={thread.reactions} onToggle={onReactBeta} />
