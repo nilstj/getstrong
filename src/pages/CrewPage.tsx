@@ -25,6 +25,8 @@ import {
   useUnmarkBetaWorked,
   useAddBetaComment,
   useDeleteBetaComment,
+  useDeleteBoulderBeta,
+  useAdminDeleteBoulderBeta,
   useToggleBetaReaction,
   useToggleBetaCommentReaction,
   type PersonLite,
@@ -210,6 +212,8 @@ export function CrewPage() {
   const unmarkWorked = useUnmarkBetaWorked()
   const addBetaComment = useAddBetaComment()
   const deleteBetaComment = useDeleteBetaComment()
+  const deleteBeta = useDeleteBoulderBeta()
+  const adminDeleteBeta = useAdminDeleteBoulderBeta()
   const toggleBetaReaction = useToggleBetaReaction()
   const toggleBetaCommentReaction = useToggleBetaCommentReaction()
   const setSetter = useSetBoulderSetter()
@@ -305,6 +309,23 @@ export function CrewPage() {
         onError: () => toast.error(draftCaution ? 'Could not post the watch-out' : 'Could not post beta'),
       },
     )
+  }
+
+  /**
+   * Author retraction and admin moderation land on the same button. The author
+   * path is a plain delete under RLS; the admin path is the RPC, which raises
+   * rather than silently removing nothing.
+   */
+  const removeBeta = (betaId: string, authorId: string) => {
+    const mine = authorId === user?.id
+    if (!window.confirm(mine
+      ? 'Delete your beta? Replies and me-toos go with it.'
+      : 'Remove this beta for everyone?')) return
+    const m = mine ? deleteBeta : adminDeleteBeta
+    m.mutate({ betaId, gymProblemId: id }, {
+      onSuccess: () => toast.success(mine ? 'Beta deleted' : 'Beta removed'),
+      onError: () => toast.error('Could not delete this beta'),
+    })
   }
 
   const toggleWorked = (betaId: string, workedByMe: boolean) => {
@@ -782,6 +803,9 @@ export function CrewPage() {
                   onAddReply={(body) => addBetaComment.mutate({ betaId: t.id, gymProblemId: id, body }, { onError: () => toast.error('Could not reply') })}
                   onDeleteReply={(commentId) => deleteBetaComment.mutate({ commentId, gymProblemId: id })}
                   onReactReply={(commentId, emoji, mine) => toggleBetaCommentReaction.mutate({ commentId, gymProblemId: id, emoji, mine })}
+                  onDelete={t.user_id === user?.id || myProfile?.is_admin
+                    ? () => removeBeta(t.id, t.user_id)
+                    : undefined}
                 />
               ))
             )}

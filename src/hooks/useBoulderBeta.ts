@@ -258,6 +258,39 @@ export function useDeleteBetaComment() {
   })
 }
 
+/**
+ * The author retracting their own beta. Permitted by the existing
+ * "users manage own boulder_beta" policy (052) — this is the first UI for it.
+ * Its me-toos, replies and reactions cascade; points already earned stay.
+ */
+export function useDeleteBoulderBeta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { betaId: string; gymProblemId: string }) => {
+      const { error } = await supabase.from('boulder_beta').delete().eq('id', v.betaId)
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] }),
+  })
+}
+
+/**
+ * Moderation. Goes through the RPC rather than a delete: RLS permits the author
+ * only, and a delete that RLS refuses removes zero rows and returns NO error —
+ * the admin would get a success toast and watch the beta stay put. The RPC
+ * raises 'Only admins can remove beta' instead.
+ */
+export function useAdminDeleteBoulderBeta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { betaId: string; gymProblemId: string }) => {
+      const { error } = await supabase.rpc('admin_delete_beta', { p_beta_id: v.betaId })
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] }),
+  })
+}
+
 export function useToggleBetaReaction() {
   const qc = useQueryClient()
   return useMutation({

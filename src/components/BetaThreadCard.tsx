@@ -24,6 +24,7 @@ export function BetaThreadCard({
   onAddReply,
   onDeleteReply,
   onReactReply,
+  onDelete,
 }: {
   thread: BetaThread
   best: boolean
@@ -33,6 +34,8 @@ export function BetaThreadCard({
   onAddReply: (body: string) => void
   onDeleteReply: (commentId: string) => void
   onReactReply: (commentId: string, emoji: string, mine: boolean) => void
+  /** Absent when the viewer may not remove this beta. */
+  onDelete?: () => void
 }) {
   const caution = thread.kind === 'caution'
   const [reply, setReply] = useState('')
@@ -70,6 +73,10 @@ export function BetaThreadCard({
         )}
         {thread.section && <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">{SECTION_LABEL[thread.section]}</span>}
         {thread.body_type && <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">{BODY_LABEL[thread.body_type]}</span>}
+        {onDelete && (
+          <button type="button" aria-label="Delete beta" onClick={onDelete}
+            className="text-gray-300 hover:text-red-500"><Trash2 size={13} /></button>
+        )}
       </div>
 
       {thread.video_url && (
