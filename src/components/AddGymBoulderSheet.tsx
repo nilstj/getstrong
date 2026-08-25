@@ -11,7 +11,7 @@ import { useGymGradings } from '../hooks/useGymGradings'
 import { useCreateGymProblem } from '../hooks/useGymProblems'
 import { HOLD_COLORS } from '../utils/holdColors'
 import { FONT_GRADES_ORDERED, V_GRADES } from '../utils/grades'
-import { supabase } from '../lib/supabase'
+import { uploadProblemImage } from '../lib/problemImages'
 
 // Copied verbatim from ProblemForm so the two forms are visually identical.
 const INPUT = 'w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500'
@@ -28,6 +28,10 @@ function RowLabel({ children }: { children: React.ReactNode }) {
  * Publishes a shared boulder straight to a gym — no session, no private problem,
  * no claim. The publisher is recorded as created_by and earns first_logger; they
  * join the sendtrain later by logging a send like anyone else.
+ *
+ * A photo is mandatory: this is the form behind the dashboard's Latest Gym
+ * Problems strip, and a boulder that reaches that strip with no image is a
+ * grey tile nobody can find on the wall.
  */
 export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth()
@@ -72,27 +76,25 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
   }
 
   const submit = async () => {
-    if (!effectiveGym) return
+    // The photo is required here: a shared boulder that is only a colour and a
+    // grade can't be recognised on the wall, so nobody can give beta on it.
+    // The button is disabled for the same reason — this guard is the backstop.
+    if (!effectiveGym || !file || !user) return
 
-    let image_url: string | null = null
-    if (file && user) {
-      setUploading(true)
-      try {
-        const ext = file.name.split('.').pop() ?? 'jpg'
-        const path = `${user.id}/${Date.now()}.${ext}`
-        const { error } = await supabase.storage.from('problem-images').upload(path, file, { upsert: true })
-        if (error) {
-          // No repair path for a failed photo upload — the boulder would
-          // publish without its image_url and could never earn first_logger
-          // points for a photo. Abort and let the user retry with the sheet
-          // (and their other fields) intact rather than silently publishing.
-          toast.error('Could not upload the photo — nothing was published. Try again.')
-          return
-        }
-        image_url = supabase.storage.from('problem-images').getPublicUrl(path).data.publicUrl
-      } finally {
-        setUploading(false)
-      }
+    let image_url: string | null
+    setUploading(true)
+    try {
+      image_url = await uploadProblemImage(file, user.id)
+    } finally {
+      setUploading(false)
+    }
+    if (!image_url) {
+      // No repair path for a failed photo upload — the boulder would publish
+      // without its image_url, which is no longer a thing this form is allowed
+      // to produce. Abort and let the user retry with the sheet (and their
+      // other fields) intact rather than silently publishing.
+      toast.error('Could not upload the photo — nothing was published. Try again.')
+      return
     }
 
     create.mutate(
@@ -180,7 +182,9 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
               <Camera className="h-3.5 w-3.5" /> Add photo
             </button>
           )}
-          <p className="mt-1 text-[11px] text-gray-400">Earns 10 points with a photo.</p>
+          <p className={`mt-1 text-[11px] ${file ? 'text-gray-400' : 'text-sage-700'}`}>
+            {file ? 'Earns 10 points with the photo.' : 'A photo is required — and earns 10 points.'}
+          </p>
         </div>
 
         <RowLabel>Grade</RowLabel>
@@ -241,7 +245,7 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
       <button
         type="button"
         onClick={submit}
-        disabled={!effectiveGym || busy}
+        disabled={!effectiveGym || !file || busy}
         className="mt-5 w-full rounded-2xl bg-sage-700 py-3 text-sm font-medium text-white transition-opacity disabled:opacity-60"
       >
         {busy ? 'Publishing…' : 'Publish to the gym'}

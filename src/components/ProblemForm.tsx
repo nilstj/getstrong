@@ -10,7 +10,7 @@ import { GymPicker } from './GymPicker'
 import { AddGymSheet } from './AddGymSheet'
 import { useProblemTagDefinitions } from '../hooks/useProblemTags'
 import { useGymGradings } from '../hooks/useGymGradings'
-import { supabase } from '../lib/supabase'
+import { uploadProblemImage } from '../lib/problemImages'
 import { useAuth } from '../providers/AuthProvider'
 
 type FormValues = {
@@ -116,14 +116,10 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
     if (selectedFile && user) {
       setIsUploading(true)
       try {
-        const ext = selectedFile.name.split('.').pop() ?? 'jpg'
-        const path = `${user.id}/${Date.now()}.${ext}`
-        const { error } = await supabase.storage
-          .from('problem-images')
-          .upload(path, selectedFile, { upsert: true })
-        if (!error) {
-          image_url = supabase.storage.from('problem-images').getPublicUrl(path).data.publicUrl
-        }
+        // A failed upload keeps whatever was there before — the go is still
+        // worth logging without its photo. Publishing is where a photo is
+        // mandatory, and BoulderLinkSheet asks for one again at that point.
+        image_url = (await uploadProblemImage(selectedFile, user.id)) ?? image_url
       } finally {
         setIsUploading(false)
       }

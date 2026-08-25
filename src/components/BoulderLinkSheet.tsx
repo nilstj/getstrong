@@ -1,5 +1,6 @@
+import { useRef, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Plus } from 'lucide-react'
+import { Camera, Plus, X } from 'lucide-react'
 import { BottomSheet } from './BottomSheet'
 import { ProblemColorIcons } from './Chip'
 import {
@@ -7,6 +8,8 @@ import {
   useCreateGymProblem,
   useClaimGymProblem,
 } from '../hooks/useGymProblems'
+import { useAuth } from '../providers/AuthProvider'
+import { uploadProblemImage } from '../lib/problemImages'
 import { daysUntil } from '../utils/gymProblems'
 import type { Problem } from '../types'
 
@@ -27,6 +30,21 @@ export function BoulderLinkSheet({
   })
   const create = useCreateGymProblem()
   const claim = useClaimGymProblem()
+  const { user } = useAuth()
+  const [file, setFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // What a new boulder would be published with: the photo the problem already
+  // carries, or one taken here. Joining a match above ignores all of this.
+  const photoUrl = previewUrl ?? problem.image_url
+
+  const pickFile = (f: File | null) => {
+    setFile(f)
+    setPreviewUrl(f ? URL.createObjectURL(f) : null)
+    if (!f && fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const join = (gymProblemId: string) => {
     claim.mutate(
@@ -45,9 +63,31 @@ export function BoulderLinkSheet({
   // on every log, including from a climber with no default gym set, so the
   // unpublishable case went from obscure to routine.
   const gym = problem.gym?.trim() ?? ''
-  const canCreate = gym.length > 0
 
-  const createNew = () => {
+  // A new shared boulder also becomes a tile on everyone's home strip, so it
+  // needs a photo: a colour and a grade alone can't be found on the wall, and
+  // nobody can give beta on a boulder they can't identify. Joining a match
+  // above needs neither, deliberately — that boulder already has a tile, and
+  // gating a send would tax logging rather than publishing.
+  const canCreate = gym.length > 0 && !!photoUrl
+
+  const createNew = async () => {
+    // The button is disabled without a photo; this is the backstop.
+    let image_url = problem.image_url
+    if (file && user) {
+      setUploading(true)
+      try {
+        image_url = await uploadProblemImage(file, user.id)
+      } finally {
+        setUploading(false)
+      }
+      if (!image_url) {
+        toast.error('Could not upload the photo — nothing was created. Try again.')
+        return
+      }
+    }
+    if (!image_url) return
+
     create.mutate(
       {
         gym,
@@ -55,7 +95,7 @@ export function BoulderLinkSheet({
         hold_color: problem.hold_color,
         wall_angle: null,
         name: null,
-        image_url: problem.image_url,
+        image_url,
         beta_video_url: problem.beta_video_url,
         community_grade: null,
       },
@@ -66,6 +106,7 @@ export function BoulderLinkSheet({
     )
   }
 
+  const busy = create.isPending || claim.isPending || uploading
   const now = new Date()
 
   return (
@@ -84,7 +125,7 @@ export function BoulderLinkSheet({
               <button
                 key={gp.id}
                 onClick={() => join(gp.id)}
-                disabled={claim.isPending}
+                disabled={busy}
                 className="w-full flex items-center gap-3 p-3 border rounded-xl text-left hover:bg-gray-50 disabled:opacity-50"
               >
                 {gp.image_url && (
@@ -108,22 +149,65 @@ export function BoulderLinkSheet({
             </p>
           )}
 
-          <button
-            onClick={createNew}
-            disabled={!canCreate || create.isPending || claim.isPending}
-            className="w-full flex items-center justify-center gap-2 p-3 mt-2 border border-dashed border-sage-300 rounded-xl text-sm font-medium text-sage-700 hover:bg-sage-50 disabled:opacity-50"
-          >
-            <Plus size={15} strokeWidth={2.2} /> No, it&apos;s new — create it
-          </button>
-          {/* Left disabled rather than hidden: the climber should see that
-              publishing is on offer, and what it is waiting on. The fix is not
-              in this sheet, so name where it is. */}
-          {!canCreate && (
-            <p className="mt-1.5 text-[11px] leading-snug text-gray-500">
-              A shared boulder lives at a gym, and this problem has none. Close
-              this, add the gym to the problem, and set it Public again.
-            </p>
-          )}
+          <div className="mt-2 space-y-2 rounded-xl border border-dashed border-sage-300 p-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => pickFile(e.target.files?.[0] ?? null)}
+            />
+            <div className="flex items-center gap-3">
+              {photoUrl ? (
+                <div className="relative flex-shrink-0">
+                  <img src={photoUrl} alt="Boulder photo" className="h-12 w-12 rounded-lg border object-cover" />
+                  {/* Only a photo taken here can be dropped again — the problem's
+                      own image isn't this sheet's to remove. */}
+                  {previewUrl && (
+                    <button
+                      type="button"
+                      onClick={() => pickFile(null)}
+                      aria-label="Remove photo"
+                      className="absolute -right-2 -top-2 rounded-full border bg-white p-0.5 shadow"
+                    >
+                      <X className="h-3.5 w-3.5 text-gray-600" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Add a photo"
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+                >
+                  <Camera size={16} />
+                </button>
+              )}
+              <p className={`text-xs leading-snug ${photoUrl ? 'text-gray-400' : 'text-sage-700'}`}>
+                {photoUrl
+                  ? 'This photo goes on the wall for everyone at your gym.'
+                  : 'A new boulder needs a photo, so others can find it on the wall.'}
+              </p>
+            </div>
+            <button
+              onClick={createNew}
+              disabled={!canCreate || busy}
+              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl text-sm font-medium text-sage-700 hover:bg-sage-50 disabled:opacity-50"
+            >
+              <Plus size={15} strokeWidth={2.2} /> No, it&apos;s new — create it
+            </button>
+            {/* Left disabled rather than hidden: the climber should see that
+                publishing is on offer, and what it is waiting on. The photo is
+                fixable right here and says so above; a missing gym is not, so
+                that one has to name where the fix lives. */}
+            {gym.length === 0 && (
+              <p className="text-[11px] leading-snug text-gray-500">
+                A shared boulder lives at a gym, and this problem has none. Close
+                this, add the gym to the problem, and set it Public again.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </BottomSheet>

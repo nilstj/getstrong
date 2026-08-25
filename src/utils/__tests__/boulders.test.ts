@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { boulderTitle, countMembersByBoulder, boulderColorGradeLabel } from '../boulders'
+import {
+  boulderTitle, countMembersByBoulder, boulderColorGradeLabel,
+  latestStripBoulders, LATEST_STRIP_LIMIT,
+} from '../boulders'
 
 describe('boulderTitle', () => {
   it('prefers the name', () => {
@@ -53,5 +56,39 @@ describe('boulderColorGradeLabel', () => {
   })
   it('treats empty strings as missing', () => {
     expect(boulderColorGradeLabel({ color: '', community_grade: '' })).toBe('a boulder')
+  })
+})
+
+describe('latestStripBoulders', () => {
+  const b = (id: string, set_at: string, image_url: string | null = 'http://img/x.jpg') =>
+    ({ id, set_at, image_url })
+
+  it('merges the lists newest-set first', () => {
+    const out = latestStripBoulders(
+      [b('mine', '2026-08-02')],
+      [b('older', '2026-08-01'), b('newest', '2026-08-03')],
+    )
+    expect(out.map(x => x.id)).toEqual(['newest', 'mine', 'older'])
+  })
+
+  it('drops boulders with no photo', () => {
+    const out = latestStripBoulders([b('with', '2026-08-02'), b('without', '2026-08-03', null)])
+    expect(out.map(x => x.id)).toEqual(['with'])
+  })
+
+  it('treats an empty image_url as no photo', () => {
+    expect(latestStripBoulders([b('blank', '2026-08-01', '')])).toEqual([])
+  })
+
+  it('caps the strip', () => {
+    const many = Array.from({ length: LATEST_STRIP_LIMIT + 5 }, (_, i) =>
+      b(`b${i}`, `2026-08-${String(i + 1).padStart(2, '0')}`))
+    expect(latestStripBoulders(many)).toHaveLength(LATEST_STRIP_LIMIT)
+  })
+
+  it('does not mutate the caller\'s lists', () => {
+    const list = [b('a', '2026-08-01'), b('b', '2026-08-03')]
+    latestStripBoulders(list)
+    expect(list.map(x => x.id)).toEqual(['a', 'b'])
   })
 })
