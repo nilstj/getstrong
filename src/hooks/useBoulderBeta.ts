@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { BetaSection, BetaBodyType } from '../types'
+import type { BetaSection, BetaBodyType, BetaKind } from '../types'
+import { betaSort } from '../utils/betaSort'
 
 // ── View types ───────────────────────────────────────────────────────────────
 export interface ReactionAgg { emoji: string; count: number; mine: boolean }
@@ -23,6 +24,8 @@ export interface BetaThread {
   video_url: string | null
   section: BetaSection | null
   body_type: BetaBodyType | null
+  kind: BetaKind
+  risk_move: string | null
   created_at: string
   worked_count: number
   worked_by_me: boolean
@@ -70,7 +73,7 @@ export function useBoulderBetaThread(gymProblemId: string) {
       const [betasRes, helpRes] = await Promise.all([
         supabase
           .from('boulder_beta')
-          .select('id, gym_problem_id, user_id, body, video_url, section, body_type, created_at')
+          .select('id, gym_problem_id, user_id, body, video_url, section, body_type, kind, risk_move, created_at')
           .eq('gym_problem_id', gymProblemId),
         supabase
           .from('gym_problem_help')
@@ -81,7 +84,8 @@ export function useBoulderBetaThread(gymProblemId: string) {
       if (betasRes.error) throw betasRes.error
       const betas = (betasRes.data ?? []) as {
         id: string; gym_problem_id: string; user_id: string; body: string | null
-        video_url: string | null; section: BetaSection | null; body_type: BetaBodyType | null; created_at: string
+        video_url: string | null; section: BetaSection | null; body_type: BetaBodyType | null
+        kind: BetaKind; risk_move: string | null; created_at: string
       }[]
       const betaIds = betas.map(b => b.id)
 
@@ -107,7 +111,13 @@ export function useBoulderBetaThread(gymProblemId: string) {
       }
 
       const helpRows = (helpRes.data ?? []) as { user_id: string; note: string | null; video_url: string | null }[]
-      const workedUserIds = Array.from(new Set(worked.map(w => w.user_id)))
+      // "Found working beta" means a tip worked, not that a caution got a
+      // me-too — a caution's me-too is corroboration on the caution itself,
+      // shown as its own count, not evidence anyone found working beta.
+      const betaKindById = new Map(betas.map(b => [b.id, b.kind]))
+      const workedUserIds = Array.from(new Set(
+        worked.filter(w => betaKindById.get(w.beta_id) === 'beta').map(w => w.user_id)
+      ))
       const allIds = Array.from(new Set([
         ...betas.map(b => b.user_id),
         ...comments.map(c => c.user_id),
@@ -145,6 +155,8 @@ export function useBoulderBetaThread(gymProblemId: string) {
         video_url: b.video_url,
         section: b.section,
         body_type: b.body_type,
+        kind: b.kind,
+        risk_move: b.risk_move,
         created_at: b.created_at,
         worked_count: workedByBeta.get(b.id)?.count ?? 0,
         worked_by_me: workedByBeta.get(b.id)?.mine ?? false,
@@ -161,8 +173,10 @@ export function useBoulderBetaThread(gymProblemId: string) {
           reactions: aggregate(rxByComment.get(c.id) ?? [], myId),
         })),
       }))
-      // Top beta first: most "worked for me", then most recent.
-      threads.sort((a, b) => b.worked_count - a.worked_count || (a.created_at < b.created_at ? 1 : -1))
+      // Cautions first, then most "worked for me", then most recent — see
+      // betaSort, which was written for this list. The comparator that used to
+      // be inlined here was a duplicate of it and outranked nothing.
+      threads.sort(betaSort)
 
       const asking: AskingPerson[] = helpRows.map(h => ({ ...person(h.user_id), note: h.note, videoUrl: h.video_url }))
       return { threads, asking, worked: workedUserIds.map(person) }
@@ -174,11 +188,26 @@ export function useBoulderBetaThread(gymProblemId: string) {
 export function useAddBoulderBeta() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { gymProblemId: string; body: string | null; videoUrl: string | null; section: BetaSection | null; bodyType: BetaBodyType | null }) => {
+    mutationFn: async (v: {
+      gymProblemId: string
+      body: string | null
+      videoUrl: string | null
+      section: BetaSection | null
+      bodyType: BetaBodyType | null
+      kind: BetaKind
+      riskMove: string | null
+    }) => {
       const { data: { user } } = await supabase.auth.getUser()
       const { error } = await supabase
         .from('boulder_beta')
-        .insert({ gym_problem_id: v.gymProblemId, user_id: user?.id, body: v.body, video_url: v.videoUrl, section: v.section, body_type: v.bodyType })
+        .insert({
+          gym_problem_id: v.gymProblemId, user_id: user?.id, body: v.body,
+          video_url: v.videoUrl, section: v.section, body_type: v.bodyType,
+          // boulder_beta_caution_shape (090) rejects a caution with no move or
+          // no words, and a plain beta that carries a move. The composer
+          // disables submit on the same rule; this is the server's guard.
+          kind: v.kind, risk_move: v.kind === 'caution' ? v.riskMove : null,
+        })
       if (error) throw error
     },
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] }),
@@ -229,6 +258,39 @@ export function useDeleteBetaComment() {
   return useMutation({
     mutationFn: async (v: { commentId: string; gymProblemId: string }) => {
       const { error } = await supabase.from('boulder_beta_comments').delete().eq('id', v.commentId)
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] }),
+  })
+}
+
+/**
+ * The author retracting their own beta. Permitted by the existing
+ * "users manage own boulder_beta" policy (052) — this is the first UI for it.
+ * Its me-toos, replies and reactions cascade; points already earned stay.
+ */
+export function useDeleteBoulderBeta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { betaId: string; gymProblemId: string }) => {
+      const { error } = await supabase.from('boulder_beta').delete().eq('id', v.betaId)
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] }),
+  })
+}
+
+/**
+ * Moderation. Goes through the RPC rather than a delete: RLS permits the author
+ * only, and a delete that RLS refuses removes zero rows and returns NO error —
+ * the admin would get a success toast and watch the beta stay put. The RPC
+ * raises 'Only admins can remove beta' instead.
+ */
+export function useAdminDeleteBoulderBeta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { betaId: string; gymProblemId: string }) => {
+      const { error } = await supabase.rpc('admin_delete_beta', { p_beta_id: v.betaId })
       if (error) throw error
     },
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['boulder_beta', v.gymProblemId] }),

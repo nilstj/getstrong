@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { POLICY_VERSION } from '../utils/policy'
 import toast from 'react-hot-toast'
 
 type Tab = 'login' | 'register'
@@ -10,6 +12,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [accepted, setAccepted] = useState(false)
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,7 +24,13 @@ export function LoginPage() {
         if (error) throw error
         navigate('/dashboard')
       } else {
-        const { error } = await supabase.auth.signUp({ email, password })
+        // Rides along to handle_new_user, which writes it onto the profile --
+        // so someone who ticked the box here is never asked again by PolicyGate.
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { policy_version: POLICY_VERSION, age_confirmed: true } },
+        })
         if (error) throw error
         toast.success('Account created! Check your email to confirm, then log in.')
         setTab('login')
@@ -100,14 +109,35 @@ export function LoginPage() {
               className="w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-500"
             />
           </div>
+          {tab === 'register' && (
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={accepted}
+                onChange={e => setAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-sage-700"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                I'm 13 or older, and I've read the{' '}
+                <Link to="/privacy" className="text-sage-700 font-medium underline">privacy notice</Link>
+                {' '}and{' '}
+                <Link to="/house-rules" className="text-sage-700 font-medium underline">house rules</Link>
+              </span>
+            </label>
+          )}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (tab === 'register' && !accepted)}
             className="w-full bg-sage-700 text-white py-3 rounded-xl font-medium disabled:opacity-50 transition-opacity"
           >
             {loading ? 'Please wait...' : tab === 'login' ? 'Log In' : 'Create Account'}
           </button>
         </form>
+
+        <div className="flex justify-center gap-4 mt-6 text-xs text-gray-400">
+          <Link to="/privacy" className="hover:text-gray-600">Privacy</Link>
+          <Link to="/house-rules" className="hover:text-gray-600">House rules</Link>
+        </div>
       </div>
     </div>
   )

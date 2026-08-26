@@ -23,6 +23,10 @@ import { CrewGroupPage } from './pages/CrewGroupPage'
 import { FriendSessionPage } from './pages/FriendSessionPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { OnboardingGate } from './components/OnboardingGate'
+import { PolicyGate } from './components/PolicyGate'
+import { PrivacyPage } from './pages/PrivacyPage'
+import { HouseRulesPage } from './pages/HouseRulesPage'
+import { AcceptPolicyPage } from './pages/AcceptPolicyPage'
 
 export default function App() {
   return (
@@ -32,28 +36,33 @@ export default function App() {
           <Toaster position="top-center" />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/house-rules" element={<HouseRulesPage />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="/onboarding" element={<OnboardingPage />} />
-              <Route element={<OnboardingGate />}>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/crews" element={<MyCrewsPage />} />
-                <Route path="/crews/:crewId" element={<CrewGroupPage />} />
-                <Route path="/gym-problems" element={<CrewsPage />} />
-                {/* Old name of the page — keep old links and bookmarks working. */}
-                <Route path="/sendtrains" element={<Navigate to="/gym-problems" replace />} />
-                <Route path="/sessions" element={<SessionsPage />} />
-                <Route path="/sessions/new" element={<NewSessionPage />} />
-                <Route path="/sessions/:id" element={<SessionDetailPage />} />
-                <Route path="/sessions/:id/edit" element={<EditSessionPage />} />
-                <Route path="/friends/sessions/:sessionId" element={<FriendSessionPage />} />
-                <Route path="/challenges" element={<ChallengesPage />} />
-                <Route path="/analysis" element={<AnalysisPage />} />
-                <Route path="/analysis/leaderboards" element={<LeaderboardsPage />} />
-                <Route path="/gym-problems/:id" element={<CrewPage />} />
-                <Route path="/admin" element={<AdminPage />} />
-                <Route path="/gym-grading" element={<GymGradingPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/accept-policy" element={<AcceptPolicyPage />} />
+              <Route element={<PolicyGate />}>
+                <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route element={<OnboardingGate />}>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/crews" element={<MyCrewsPage />} />
+                  <Route path="/crews/:crewId" element={<CrewGroupPage />} />
+                  <Route path="/gym-problems" element={<CrewsPage />} />
+                  {/* Old name of the page — keep old links and bookmarks working. */}
+                  <Route path="/sendtrains" element={<Navigate to="/gym-problems" replace />} />
+                  <Route path="/sessions" element={<SessionsPage />} />
+                  <Route path="/sessions/new" element={<NewSessionPage />} />
+                  <Route path="/sessions/:id" element={<SessionDetailPage />} />
+                  <Route path="/sessions/:id/edit" element={<EditSessionPage />} />
+                  <Route path="/friends/sessions/:sessionId" element={<FriendSessionPage />} />
+                  <Route path="/challenges" element={<ChallengesPage />} />
+                  <Route path="/analysis" element={<AnalysisPage />} />
+                  <Route path="/analysis/leaderboards" element={<LeaderboardsPage />} />
+                  <Route path="/gym-problems/:id" element={<CrewPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/gym-grading" element={<GymGradingPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                </Route>
               </Route>
             </Route>
           </Routes>

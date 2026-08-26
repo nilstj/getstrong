@@ -12,6 +12,9 @@ export interface Profile {
   default_gyms: string[]
   on_wall_at: string | null
   on_wall_label: string | null
+  policy_version: string | null
+  policy_accepted_at: string | null
+  age_confirmed_at: string | null
   created_at: string
 }
 

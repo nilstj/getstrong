@@ -15,6 +15,7 @@ import type { BoulderNavState } from '../utils/boulderNav'
 import type { Notification } from '../types'
 import { BADGES } from '../types'
 import toast from 'react-hot-toast'
+import { riskMoveLabel } from '../utils/riskMoves'
 
 const TOP_LEVEL_PATHS = ['/dashboard', '/sessions', '/crews', '/challenges', '/profile']
 
@@ -122,6 +123,7 @@ const ICONS: Record<Notification['type'], string> = {
   variation_cleared: '🧩',
   session_join_request: '🙋',
   session_join_approved: '✅',
+  boulder_caution: '⚠️',
 }
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
@@ -175,6 +177,13 @@ function describe(n: Notification, username: string): { text: string; detail?: s
         text: `${username} cleared your variation "${d.challenge_title ?? ''}"`,
         detail: d.video_url ? 'Watch their clip' : undefined,
       }
+    case 'boulder_caution': {
+      const move = riskMoveLabel(d.risk_move ?? null)
+      return {
+        text: `${username} flagged a move to watch out for${d.gym ? ` at ${d.gym}` : ''} ⚠️`,
+        detail: move || undefined,
+      }
+    }
     case 'session_join_request':
       return { text: `${username} wants to join your session at ${d.gym ?? 'the gym'} — say yes or no`, detail: d.date }
     case 'session_join_approved':
@@ -219,6 +228,8 @@ function routeFor(n: Notification): string | null {
     case 'crew_stripped':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     case 'variation_cleared':
+      return n.entity_id ? `/gym-problems/${n.entity_id}` : null
+    case 'boulder_caution':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     default:
       return null
@@ -265,8 +276,12 @@ function NotificationRow({ notification, onClose }: { notification: Notification
     // CrewPage opens on the Sendtrain tab by default, but a variation's clip
     // lives on the Variations tab — land there directly instead of leaving it
     // three taps away. openTab only applies on mount, which is exactly right here.
+    // A caution notification is the same story: the watch-out lives on the
+    // Beta tab, not Sendtrain.
     const navState = notification.type === 'variation_cleared'
       ? { state: { openTab: 'variations' } satisfies BoulderNavState }
+      : notification.type === 'boulder_caution'
+      ? { state: { openTab: 'beta' } satisfies BoulderNavState }
       : undefined
     return (
       <button onClick={() => { navigate(route, navState); onClose() }} className={className}>

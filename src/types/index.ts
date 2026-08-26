@@ -179,6 +179,7 @@ export type NotificationType =
   | 'crew_send'
   | 'crew_stripped'
   | 'variation_cleared'
+  | 'boulder_caution'
   | 'session_join_request'
   | 'session_join_approved'
 
@@ -353,6 +354,9 @@ export interface ProblemPrefill {
 export type BetaSection = 'start' | 'crux' | 'top'
 export type BetaBodyType = 'tall' | 'short' | 'neutral'
 
+/** A beta is either a tip ('beta') or a "watch out" about a move ('caution'). */
+export type BetaKind = 'beta' | 'caution'
+
 export interface BoulderBeta {
   id: string
   gym_problem_id: string
@@ -361,6 +365,8 @@ export interface BoulderBeta {
   video_url: string | null
   section: BetaSection | null
   body_type: BetaBodyType | null
+  kind: BetaKind
+  risk_move: string | null
   created_at: string
   worked_count: number
   worked_by_me: boolean

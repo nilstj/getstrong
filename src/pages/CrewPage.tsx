@@ -25,6 +25,8 @@ import {
   useUnmarkBetaWorked,
   useAddBetaComment,
   useDeleteBetaComment,
+  useDeleteBoulderBeta,
+  useAdminDeleteBoulderBeta,
   useToggleBetaReaction,
   useToggleBetaCommentReaction,
   type PersonLite,
@@ -41,6 +43,7 @@ import { useMarkGymProblemViewed } from '../hooks/useGymProblemViews'
 import { daysUntil } from '../utils/gymProblems'
 import { crewTitles } from '../utils/crewTitles'
 import { boulderToPrefill } from '../utils/boulderPrefill'
+import { RISK_MOVES } from '../utils/riskMoves'
 import { gradeSystemFor } from '../utils/grades'
 import type { BoulderNavState, BoulderTab } from '../utils/boulderNav'
 import { todayDateString } from '../utils/dates'
@@ -209,6 +212,8 @@ export function CrewPage() {
   const unmarkWorked = useUnmarkBetaWorked()
   const addBetaComment = useAddBetaComment()
   const deleteBetaComment = useDeleteBetaComment()
+  const deleteBeta = useDeleteBoulderBeta()
+  const adminDeleteBeta = useAdminDeleteBoulderBeta()
   const toggleBetaReaction = useToggleBetaReaction()
   const toggleBetaCommentReaction = useToggleBetaCommentReaction()
   const setSetter = useSetBoulderSetter()
@@ -237,6 +242,10 @@ export function CrewPage() {
   const [draftVideo, setDraftVideo] = useState('')
   const [draftSection, setDraftSection] = useState<BetaSection | null>(null)
   const [draftBody, setDraftBody] = useState<BetaBodyType | null>(null)
+  // "Watch out" mode: the beta names the move that hurts people and what to do
+  // instead. Both parts are required — see boulder_beta_caution_shape (090).
+  const [draftCaution, setDraftCaution] = useState(false)
+  const [draftRiskMove, setDraftRiskMove] = useState<string | null>(null)
   const [askOpen, setAskOpen] = useState(false)
   const [askNote, setAskNote] = useState('')
   const [askVideo, setAskVideo] = useState('')
@@ -265,20 +274,62 @@ export function CrewPage() {
   for (const r of reviewsData?.reviews ?? []) starsByUser[r.user_id] = r.stars
 
   const threads = betaData?.threads ?? []
+  // Distinct cautions on this boulder, not the sum of their me-toos: the badge
+  // answers "how many different things bite here". Corroboration belongs to
+  // each caution and is shown on its own card.
+  const cautionCount = threads.filter(t => t.kind === 'caution').length
+  // "Top beta" belongs to the top-ranked TIP, not whatever sorts to index 0 —
+  // cautions sort first (betaSort), so a positional check hides the star on
+  // any boulder that has one, however well an actual tip worked.
+  const topBetaId = threads.find(t => t.kind === 'beta')?.id
   const asking = betaData?.asking ?? []
   const workedPeople = betaData?.worked ?? []
 
   const submitBeta = () => {
     const body = draft.trim()
     const videoUrl = draftVideo.trim() || null
-    if (!body && !videoUrl) return
+    if (draftCaution) {
+      // A caution with no move, or no words about it, is just "be careful".
+      if (!body || !draftRiskMove) return
+    } else if (!body && !videoUrl) {
+      return
+    }
     addBeta.mutate(
-      { gymProblemId: id, body: body || null, videoUrl, section: draftSection, bodyType: draftBody },
       {
-        onSuccess: () => { setDraft(''); setDraftVideo(''); setDraftSection(null); setDraftBody(null); toast.success('Beta shared') },
-        onError: () => toast.error('Could not post beta'),
+        gymProblemId: id,
+        body: body || null,
+        videoUrl,
+        section: draftSection,
+        bodyType: draftBody,
+        kind: draftCaution ? 'caution' : 'beta',
+        riskMove: draftCaution ? draftRiskMove : null,
+      },
+      {
+        onSuccess: () => {
+          setDraft(''); setDraftVideo(''); setDraftSection(null); setDraftBody(null)
+          setDraftCaution(false); setDraftRiskMove(null)
+          toast.success(draftCaution ? 'Watch-out posted' : 'Beta shared')
+        },
+        onError: () => toast.error(draftCaution ? 'Could not post the watch-out' : 'Could not post beta'),
       },
     )
+  }
+
+  /**
+   * Author retraction and admin moderation land on the same button. The author
+   * path is a plain delete under RLS; the admin path is the RPC, which raises
+   * rather than silently removing nothing.
+   */
+  const removeBeta = (betaId: string, authorId: string) => {
+    const mine = authorId === user?.id
+    if (!window.confirm(mine
+      ? 'Delete your beta? Replies and me-toos go with it.'
+      : 'Remove this beta for everyone?')) return
+    const m = mine ? deleteBeta : adminDeleteBeta
+    m.mutate({ betaId, gymProblemId: id }, {
+      onSuccess: () => toast.success(mine ? 'Beta deleted' : 'Beta removed'),
+      onError: () => toast.error('Could not delete this beta'),
+    })
   }
 
   const toggleWorked = (betaId: string, workedByMe: boolean) => {
@@ -441,6 +492,11 @@ export function CrewPage() {
               {displayGrade && <Chip label={displayGrade} variant="grade" />}
               <ProblemColorIcons color={boulder.color} holdColor={boulder.hold_color} size={18} />
               {help?.open && <span className="inline-flex items-center rounded-md bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950">🆘 Help wanted</span>}
+              {cautionCount > 0 && (
+                <span className="inline-flex items-center rounded-md bg-amber-500 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  ⚠️ Watch out{cautionCount > 1 ? ` ×${cautionCount}` : ''}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -667,11 +723,15 @@ export function CrewPage() {
             </div>
 
             {/* Share beta */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-2">
+            <div className={`rounded-2xl border bg-white p-3 space-y-2 ${
+              draftCaution ? 'border-amber-300 ring-1 ring-amber-300' : 'border-gray-200'
+            }`}>
               <textarea
                 value={draft}
                 onChange={e => setDraft(e.target.value)}
-                placeholder="Share beta — how does the move go?"
+                placeholder={draftCaution
+                  ? 'What should people do instead?'
+                  : 'Share beta — how does the move go?'}
                 rows={2}
                 className="w-full resize-none text-sm focus:outline-none placeholder:text-gray-400"
               />
@@ -681,6 +741,32 @@ export function CrewPage() {
                 placeholder="Beta video link (optional)"
                 className="w-full text-xs text-gray-600 focus:outline-none placeholder:text-gray-400"
               />
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
+                <button type="button"
+                  onClick={() => { setDraftCaution(!draftCaution); setDraftRiskMove(null) }}
+                  aria-pressed={draftCaution}
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                    draftCaution ? 'bg-amber-400 text-amber-950' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                  ⚠️ Watch out
+                </button>
+                {draftCaution && RISK_MOVES.map(m => (
+                  <button key={m.id} type="button"
+                    onClick={() => setDraftRiskMove(draftRiskMove === m.id ? null : m.id)}
+                    aria-pressed={draftRiskMove === m.id}
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      draftRiskMove === m.id ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-900 border border-amber-200'
+                    }`}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              {draftCaution && (
+                <p className="text-[11px] leading-snug text-amber-700">
+                  Pick the move, then say what to do instead. Everyone at this gym
+                  sees it, and the setters get told.
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
                 <span className="text-[11px] text-gray-400">Section</span>
                 {SECTIONS.map(s => (
@@ -698,9 +784,11 @@ export function CrewPage() {
                 ))}
                 <span className="flex-1" />
                 <button type="button" onClick={submitBeta}
-                  disabled={addBeta.isPending || (!draft.trim() && !draftVideo.trim())}
+                  disabled={addBeta.isPending || (draftCaution
+                    ? (!draft.trim() || !draftRiskMove)
+                    : (!draft.trim() && !draftVideo.trim()))}
                   className="inline-flex items-center gap-1.5 rounded-full bg-sage-700 px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-40">
-                  <Send size={14} /> Post beta
+                  <Send size={14} /> {draftCaution ? 'Post watch-out' : 'Post beta'}
                 </button>
               </div>
             </div>
@@ -708,17 +796,20 @@ export function CrewPage() {
             {threads.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-400">Be the first to crack it — share your beta.</p>
             ) : (
-              threads.map((t, i) => (
+              threads.map(t => (
                 <BetaThreadCard
                   key={t.id}
                   thread={t}
-                  best={i === 0 && t.worked_count > 0}
+                  best={t.id === topBetaId && t.worked_count > 0}
                   currentUserId={user?.id}
                   onToggleWorked={() => toggleWorked(t.id, t.worked_by_me)}
                   onReactBeta={(emoji, mine) => toggleBetaReaction.mutate({ betaId: t.id, gymProblemId: id, emoji, mine })}
                   onAddReply={(body) => addBetaComment.mutate({ betaId: t.id, gymProblemId: id, body }, { onError: () => toast.error('Could not reply') })}
                   onDeleteReply={(commentId) => deleteBetaComment.mutate({ commentId, gymProblemId: id })}
                   onReactReply={(commentId, emoji, mine) => toggleBetaCommentReaction.mutate({ commentId, gymProblemId: id, emoji, mine })}
+                  onDelete={t.user_id === user?.id || myProfile?.is_admin
+                    ? () => removeBeta(t.id, t.user_id)
+                    : undefined}
                 />
               ))
             )}
