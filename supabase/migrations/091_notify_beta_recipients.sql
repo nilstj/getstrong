@@ -126,28 +126,66 @@ create trigger on_boulder_beta_notify_recipients
 -- perfectly clean and notify_beta_recipients() still raise on the first real
 -- beta — a mistyped column, a table outside the search_path. A trigger function
 -- cannot be called directly ("trigger functions can only be called as
--- triggers"), so plan and execute the same queries here against an id that
--- matches nothing: every column reference is resolved, and zero rows are
--- touched.
+-- triggers"), so plan and execute the same statements here against an id that
+-- matches nothing.
+--
+-- Every reference the function makes has to be reached, not just the ones a
+-- WHERE clause happens to mention: the insert TARGET LISTS (actor_id and data
+-- appear nowhere else), the five boulder_beta columns read through NEW — plpgsql
+-- resolves NEW.<field> at runtime, so a wrong field name would surface on a
+-- climber's own beta insert and nowhere earlier — and left() and
+-- jsonb_build_object(), which no predicate would ever call. An unexercised
+-- reference is exactly the failure this block exists to catch.
 do $$
 declare
-  v_none uuid := '00000000-0000-0000-0000-000000000000';
-  v_n    bigint;
+  v_none  uuid := '00000000-0000-0000-0000-000000000000';
+  v_gym   text;
+  v_color text;
+  v_grade text;
+  v_kind  text;
+  v_risk  text;
+  v_data  jsonb;
 begin
-  perform gp.gym, gp.color, gp.community_grade
-     from public.gym_problems gp
-    where gp.id = v_none and gp.status = 'active' and gp.expires_at >= current_date;
+  select gp.gym, gp.color, gp.community_grade
+    into v_gym, v_color, v_grade
+    from public.gym_problems gp
+   where gp.id = v_none and gp.status = 'active' and gp.expires_at >= current_date;
 
-  -- Fails loudly here, now, if 090 was skipped.
-  perform b.kind, b.risk_move from public.boulder_beta b where b.id = v_none;
+  -- The NEW fields. Fails loudly here, now, if 090 was skipped.
+  select b.kind, b.risk_move into v_kind, v_risk
+    from public.boulder_beta b where b.id = v_none;
 
-  select count(*) into v_n
+  perform b.gym_problem_id, b.user_id, b.body
+     from public.boulder_beta b where b.id = v_none;
+
+  -- The payload builder runs for real. The subselect resolves
+  -- boulder_beta.body; coalesce keeps left() from being handed a null, which a
+  -- strict function short-circuits rather than calls.
+  v_data := jsonb_build_object(
+    'gym', v_gym,
+    'color', v_color,
+    'community_grade', v_grade,
+    'kind', v_kind,
+    'risk_move', v_risk,
+    'body', left(coalesce((select b.body from public.boulder_beta b
+                            where b.id = v_none), ''), 140)
+  );
+
+  -- Both inserts as the function writes them, target lists included, with
+  -- `and false` closing each WHERE. A constant-false qualifier is folded away
+  -- only AFTER parse analysis has resolved every column and the planner has
+  -- built the plan, so the whole statement is checked while the source is
+  -- unconditionally empty — zero rows, whatever these tables hold.
+  insert into public.notifications (recipient_id, actor_id, type, entity_id, data)
+  select h.user_id, v_none, 'beta_answered', v_none, v_data
     from public.gym_problem_help h
    where h.gym_problem_id = v_none
      and h.resolved_at is null
-     and h.user_id <> v_none;
+     and h.user_id <> v_none
+     and false;
 
-  select count(*) into v_n
+  insert into public.notifications (recipient_id, actor_id, type, entity_id, data)
+  select distinct p.user_id, v_none, 'beta_on_project', v_none, v_data
     from public.problems p
    where p.gym_problem_id = v_none
      and p.user_id <> v_none
@@ -158,7 +196,8 @@ begin
                         and h.resolved_at is null)
      and not exists (select 1 from public.notifications n
                       where n.recipient_id = p.user_id and n.type = 'beta_on_project'
-                        and n.entity_id = v_none and n.read_at is null);
+                        and n.entity_id = v_none and n.read_at is null)
+     and false;
 
-  raise notice 'notify_beta_recipients: all queries planned and ran (% rows, expected 0)', v_n;
+  raise notice 'notify_beta_recipients: guard select, all five NEW fields, left()/jsonb_build_object and both notification inserts (target lists included) planned and ran; 0 rows written';
 end $$;
