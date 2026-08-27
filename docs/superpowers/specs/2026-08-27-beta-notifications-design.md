@@ -114,8 +114,14 @@ misleads the reader about what they are about to open. So each type branches on
 
 | | `kind = 'beta'` | `kind = 'caution'` |
 | --- | --- | --- |
-| **`beta_answered`** 💡 | *Ada answered your ask for beta on the blue 6C* | *Ada flagged a move to watch out for on the blue 6C you asked about* ⚠️ |
-| **`beta_on_project`** 👀 | *Ada posted beta on the blue 6C you're working on* | *Ada flagged a move to watch out for on the blue 6C you're working on* ⚠️ |
+| **`beta_answered`** 💡 | *Ada answered your ask for beta on the blue 6C at Klatreverket* | *Ada flagged a move to watch out for on the blue 6C at Klatreverket — you asked for beta* ⚠️ |
+| **`beta_on_project`** 👀 | *Ada posted beta on the blue 6C at Klatreverket — you're working on it* | *Ada flagged a move to watch out for on the blue 6C at Klatreverket — you're working on it* ⚠️ |
+
+The ` at <gym>` clause is dropped when `gym` is null (§6). A climber logs at more
+than one gym, so the row has to say which — `problem_comment` and
+`boulder_caution` both name the gym for the same reason. The reason-you're-being
+told clause is an em dash, matching `session_group_invite`'s *"— accept to join
+in"*.
 
 **Detail line:** the risk-move label (via existing `riskMoveLabel`) for a
 caution; the stored body snippet, quoted, for a plain beta — matching how
