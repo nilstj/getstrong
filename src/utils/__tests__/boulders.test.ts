@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { boulderTitle, countMembersByBoulder } from '../boulders'
+import { boulderTitle, countMembersByBoulder, boulderColorGradeLabel } from '../boulders'
 
 describe('boulderTitle', () => {
   it('prefers the name', () => {
@@ -29,5 +29,29 @@ describe('countMembersByBoulder', () => {
   })
   it('returns empty for no rows', () => {
     expect(countMembersByBoulder([])).toEqual({})
+  })
+})
+
+describe('boulderColorGradeLabel', () => {
+  it('reads "the <colour> <grade>"', () => {
+    expect(boulderColorGradeLabel({ color: 'blue', community_grade: '6C' })).toBe('the blue 6C')
+  })
+  it('lowercases the colour but leaves the grade as stored', () => {
+    // Grades are written "6C" and "V4"; lowercasing them would be wrong.
+    expect(boulderColorGradeLabel({ color: 'Blue', community_grade: '6C' })).toBe('the blue 6C')
+  })
+  it('drops the missing half when only a colour is known', () => {
+    expect(boulderColorGradeLabel({ color: 'Blue', community_grade: null })).toBe('the blue')
+  })
+  it('drops the missing half when only a grade is known', () => {
+    expect(boulderColorGradeLabel({ color: null, community_grade: '6C' })).toBe('the 6C')
+  })
+  it('falls back to "a boulder" when neither is known', () => {
+    // Not to the boulder's title: names were removed from the app, so a title
+    // is a wall angle and would read "the overhang".
+    expect(boulderColorGradeLabel({ color: null, community_grade: null })).toBe('a boulder')
+  })
+  it('treats empty strings as missing', () => {
+    expect(boulderColorGradeLabel({ color: '', community_grade: '' })).toBe('a boulder')
   })
 })
