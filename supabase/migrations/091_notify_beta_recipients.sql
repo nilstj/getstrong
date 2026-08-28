@@ -18,8 +18,50 @@
 -- create_notification would otherwise have given: you are not pinged for your
 -- own beta.
 --
--- REQUIRES 090: reads boulder_beta.kind and .risk_move. Applying this before
--- 090 fails.
+-- REQUIRES 090: reads boulder_beta.kind and .risk_move. The do block below
+-- refuses to let any of this install if 090 is missing.
+
+-- ── requires 090, checked before anything installs ───────────────────────────
+-- This has to come first, because everything else that would catch a skipped
+-- 090 comes too late to help. `create or replace function` does not validate a
+-- plpgsql body, and `create trigger` does not validate it either — so an
+-- operator applying this file statement by statement (what the Supabase
+-- dashboard invites) without 090 installs a LIVE trigger whose every firing
+-- raises `record "new" has no field "kind"`, killing beta posting app-wide.
+-- Having watched only the smoke block at the foot of the file go red, they
+-- would reasonably conclude that nothing had applied at all.
+--
+-- pg_attribute rather than information_schema (088's choice) on purpose:
+-- information_schema hides columns the querying role holds no privilege on, so
+-- it can report "missing" against a database where 090 is in fact applied. The
+-- catalog answers what the table actually holds.
+--
+-- A raise belongs here and nowhere else in this file: this one fires at apply
+-- time, in front of an operator who can act on it, and before a single climber
+-- can be affected.
+do $$
+declare
+  v_missing text;
+begin
+  if to_regclass('public.boulder_beta') is null then
+    raise exception 'boulder_beta does not exist. Apply 052_boulder_beta.sql and 090_caution_beta.sql in the Supabase dashboard, then re-run this file from the top.';
+  end if;
+
+  select string_agg(want.col, ', ' order by want.col)
+    into v_missing
+    from (values ('kind'::text), ('risk_move')) as want(col)
+   where not exists (
+     select 1 from pg_attribute a
+      where a.attrelid = 'public.boulder_beta'::regclass
+        and a.attname = want.col
+        and a.attnum > 0
+        and not a.attisdropped
+   );
+
+  if v_missing is not null then
+    raise exception 'boulder_beta is missing %. Apply 090_caution_beta.sql in the Supabase dashboard, then re-run this file from the top.', v_missing;
+  end if;
+end $$;
 
 create or replace function public.notify_beta_recipients()
 returns trigger as $$
@@ -31,8 +73,9 @@ declare
 begin
   -- Live boulders only: the SQL mirror of isActiveBoulder
   -- (src/utils/gymProblems.ts), expiry day inclusive to match the "N days left"
-  -- display. A stripped or expired boulder pings nobody — there is nothing left
-  -- on the wall to try.
+  -- display. An archived boulder — which is what stripping sets (048), and the
+  -- only other status 044 permits — or one past its expiry pings nobody: there
+  -- is nothing left on the wall to try.
   select gp.gym, gp.color, gp.community_grade
     into v_gym, v_color, v_grade
     from public.gym_problems gp
@@ -81,6 +124,15 @@ begin
   -- This is a check-then-write, which this schema avoids for beta_points. The
   -- difference is the stake: a lost race here writes one duplicate inbox row,
   -- not points, so a constraint is not worth carrying.
+  --
+  -- The same reasoning covers the two inserts being separate statements: under
+  -- READ COMMITTED the disjointness of the two audiences is not read from one
+  -- snapshot. If 057's resolve_help_on_beta_worked commits between them, a
+  -- climber who both asked and is projecting gets both rows; if a help row is
+  -- created between them, they get neither. Accepted knowingly rather than
+  -- overlooked — the window is microseconds and either outcome costs one inbox
+  -- row, where folding both statements into one CTE would spend the legibility
+  -- of two separately named audiences to buy it.
   --
   -- Scoped to beta_on_project only, so an unread projector ping can never
   -- swallow the answer to an explicit ask.
@@ -136,6 +188,10 @@ create trigger on_boulder_beta_notify_recipients
 -- climber's own beta insert and nowhere earlier — and left() and
 -- jsonb_build_object(), which no predicate would ever call. An unexercised
 -- reference is exactly the failure this block exists to catch.
+--
+-- Which makes this block coupled to the function above BY HAND: it re-states
+-- those queries rather than calling it, so it only ever guards what it still
+-- mirrors. Edit the body, edit this, or the coverage quietly drains away.
 do $$
 declare
   v_none  uuid := '00000000-0000-0000-0000-000000000000';
