@@ -182,6 +182,8 @@ export type NotificationType =
   | 'boulder_caution'
   | 'session_join_request'
   | 'session_join_approved'
+  | 'beta_answered'
+  | 'beta_on_project'
 
 export interface Notification {
   id: string

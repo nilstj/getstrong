@@ -16,6 +16,8 @@ import type { Notification } from '../types'
 import { BADGES } from '../types'
 import toast from 'react-hot-toast'
 import { riskMoveLabel } from '../utils/riskMoves'
+import { boulderColorGradeLabel } from '../utils/boulders'
+import { betaNotificationText } from '../utils/betaNotification'
 
 const TOP_LEVEL_PATHS = ['/dashboard', '/sessions', '/crews', '/challenges', '/profile']
 
@@ -124,7 +126,20 @@ const ICONS: Record<Notification['type'], string> = {
   session_join_request: '🙋',
   session_join_approved: '✅',
   boulder_caution: '⚠️',
+  beta_answered: '💡',
+  beta_on_project: '👀',
 }
+
+/**
+ * Notification types whose reason for existing lives on the boulder's Beta tab —
+ * a watch-out, or beta someone posted. Landing on the default Sendtrain tab
+ * would leave the thing you tapped for three taps away.
+ */
+const BETA_TAB_TYPES: Notification['type'][] = [
+  'boulder_caution',
+  'beta_answered',
+  'beta_on_project',
+]
 
 function describe(n: Notification, username: string): { text: string; detail?: string } {
   const d = n.data as Record<string, string | undefined>
@@ -188,6 +203,21 @@ function describe(n: Notification, username: string): { text: string; detail?: s
       return { text: `${username} wants to join your session at ${d.gym ?? 'the gym'} — say yes or no`, detail: d.date }
     case 'session_join_approved':
       return { text: `${username} said yes — you're in the session at ${d.gym ?? 'the gym'}`, detail: d.date }
+    case 'beta_answered':
+    case 'beta_on_project':
+      // Both switch labels narrow n.type to exactly the util's input union.
+      return betaNotificationText({
+        type: n.type,
+        kind: d.kind ?? null,
+        actor: username,
+        label: boulderColorGradeLabel({
+          color: d.color ?? null,
+          community_grade: d.community_grade ?? null,
+        }),
+        gym: d.gym ?? null,
+        body: d.body ?? null,
+        riskMove: d.risk_move ?? null,
+      })
     default:
       // `notifications` is in the realtime publication, so a stale open tab can
       // receive a type it doesn't know how to render yet. Degrade to a dull row
@@ -230,6 +260,9 @@ function routeFor(n: Notification): string | null {
     case 'variation_cleared':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     case 'boulder_caution':
+      return n.entity_id ? `/gym-problems/${n.entity_id}` : null
+    case 'beta_answered':
+    case 'beta_on_project':
       return n.entity_id ? `/gym-problems/${n.entity_id}` : null
     default:
       return null
@@ -280,7 +313,7 @@ function NotificationRow({ notification, onClose }: { notification: Notification
     // Beta tab, not Sendtrain.
     const navState = notification.type === 'variation_cleared'
       ? { state: { openTab: 'variations' } satisfies BoulderNavState }
-      : notification.type === 'boulder_caution'
+      : BETA_TAB_TYPES.includes(notification.type)
       ? { state: { openTab: 'beta' } satisfies BoulderNavState }
       : undefined
     return (

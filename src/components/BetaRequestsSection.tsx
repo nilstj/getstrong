@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { betaRequestKey, visibleBetaRequests, pruneDismissals } from '../utils/betaRequests'
 import type { BetaRequest } from '../utils/betaRequests'
+import { boulderColorGradeLabel } from '../utils/boulders'
 import type { BoulderNavState } from '../utils/boulderNav'
 
 const SHOWN = 3
@@ -29,17 +30,6 @@ function readDismissed(): Record<string, string> {
   } catch {
     return {}
   }
-}
-
-/** "the blue 6C", falling back to the summary's own title. */
-function boulderLabel(r: BetaRequest): string {
-  const colorGrade = [r.boulder.color?.toLowerCase(), r.boulder.community_grade]
-    .filter(Boolean)
-    .join(' ')
-  // Falling back to boulder.title would read "stuck on Shared boulder" or "stuck
-  // on overhang", since names were removed and the title is then a wall angle or
-  // a generic label. "a boulder" is the same fallback FeedCard uses.
-  return colorGrade ? `the ${colorGrade}` : 'a boulder'
 }
 
 /**
@@ -122,7 +112,7 @@ export function BetaRequestsSection({ requests }: { requests: BetaRequest[] }) {
                 <span className="block text-sm text-gray-800">
                   <span className="font-semibold">{r.askerName ?? 'Someone'}</span>
                   <span className="text-gray-500"> is stuck on </span>
-                  <span className="font-medium">{boulderLabel(r)}</span>
+                  <span className="font-medium">{boulderColorGradeLabel(r.boulder)}</span>
                 </span>
                 {r.note && (
                   <span className="mt-0.5 block text-xs text-gray-600 line-clamp-2">"{r.note}"</span>
