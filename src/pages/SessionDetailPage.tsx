@@ -66,7 +66,13 @@ export function SessionDetailPage() {
   const problemIds = problems.map(p => p.id)
   const { data: commentCounts = {} } = useProblemCommentCounts(problemIds)
   const [openCommentProblemId, setOpenCommentProblemId] = useState<string | null>(null)
-  const [linkProblem, setLinkProblem] = useState<Problem | null>(null)
+  // The publish sheet, paired with what to say if it's dismissed without
+  // publishing. The problem is already saved by then, and now that Public is
+  // the default for a new problem that dismissal is the common path -- silence
+  // there reads as a lost log. Paired in one state rather than a second
+  // useState so the two can't drift; the two entry points below (add, and
+  // private -> public on edit) need different words.
+  const [linkProblem, setLinkProblem] = useState<{ problem: Problem; savedMessage: string } | null>(null)
   const addProblem = useAddProblem()
   const updateProblem = useUpdateProblem()
   const deleteProblem = useDeleteProblem()
@@ -103,7 +109,7 @@ export function SessionDetailPage() {
         onSuccess: (created) => {
           setSheetOpen(false)
           if (makePublic) {
-            setLinkProblem(created)
+            setLinkProblem({ problem: created, savedMessage: 'Problem added' })
           } else {
             toast.success('Problem added')
           }
@@ -423,7 +429,10 @@ export function SessionDetailPage() {
                 const isLinked = !!editingProblem.gym_problem_id
                 if (makePublic && !isLinked) {
                   // Private → Public: pick/create a boulder for the just-saved problem.
-                  setLinkProblem({ ...editingProblem, ...values })
+                  setLinkProblem({
+                    problem: { ...editingProblem, ...values },
+                    savedMessage: 'Problem updated',
+                  })
                   setEditingProblem(null)
                 } else if (!makePublic && isLinked) {
                   // Public → Private: unclaim (the boulder stays for others).
@@ -462,9 +471,11 @@ export function SessionDetailPage() {
       )}
       {linkProblem && (
         <BoulderLinkSheet
-          problem={linkProblem}
+          problem={linkProblem.problem}
           open
-          onClose={() => setLinkProblem(null)}
+          // Dismissing is not a cancel -- the problem is saved either way, so
+          // confirm the save rather than leaving the climber wondering.
+          onClose={() => { toast.success(linkProblem.savedMessage); setLinkProblem(null) }}
           onDone={() => { setLinkProblem(null); toast.success('Published to the gym') }}
         />
       )}

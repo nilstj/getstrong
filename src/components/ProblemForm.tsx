@@ -4,6 +4,7 @@ import { Camera, Check, ChevronDown, ChevronRight, X } from 'lucide-react'
 import type { Problem, ProblemTagDefinition } from '../types'
 import { V_GRADES, FONT_GRADES_ORDERED } from '../utils/grades'
 import { HOLD_COLORS } from '../utils/holdColors'
+import { defaultVisibilityPublic } from '../utils/boulderPrefill'
 import { HoldGraphic, TapeGraphic } from './Chip'
 import { useProblemTagDefinitions } from '../hooks/useProblemTags'
 import { useGymGradings } from '../hooks/useGymGradings'
@@ -49,7 +50,7 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const grades = initialGradeSystem === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
   const { data: tagDefinitions = [] } = useProblemTagDefinitions()
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(existingTagIds ?? []))
-  const [visibilityPublic, setVisibilityPublic] = useState<boolean>(!!existing?.gym_problem_id)
+  const [visibilityPublic, setVisibilityPublic] = useState<boolean>(defaultVisibilityPublic(existing))
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(existing?.image_url ?? null)
   const [isUploading, setIsUploading] = useState(false)
