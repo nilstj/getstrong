@@ -38,10 +38,19 @@ export function BoulderLinkSheet({
     )
   }
 
+  // gym is the one field create_gym_problem cannot do without -- gym_problems.gym
+  // is NOT NULL (044), so publishing without one fails inside the RPC and the
+  // climber gets a generic "Could not create boulder" for a problem they have no
+  // way to diagnose. Now that a new problem defaults to Public this sheet opens
+  // on every log, including from a climber with no default gym set, so the
+  // unpublishable case went from obscure to routine.
+  const gym = problem.gym?.trim() ?? ''
+  const canCreate = gym.length > 0
+
   const createNew = () => {
     create.mutate(
       {
-        gym: problem.gym!,
+        gym,
         color: problem.color,
         hold_color: problem.hold_color,
         wall_angle: null,
@@ -101,11 +110,20 @@ export function BoulderLinkSheet({
 
           <button
             onClick={createNew}
-            disabled={create.isPending || claim.isPending}
+            disabled={!canCreate || create.isPending || claim.isPending}
             className="w-full flex items-center justify-center gap-2 p-3 mt-2 border border-dashed border-sage-300 rounded-xl text-sm font-medium text-sage-700 hover:bg-sage-50 disabled:opacity-50"
           >
             <Plus size={15} strokeWidth={2.2} /> No, it&apos;s new — create it
           </button>
+          {/* Left disabled rather than hidden: the climber should see that
+              publishing is on offer, and what it is waiting on. The fix is not
+              in this sheet, so name where it is. */}
+          {!canCreate && (
+            <p className="mt-1.5 text-[11px] leading-snug text-gray-500">
+              A shared boulder lives at a gym, and this problem has none. Close
+              this, add the gym to the problem, and set it Public again.
+            </p>
+          )}
         </div>
       )}
     </BottomSheet>
