@@ -344,6 +344,22 @@ export interface GymSuggestion {
   uses: number
 }
 
+/**
+ * A row from the gyms registry, as the picker sees it. `label` is the string
+ * written into problems.gym / sessions.location / etc — never `name` alone.
+ * `climber_added` is true for gyms a climber created (backfilled rows have
+ * created_by null), which is what the "new" chip keys off.
+ */
+export interface GymOption {
+  id: string
+  name: string
+  city: string | null
+  label: string
+  verified: boolean
+  climber_added: boolean
+  uses: number
+}
+
 export interface ProblemPrefill {
   color: string | null
   hold_color: string | null
