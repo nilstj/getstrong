@@ -65,7 +65,7 @@ create table gyms (
   name          text not null,              -- 'Klatreverket'
   city          text,                       -- 'Torshov'
   label         text not null,              -- 'Klatreverket, Torshov'  ← written everywhere
-  canonical_key text not null,              -- 'klatreverket|torshov'   ← folded, for uniqueness
+  canonical_key text not null,              -- 'klatreverket torshov'   ← folded, for uniqueness
   verified      boolean not null default false,
   created_by    uuid references auth.users(id) on delete set null,
   merged_into   uuid references gyms(id),
@@ -78,6 +78,22 @@ create unique index gyms_label_idx on gyms (label);
 `label` is the load-bearing column: it is the string every other table stores.
 Unique on `label` is what makes two Klatreverket branches distinct rows rather
 than a collision. `label` = `name` when `city` is null, else `name || ', ' || city`.
+
+### Why `canonical_key` folds across the name/city boundary
+
+`canonical_key` is `fold(name || ' ' || coalesce(city, ''))` — one folded
+string, **no separator between name and city**. This matters: the backfill puts
+whole legacy strings into `name` with `city` null, so a legacy
+`"Klatreverket, Torshov"` and a later `name: "Klatreverket", city: "Torshov"`
+must collide. With a `name|city` separator they would fold to different keys and
+produce two rows for one building — the exact fork this design exists to
+prevent. Folding across the boundary makes them one key, and `create_gym`'s
+idempotent return resolves the second attempt to the first row.
+
+A consequence worth naming: same `label` implies same `canonical_key` (labels
+differ from the folded form only by punctuation and case, which the fold
+ignores), so `gyms_label_idx` can never fire independently. It is kept as a
+cheap invariant, not as a second line of defence.
 
 `label` and `canonical_key` are **plain columns maintained by the RPCs**, not
 generated columns. Generated would be drift-proof, but the fold rules will need
@@ -105,6 +121,18 @@ no-policy table, not one of the accidental UPDATE-policy gaps: four
 `create_gym` being idempotent rather than erroring means two climbers adding the
 same gym from opposite ends of the bouldering room converge, instead of one of
 them seeing a failure.
+
+Edge behaviour, specified so it isn't decided at implementation time:
+
+- **`rename_gym` into an existing canonical key raises**, with a message telling
+  the admin to merge instead. Renaming `"Klatreverkeet"` to `"Klatreverket"`
+  when `"Klatreverket"` already exists is a merge, and silently turning it into
+  one would rewrite data under an admin who asked for a rename.
+- **`merge_gyms` with `from_id = to_id` raises.**
+- **Merging into an already-merged gym follows the `merged_into` chain to its
+  final target**, so a chain can never strand rows on an intermediate row.
+- **`merge_gyms` on a `from` gym that is already merged raises** — it has no
+  live label left to rewrite.
 
 **Creating a gym pays no `beta_points`.** Stated explicitly in the migration
 comment — a points path with no guard is the farmable-reward pattern, and "type
@@ -152,9 +180,18 @@ tool are verified by build plus a manual pass.
 
 **`canonicalGymKey(name, city)`** — trim, lowercase, replace punctuation with a
 space, collapse whitespace, fold Nordic and common diacritics (`æ→ae`, `ø→o`,
-`å→a`, `ä→a`, `ö→o`, `ü→u`, `é/è/ê→e`, `á→a`), join as `name|city`. So
+`å→a`, `ä→a`, `ö→o`, `ü→u`, `é/è/ê→e`, `á→a`). Name and city are joined with a
+space **before** folding, matching the SQL definition above. So
 `"Klatreverket "`, `"klatreverket"` and `"KLATREVERKET"` are one gym, and
-`"Klatreverket - Torshov"` matches `"Klatreverket Torshov"`.
+`"Klatreverket - Torshov"`, `"Klatreverket, Torshov"` and
+`"Klatreverket Torshov"` all fold alike.
+
+The fold therefore exists twice — once in TypeScript for the UI's duplicate
+hints, once in SQL as the uniqueness key. **The SQL one is authoritative.** If
+they drift, the failure mode is benign: the UI misses a hint, the climber
+submits anyway, and `create_gym` returns the existing row. Drift degrades to
+"converges regardless", never to a duplicate row. The Vitest cases should be
+mirrored by the migration's closing `do` block for the same inputs.
 
 It does **not** strip noise words like "klatresenter" — that could collide two
 genuinely different gyms. Duplicate *detection* is where the fuzziness lives.
@@ -251,6 +288,11 @@ that has to work in a gym does.
 Migration `092_gym_registry.sql`. **Release gate: apply before deploying the
 client**, which calls `create_gym` and reads `gyms`.
 
+The picker and the backfill **must ship together** — a constrained picker over
+an unbackfilled registry has nothing to pick. The admin section could stage into
+a follow-up release if the plan needs shrinking, at the cost of having no
+cleanup lever for whatever gets typed in between; prefer shipping all three.
+
 Order inside the migration matters: table → fold function → `rewrite_gym_label`
 → backfill → *then* replace `gym_suggestions`. Replacing the suggestion function
 before the backfill would show an empty picker to everyone in that window.
@@ -285,3 +327,6 @@ typo in a body raises at apply time rather than under the first climber's thumb.
 - Migrating the join key to `gym_id` (uuid). The registry is the step toward it.
 - Gym pages, gym profiles, gym-level admin roles.
 - Any automated joke-name detection beyond the junk filter.
+- A per-user rate limit on `create_gym`. Considered and deferred: creating a gym
+  is now a deliberate act behind a duplicate check, it pays no points, and admin
+  merge cleans up what slips through. Revisit if junk rows actually appear.
