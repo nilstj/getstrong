@@ -1240,20 +1240,13 @@ Applying now is safe for the live app: `gym_suggestions`'s new shape is additive
   - `useGymSuggestions(): UseQueryResult<GymOption[]>` — same hook name and query key `['gym_suggestions']` as today, now returning `GymOption[]`
   - `useCreateGym(): UseMutationResult<GymOption, unknown, { name: string; city: string | null }>`
 
-- [ ] **Step 1: Replace `GymSuggestion` with `GymOption` in the type file**
+- [ ] **Step 1: Leave `GymSuggestion` in place**
 
-`GymSuggestion` had two consumers: `useGymSuggestions` and `filterGymSuggestions`. Both are replaced in this task and Task 7, so delete the interface rather than leaving a dead type.
+No edit to `src/types/index.ts` in this task. `GymSuggestion` still has a live consumer — `filterGymSuggestions` in `src/utils/gymSuggestions.ts` — and Task 7 deletes the type and that file together.
 
-In `src/types/index.ts`, delete:
+This is what keeps the branch green at every commit. `GymOption` carries both `name` and `uses`, so it is structurally assignable to `GymSuggestion`: after this task `useGymSuggestions` returns `GymOption[]`, and the existing `filterGymSuggestions(suggestions, value)` call in `GymInput` still type-checks against it.
 
-```ts
-export interface GymSuggestion {
-  name: string
-  uses: number
-}
-```
-
-`GymOption` from Task 1 replaces it.
+Note what that does **not** fix. Call sites reading `.name` as if it were the label (`DefaultGymsEditor`'s `popular`, `AddGymBoulderSheet`, `GymGradingPage`) still compile, but `.name` is now the **bare gym name** rather than the label — type-clean and semantically wrong. `tsc` cannot see it. Task 7 Step 3 moves them to `.label`; do not treat their compiling here as evidence they are correct.
 
 - [ ] **Step 2: Rewrite the hook file**
 
@@ -1340,23 +1333,19 @@ export function useCreateGym() {
 }
 ```
 
-- [ ] **Step 3: Verify the build fails only where expected**
+- [ ] **Step 3: Verify the build, tests and lint are green**
 
 Run: `npm run build`
-Expected: FAIL, and **only** in the places Task 7 rewires — `src/utils/gymSuggestions.ts` and `src/components/GymInput.tsx` (both reference the deleted `GymSuggestion`), plus any call site reading `.name` as a label. Note the exact list; Task 7 must clear all of it.
+Expected: exit 0. A failure here means `GymOption` is not lining up with the old `GymSuggestion` shape — check that Task 1's interface carries both `name` and `uses`.
 
-If the failures name anything else, stop and read that file before continuing.
+Run: `npx vitest run && npm run lint 2>&1 | tail -3`
+Expected: tests PASS; lint `16 problems (15 errors, 1 warning)`.
 
-- [ ] **Step 4: Commit (build red, deliberately)**
-
-The registry hooks land before their consumers. This commit does not build on its own; Task 7 closes it.
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/types/index.ts src/hooks/useGymSuggestions.ts
-git commit -m "Read the gym registry, and add a gym through create_gym
-
-Build is red until the picker lands in the following commits: GymInput and
-filterGymSuggestions still reference the removed GymSuggestion type."
+git add src/hooks/useGymSuggestions.ts
+git commit -m "Read the gym registry, and add a gym through create_gym"
 ```
 
 ---
@@ -1508,9 +1497,10 @@ export function GymPicker({
 Run: `grep -n "khaki" tailwind.config.js`
 Expected: a `khaki` palette with `100` and `700`. If those two shades are absent, use the shades that are defined (or `sage`), rather than adding new ones.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Build, test and lint green, then commit**
 
-Build is still red from Task 4 until Task 7. Commit the component on its own.
+Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
+Expected: build exit 0, tests PASS, lint `16 problems`. `GymPicker` has no consumer yet — an exported component that nothing imports is fine, `noUnusedLocals` only flags unused locals inside a file.
 
 ```bash
 git add src/components/GymPicker.tsx
@@ -1677,7 +1667,10 @@ export function AddGymSheet({
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Build, test and lint green, then commit**
+
+Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
+Expected: build exit 0, tests PASS, lint `16 problems`. Like `GymPicker`, this component has no consumer until Task 7.
 
 ```bash
 git add src/components/AddGymSheet.tsx
@@ -1695,6 +1688,7 @@ This is the task that turns the build green again. Four surfaces mint gym string
 - Modify: `src/components/DefaultGymsEditor.tsx`
 - Modify: `src/pages/NewSessionPage.tsx` (import at line 7, `GymInput` at line 78)
 - Modify: `src/pages/GymGradingPage.tsx` (the input + datalist at lines 63-74)
+- Modify: `src/types/index.ts` (delete the now-unused `GymSuggestion` interface)
 - Delete: `src/components/GymInput.tsx`
 - Delete: `src/utils/gymSuggestions.ts`
 - Delete: `src/utils/__tests__/gymSuggestions.test.ts`
@@ -1890,6 +1884,17 @@ git rm src/components/GymInput.tsx src/utils/gymSuggestions.ts src/utils/__tests
 ```
 
 `filterGymSuggestions` is replaced by `filterGyms`, which returns rows rather than names.
+
+Its type goes with it — delete from `src/types/index.ts`:
+
+```ts
+export interface GymSuggestion {
+  name: string
+  uses: number
+}
+```
+
+`GymOption` has replaced it everywhere. Task 4 kept it alive only so the branch stayed green while `gymSuggestions.ts` still existed.
 
 - [ ] **Step 6: Verify nothing still references the deleted code**
 
@@ -2325,6 +2330,7 @@ Two memory entries are now wrong, and one is worth adding:
 | "Can't find … ? Add it" → name + city → duplicate check | 5, 6 |
 | **new** chip keyed on `climber_added` | 5 |
 | `gym_suggestions` additive, registry-backed, excludes merged | 3 (Step 6), 4 |
+| Every commit builds (Task 4 keeps `GymSuggestion` until Task 7 deletes it) | 4 (Step 1), 7 (Step 5) |
 | Backfill: most-used spelling wins, no split guessed, variants collapsed | 3 (Step 5) |
 | `GymsAdmin`: verify / rename / merge with impact counts | 8 |
 | `BottomSheet` a sibling of the heading | 6, 8 |
