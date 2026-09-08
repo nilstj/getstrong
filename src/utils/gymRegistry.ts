@@ -29,7 +29,7 @@ export function foldGymText(s: string): string {
   const folded = lower
     .replace(/[æøœßđł]/g, c => NON_DECOMPOSING[c] ?? c)
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
   if (folded !== '') return folded
