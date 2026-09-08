@@ -10,6 +10,8 @@
  * "converges regardless", never to a duplicate row.
  */
 
+import type { GymOption } from '../types'
+
 // Characters that do not decompose under NFD, so the combining-mark strip
 // below can't reach them. Keep in sync with the replace() chain in 092.
 const NON_DECOMPOSING: Record<string, string> = {
@@ -69,4 +71,111 @@ export function isPlausibleGymName(name: string): boolean {
   // Cyrillic and friends intact while rejecting '1234' and '!!!!'.
   if (foldGymText(t).replace(/[0-9\s]/g, '') === '') return false
   return true
+}
+
+/**
+ * Optimal string alignment distance: insertions, deletions, substitutions and
+ * adjacent transpositions, each costing 1. Transposition matters here —
+ * 'Kaltreverket' is one keystroke from 'Klatreverket', and plain Levenshtein
+ * would score it 2 and miss it at the short-name threshold.
+ */
+export function damerauLevenshtein(a: string, b: string): number {
+  if (a === b) return 0
+  if (a.length === 0) return b.length
+  if (b.length === 0) return a.length
+
+  const d: number[][] = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0))
+  for (let i = 0; i <= a.length; i++) d[i][0] = i
+  for (let j = 0; j <= b.length; j++) d[0][j] = j
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1)
+      }
+    }
+  }
+  return d[a.length][b.length]
+}
+
+export interface GymMatch {
+  gym: GymOption
+  /** exact = same canonical key. branch = same name, different city. */
+  reason: 'exact' | 'branch' | 'similar'
+}
+
+/** Containment below this length matches half the list, so it doesn't count. */
+const MIN_CONTAINMENT_LENGTH = 4
+
+/** One edit for a short name, two for a medium one, three for a long one. */
+function editThreshold(len: number): number {
+  if (len <= 5) return 1
+  if (len <= 10) return 2
+  return 3
+}
+
+/**
+ * Gyms that might already be the one being added. Deliberately fuzzier than
+ * canonicalGymKey: the key decides identity, this decides what to warn about.
+ * Ranked exact -> branch -> similar, ties broken by most-used.
+ */
+export function nearDuplicateGyms(
+  name: string,
+  city: string | null,
+  list: GymOption[],
+  limit = 5,
+): GymMatch[] {
+  const key = canonicalGymKey(name, city)
+  const foldedName = foldGymText(name)
+  if (foldedName === '') return []
+
+  const scored: { match: GymMatch; score: number }[] = []
+
+  for (const candidate of list) {
+    const candidateKey = canonicalGymKey(candidate.name, candidate.city)
+    const candidateName = foldGymText(candidate.name)
+
+    if (candidateKey === key) {
+      scored.push({ match: { gym: candidate, reason: 'exact' }, score: 0 })
+      continue
+    }
+    if (candidateName === foldedName) {
+      scored.push({ match: { gym: candidate, reason: 'branch' }, score: 1 })
+      continue
+    }
+
+    const shorter = Math.min(candidateName.length, foldedName.length)
+    const contained = candidateName.includes(foldedName) || foldedName.includes(candidateName)
+    if (contained && shorter >= MIN_CONTAINMENT_LENGTH) {
+      scored.push({ match: { gym: candidate, reason: 'similar' }, score: 2 })
+      continue
+    }
+
+    const distance = damerauLevenshtein(candidateName, foldedName)
+    if (distance <= editThreshold(Math.max(candidateName.length, foldedName.length))) {
+      scored.push({ match: { gym: candidate, reason: 'similar' }, score: 3 + distance })
+    }
+  }
+
+  return scored
+    .sort((a, b) => a.score - b.score || b.match.gym.uses - a.match.gym.uses)
+    .slice(0, limit)
+    .map(s => s.match)
+}
+
+/**
+ * The picker's list. Verified gyms first (an admin has said "this is a real
+ * gym"), then most-used. The query is folded, so 'klatreverket torshov' finds
+ * 'Klatreverket, Torshov'.
+ */
+export function filterGyms(list: GymOption[], query: string, limit = 8): GymOption[] {
+  const q = foldGymText(query)
+  const matches = q === ''
+    ? [...list]
+    : list.filter(g => canonicalGymKey(g.name, g.city).includes(q) || foldGymText(g.label).includes(q))
+  return matches
+    .sort((a, b) => Number(b.verified) - Number(a.verified) || b.uses - a.uses)
+    .slice(0, limit)
 }
