@@ -571,15 +571,23 @@ begin
   perform public.rewrite_gym_label('Smoke Test Wall, Nowhere', 'Smoke Test Wall Two, Nowhere');
 
   -- admin-gated functions: reachable only behind assert_gym_admin, so prove
-  -- the guard fires rather than trying to pass it.
+  -- the guard fires rather than trying to pass it. Three outcomes, and only
+  -- one of them is a pass:
+  --   no raise           -> the guard is not guarding
+  --   the wrong message  -> the body is broken, which is the very thing this
+  --                         smoke block exists to catch; a handler that
+  --                         accepted any error would mask it
+  --   its guard message  -> pass
   begin
     perform public.assert_gym_admin();
-    -- An admin ran this migration's session as a superuser/owner, in which
-    -- case the guard's select simply finds no matching profile row and raises.
+    -- Reached only if the guard let a non-admin through. The migration runs
+    -- with auth.uid() null, so the guard's select finds no profile and raises.
     raise exception 'assert_gym_admin: expected a raise for a non-admin caller';
   exception when others then
     if sqlerrm = 'assert_gym_admin: expected a raise for a non-admin caller' then
       raise;
+    elsif sqlerrm <> 'Only admins can manage gyms' then
+      raise exception 'assert_gym_admin raised "%" instead of its guard message — its body is broken, not guarding', sqlerrm;
     end if;
     raise notice 'assert_gym_admin raised as expected: %', sqlerrm;
   end;
