@@ -12,20 +12,28 @@ export interface GymMergeImpact {
   gradings: number
   climbers: number
   announcements: number
+  beta_points: number
+  /** Rows a merge into this particular target would DELETE, not move. */
+  gradings_discarded: number
+  award_rounds_discarded: number
 }
 
-/** What a merge would rewrite. Admin-gated server-side. */
-export function useGymMergeImpact(label: string | null) {
+/**
+ * What a merge would rewrite, and what it would destroy. `toLabel` is what
+ * makes the discarded counts real — without a target nothing collides, so they
+ * are 0 until one is picked.
+ */
+export function useGymMergeImpact(fromLabel: string | null, toLabel: string | null) {
   return useQuery({
-    queryKey: ['gym_merge_impact', label],
+    queryKey: ['gym_merge_impact', fromLabel, toLabel],
     queryFn: async (): Promise<GymMergeImpact> => {
-      const { data, error } = await supabase.rpc('gym_merge_impact', { p_from: label! })
+      const { data, error } = await supabase.rpc('gym_merge_impact', { p_from: fromLabel!, p_to: toLabel })
       if (error) throw error
       const row = (data as GymMergeImpact[] | null)?.[0]
       if (!row) throw new Error('Could not read the merge impact')
       return row
     },
-    enabled: !!label,
+    enabled: !!fromLabel,
   })
 }
 

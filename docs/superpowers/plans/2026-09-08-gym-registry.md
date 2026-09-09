@@ -2386,6 +2386,12 @@ and add the section to the list at lines 34-36:
       <ChallengeTagsAdmin />
 ```
 
+> **Review correction applied after this task was implemented.** `supabase/migrations/092_gym_registry.sql`, `src/hooks/useGymAdmin.ts` and `src/components/GymsAdmin.tsx` are authoritative.
+>
+> `gym_merge_impact` took only the source label, so the merge confirm's "discarded" counts were the *total* rows at the source and were identical whichever target the admin picked — while `rewrite_gym_label` only deletes the subset that collides with the target. The one number an admin reads before the feature's only irreversible action could not reflect what that action would destroy, and overstated it in almost every case.
+>
+> Since 092 was still unapplied, the RPC itself was fixed rather than the copy: it now takes `(p_from, p_to)` and returns `gradings_discarded` and `award_rounds_discarded` computed with the same collision predicates `rewrite_gym_label` deletes on, plus a `beta_points` count that the ten original counts omitted even though the rewrite touches that column. The confirm now separates what moves across from what is destroyed, says "Pick a target to see what would be lost" before one is chosen, and says so explicitly when a merge would lose nothing at all.
+
 - [ ] **Step 4: Check the icon names exist**
 
 Run: `grep -rn "\"lucide-react\"" package.json && node -e "const i=require('lucide-react');for(const n of ['BadgeCheck','Pencil','Merge','Check','Plus'])if(!i[n])throw new Error('missing icon: '+n);console.log('icons ok')"`

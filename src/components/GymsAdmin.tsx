@@ -23,8 +23,8 @@ function adminOrder(gyms: GymOption[]): GymOption[] {
 function MergeSheet({ from, gyms, onClose }: { from: GymOption; gyms: GymOption[]; onClose: () => void }) {
   const [targetId, setTargetId] = useState('')
   const merge = useMergeGyms()
-  const { data: impact } = useGymMergeImpact(from.label)
   const target = gyms.find(g => g.id === targetId) ?? null
+  const { data: impact } = useGymMergeImpact(from.label, target?.label ?? null)
 
   const run = async () => {
     if (!target) return
@@ -56,17 +56,27 @@ function MergeSheet({ from, gyms, onClose }: { from: GymOption; gyms: GymOption[
           <li>{impact.sessions} sessions, {impact.session_groups} shared sessions</li>
           <li>{impact.crews} sendtrains, {impact.crew_plans} plans</li>
           <li>{impact.climbers} climbers' default gyms</li>
-          <li>{impact.announcements} wall announcements</li>
-          {impact.gradings > 0 && (
-            <li className="font-semibold text-red-500">
-              {impact.gradings} grading colours — discarded where the target already sets that colour
+          <li>{impact.announcements} wall announcements, {impact.beta_points} beta points rows</li>
+          <li className="pt-1 text-gray-400">All of those move across. Only clashes are destroyed:</li>
+          {!target ? (
+            <li className="font-semibold text-gray-500">Pick a target to see what would be lost.</li>
+          ) : impact.gradings_discarded === 0 && impact.award_rounds_discarded === 0 ? (
+            <li className="font-semibold text-sage-700">
+              Nothing would be lost — no grading colour or award round clashes with {target.label}.
             </li>
-          )}
-          {impact.award_rounds > 0 && (
-            <li className="font-semibold text-red-500">
-              {impact.award_rounds} award rounds — discarded, with their votes, where the target already
-              has a round that day
-            </li>
+          ) : (
+            <>
+              {impact.gradings_discarded > 0 && (
+                <li className="font-semibold text-red-500">
+                  {impact.gradings_discarded} of {impact.gradings} grading colours lost — {target.label} already sets those
+                </li>
+              )}
+              {impact.award_rounds_discarded > 0 && (
+                <li className="font-semibold text-red-500">
+                  {impact.award_rounds_discarded} of {impact.award_rounds} award rounds lost, with their votes — {target.label} already has a round that day
+                </li>
+              )}
+            </>
           )}
         </ul>
       )}

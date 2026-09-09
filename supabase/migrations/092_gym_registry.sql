@@ -462,11 +462,22 @@ $$;
 -- What a merge would rewrite, so the confirm can state the damage before doing
 -- it. Read-only, but SECURITY DEFINER because sessions are not globally
 -- readable — and admin-gated for the same reason.
-create or replace function public.gym_merge_impact(p_from text)
+--
+-- p_to is load-bearing, not decoration. Almost every row here MOVES to the
+-- target; the only rows a merge destroys are those that would collide on a
+-- unique constraint, which rewrite_gym_label deletes so the target's row wins
+-- — per colour for gym_gradings, per (crew, date) for crew_award_rounds. How
+-- many that is depends entirely on which target was chosen, so counting the
+-- source alone would show an admin a number that never changes and is almost
+-- always larger than the real loss. Pass null before a target is picked: the
+-- discarded counts then read 0, which is the truth, because nothing is
+-- destroyed until there is a target to collide with.
+create or replace function public.gym_merge_impact(p_from text, p_to text)
 returns table (
   problems bigint, boulders bigint, sessions bigint, session_groups bigint,
   crews bigint, crew_plans bigint, award_rounds bigint, gradings bigint,
-  climbers bigint, announcements bigint
+  climbers bigint, announcements bigint, beta_points bigint,
+  gradings_discarded bigint, award_rounds_discarded bigint
 )
 language plpgsql
 security definer
@@ -485,14 +496,32 @@ begin
       (select count(*) from public.crew_award_rounds  where gym      = p_from),
       (select count(*) from public.gym_gradings       where gym      = p_from),
       (select count(*) from public.profiles           where default_gyms @> array[p_from]),
-      (select count(*) from public.wall_announcements where location = p_from);
+      (select count(*) from public.wall_announcements where location = p_from),
+      (select count(*) from public.beta_points        where gym      = p_from),
+      -- Exactly the rows rewrite_gym_label deletes rather than moves.
+      (select count(*) from public.gym_gradings src
+        where p_to is not null
+          and src.gym = p_from
+          and exists (
+            select 1 from public.gym_gradings t
+             where t.gym = p_to and t.color_name = src.color_name
+          )),
+      (select count(*) from public.crew_award_rounds src
+        where p_to is not null
+          and src.gym = p_from
+          and exists (
+            select 1 from public.crew_award_rounds t
+             where t.gym = p_to
+               and t.crew_id = src.crew_id
+               and t.round_date = src.round_date
+          ));
 end;
 $$;
 
 grant execute on function public.rename_gym(uuid, text, text)   to authenticated;
 grant execute on function public.merge_gyms(uuid, uuid)         to authenticated;
 grant execute on function public.set_gym_verified(uuid, boolean) to authenticated;
-grant execute on function public.gym_merge_impact(text)          to authenticated;
+grant execute on function public.gym_merge_impact(text, text)    to authenticated;
 
 -- ── backfill ─────────────────────────────────────────────────────────────────
 -- One gyms row per distinct canonical key, gathered from every column that
@@ -701,7 +730,7 @@ begin
       assert (select label from public.gyms where id = v_b) = 'Smoke Test Wall Two, Elsewhere',
              'rename_gym: label rewritten';
 
-      select * into v_impact from public.gym_merge_impact('Smoke Test Wall, Nowhere');
+      select * into v_impact from public.gym_merge_impact('Smoke Test Wall, Nowhere', null);
       assert v_impact.problems = 0 and v_impact.climbers = 0,
              'gym_merge_impact: counts for a label nothing uses';
 
