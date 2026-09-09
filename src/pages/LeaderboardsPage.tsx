@@ -3,19 +3,18 @@ import { useSearchParams } from 'react-router-dom'
 import { Trophy, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile } from '../hooks/useProfile'
-import { useGymSuggestions } from '../hooks/useGymSuggestions'
 import { useGymGradings } from '../hooks/useGymGradings'
 import { useGymLeaderboard } from '../hooks/useLeaderboard'
 import { useGymGradeLeaderboard } from '../hooks/useGradeLeaderboard'
 import { LeaderboardList } from '../components/LeaderboardList'
 import { BetaPointsInfo } from '../components/BetaPointsInfo'
 import { GradeScoreInfo } from '../components/GradeScoreInfo'
+import { GymPicker } from '../components/GymPicker'
 import { cycleMonth, shiftMonth } from '../utils/leaderboard'
 
 export function LeaderboardsPage() {
   const { user } = useAuth()
   const { data: profile } = useProfile()
-  const { data: gymOptions = [] } = useGymSuggestions()
   const [params, setParams] = useSearchParams()
 
   const defaultGyms = profile?.default_gyms ?? []
@@ -27,18 +26,6 @@ export function LeaderboardsPage() {
   const thisMonth = cycleMonth(new Date())
   const [month, setMonth] = useState(thisMonth)
   const [lookupOpen, setLookupOpen] = useState(false)
-  const [lookupText, setLookupText] = useState('')
-
-  // Only accept a known gym, so a partial string typed mid-lookup can never
-  // land in the URL. Closes the panel and clears the text on success so the
-  // chip row and the input never disagree about what is selected.
-  const commitGym = (name: string) => {
-    const match = gymOptions.find(g => g.name === name)
-    if (!match) return
-    selectGym(match.name)
-    setLookupText('')
-    setLookupOpen(false)
-  }
 
   const { data: gradings = [], isLoading: gradingsLoading } = useGymGradings(gym || null)
   const { data: betaBoard = [], isLoading: betaLoading, isError: betaError } = useGymLeaderboard(gym, month)
@@ -61,7 +48,6 @@ export function LeaderboardsPage() {
               key={g}
               onClick={() => {
                 selectGym(g)
-                setLookupText('')
                 setLookupOpen(false)
               }}
               className={`text-xs font-semibold px-3 py-1.5 rounded-full border whitespace-nowrap transition-colors ${
@@ -87,25 +73,17 @@ export function LeaderboardsPage() {
       {(lookupOpen || chips.length === 0) && (
         <div>
           <label htmlFor="leaderboard-gym" className="block text-sm font-medium text-gray-700 mb-1">Gym</label>
-          <input
+          {/* Registry-backed, so only a real gyms.label can reach the URL — and
+              the three leaderboard queries below all key on that string. The
+              picker's own "only a selected row commits" rule replaces the
+              hand-rolled commitGym guard this used to need. No onAddRequest:
+              browsing a leaderboard is not a reason to add a gym. */}
+          <GymPicker
             id="leaderboard-gym"
-            list="leaderboard-gyms"
-            value={lookupText}
-            onChange={e => {
-              const next = e.target.value
-              setLookupText(next)
-              // Commit only on a real gym name. Binding the URL straight to
-              // keystrokes would fire a gym-wide query per character typed.
-              commitGym(next)
-            }}
-            onBlur={() => commitGym(lookupText)}
-            onKeyDown={e => { if (e.key === 'Enter') commitGym(lookupText) }}
-            placeholder="e.g. Boulders Oslo"
-            className="w-full border rounded-lg px-3 py-2.5"
+            value={gym}
+            onChange={next => { selectGym(next); setLookupOpen(false) }}
+            placeholder="Pick a gym"
           />
-          <datalist id="leaderboard-gyms">
-            {gymOptions.map(g => <option key={g.name} value={g.name} />)}
-          </datalist>
         </div>
       )}
 

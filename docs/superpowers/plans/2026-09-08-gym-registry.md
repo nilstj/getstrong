@@ -1725,6 +1725,8 @@ This is the task that turns the build green again. Four surfaces mint gym string
 - Consumes: `GymPicker` (Task 5), `AddGymSheet` (Task 6).
 - Produces: no new exports.
 
+> **A fifth call site, found during implementation and fixed in this task.** `src/pages/LeaderboardsPage.tsx` had its own raw `<datalist>` gym lookup that this plan never listed. Its `commitGym` matched on `.name` and put the bare gym name into the `gym` URL param, which `useGymGradings`, `useGymLeaderboard` and `useGymGradeLeaderboard` all key on as a label — so any gym with a city would have shown empty leaderboards. Invisible to `tsc`, and masked today only because the backfill leaves `city` null on every existing gym. It is now a `GymPicker` with no `onAddRequest`, and its hand-rolled "only accept a known gym" guard is gone, since that is the picker's own rule.
+
 - [ ] **Step 1: `NewSessionPage` — the simplest swap first**
 
 In `src/pages/NewSessionPage.tsx`, change the import on line 7:

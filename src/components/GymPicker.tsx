@@ -10,8 +10,7 @@ import { filterGyms, foldGymText } from '../utils/gymRegistry'
  * and two leaderboards by being written straight through.
  *
  * A genuinely new gym goes through onAddRequest, which GymPicker's parent
- * answers with the add sheet (AddGymSheet). Same props as the GymInput it
- * replaces, plus that callback, so the four call sites barely change.
+ * answers with the add sheet (AddGymSheet).
  */
 export function GymPicker({
   value, onChange, placeholder, id, onCommit, onAddRequest, clearOnSelect = false,
