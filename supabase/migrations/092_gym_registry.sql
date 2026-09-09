@@ -196,7 +196,21 @@ create or replace function public.rewrite_gym_label(p_from text, p_to text)
 returns void
 language plpgsql
 security definer
-set search_path = ''
+-- NOT search_path = '', and this is load-bearing rather than a style choice.
+-- A SET clause applies for the whole call INCLUDING nested ones, and a trigger
+-- function with no SET clause of its own inherits it. Updating public.problems
+-- below fires on_problem_crew_send (045), whose notify_crew_send() declares
+-- `v_boulder gym_problems` unqualified and carries no SET clause — and plpgsql
+-- resolves DECLARE types on function ENTRY, before that function's own
+-- early-return guard gets a chance to skip the work. Under an empty
+-- search_path it therefore raises `type "gym_problems" does not exist` (42704),
+-- which aborts the backfill at the foot of this file and would abort every
+-- admin merge and rename in production too.
+--
+-- pg_catalog, public is still a fixed, caller-proof value, so the hardening
+-- that search_path = '' provides is not given up: every reference in this
+-- function's own body is already public.-qualified. Do not "tidy" this back.
+set search_path = pg_catalog, public
 as $$
 begin
   if coalesce(btrim(p_from), '') = '' or coalesce(btrim(p_to), '') = '' then
