@@ -45,7 +45,8 @@ export function GymPicker({
 
   // A blur schedules its work 150ms out, so the timer can outlive the
   // component when a parent sheet closes inside that window. Nothing it does
-  // is destructive, but React warns and the work is pointless.
+  // is destructive — React 19 drops setState on an unmounted component
+  // silently — but cancelling it is cheap and keeps the intent obvious.
   useEffect(() => () => {
     if (blurTimer.current) clearTimeout(blurTimer.current)
   }, [])

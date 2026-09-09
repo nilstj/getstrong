@@ -401,7 +401,7 @@ begin
     -- A retired row keeps its label so a stale client's string still resolves,
     -- and canonical_key is unique across retired rows too. Say which case this
     -- is: the previous message sent the admin looking for a gym that is gone.
-    raise exception 'That name belongs to a gym that was merged away, whose row still holds it. Rename that row first, or pick a different name';
+    raise exception 'That name belongs to a gym that was merged away, and its row still holds the name so a stale client can resolve it. Pick a different name';
   end if;
 
   perform public.rewrite_gym_label(v_old.label, v_label);
@@ -746,11 +746,16 @@ begin
   assert public.fold_gym_text('Klatreverket' || ' ' || '') = public.fold_gym_text('Klatreverket'),
          'fold: empty city adds nothing';
 
-  -- Leftovers from a failed apply would make rename_gym below raise "a gym
-  -- with that name already exists", which reads like a broken file rather
-  -- than stale state. merged_into is a self-FK, so clear it before deleting.
-  update public.gyms set merged_into = null where label like 'Smoke Test Wall%';
-  delete from public.gyms where label like 'Smoke Test Wall%';
+  -- The three exact labels this block creates, never a prefix: a LIKE would
+  -- also match a climber's gym that happens to start the same way, deleting
+  -- its registry row while twelve columns still hold its label — and it would
+  -- raise an FK violation if a real gym had been merged into a leftover smoke
+  -- row, since the update below clears merged_into ON these rows, not pointers
+  -- TO them.
+  update public.gyms set merged_into = null
+   where label in ('Smoke Test Wall, Nowhere', 'Smoke Test Wall Two, Nowhere', 'Smoke Test Wall Two, Elsewhere');
+  delete from public.gyms
+   where label in ('Smoke Test Wall, Nowhere', 'Smoke Test Wall Two, Nowhere', 'Smoke Test Wall Two, Elsewhere');
 
   -- Everything below that touches create_gym or an admin function needs a
   -- session identity. Applied by hand there is no JWT, so auth.uid() is null

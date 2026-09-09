@@ -1239,7 +1239,11 @@ git commit -m "Add a gyms registry, its RPCs and a backfill of every gym string"
 1. Open the Supabase dashboard SQL editor.
 2. Confirm 084, 085, 089, 090, 091 are applied; apply any that are not, in order.
 3. Paste `092_gym_registry.sql` whole and run it.
-4. Read the `NOTICE` output. Expect the backfill's `x -> y` lines for every variant it collapsed, then the final `gym registry: ...` notice. **A raise here means stop** — nothing below is safe to verify.
+4. Read the `NOTICE` **and `WARNING`** output. Expect the backfill's `backfill: x -> y` lines for every variant it collapsed, then the smoke block's notices, then the final `gym registry smoke: ...` line. **A raise here means stop** — nothing below is safe to verify.
+
+   **Look specifically for `WARNING: backfill: … DISCARDED n grading colour(s) and n award round(s)`.** That line is the only record that a collapse destroyed data, and it means two spellings of one gym both had grading colours configured, or both had an award round on the same day for the same sendtrain. The target's rows won; the source's are gone. If the dashboard's editor does not surface WARNING lines, apply via `psql` instead, or accept that you will not see what was lost.
+
+   Any notice reading `smoke: profiles is empty` or `smoke: no profile has is_admin` means the bodies it names were never executed and are still unvalidated — watch the first real add, rename and merge.
 5. Spot-check: `select label, verified, created_by is not null as climber_added from gyms order by label;` — one row per real gym, no near-duplicates, `created_by` null throughout.
 6. Spot-check the collapse: `select gym, count(*) from problems group by gym order by 2 desc;` — every value should appear in `gyms.label`.
 
