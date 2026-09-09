@@ -4,7 +4,8 @@ import { useForm, Controller } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useCreateSession } from '../hooks/useSessions'
 import { useProfile } from '../hooks/useProfile'
-import { GymInput } from '../components/GymInput'
+import { GymPicker } from '../components/GymPicker'
+import { AddGymSheet } from '../components/AddGymSheet'
 import { INTENSITY_OPTIONS } from '../types'
 import type { SessionIntensity } from '../types'
 
@@ -20,6 +21,7 @@ export function NewSessionPage() {
   const navigate = useNavigate()
   const createSession = useCreateSession()
   const [intensity, setIntensity] = useState<SessionIntensity | null>(null)
+  const [addingGym, setAddingGym] = useState<string | null>(null)
   const { register, handleSubmit, control, setValue, getValues } = useForm<FormValues>({
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
@@ -75,10 +77,11 @@ export function NewSessionPage() {
             control={control}
             rules={{ required: true }}
             render={({ field }) => (
-              <GymInput
+              <GymPicker
                 value={field.value}
                 onChange={field.onChange}
-                placeholder="Gym name, Kilter Board..."
+                placeholder="Pick your gym"
+                onAddRequest={setAddingGym}
               />
             )}
           />
@@ -138,6 +141,17 @@ export function NewSessionPage() {
           {createSession.isPending ? 'Creating...' : 'Start Session'}
         </button>
       </form>
+
+      {/* Outside the <form> on purpose. BottomSheet is not portaled, so a
+          sheet rendered inside the form puts its inputs and its close button
+          in the form — and Enter in the name field, or a tap on ×, would
+          submit the session instead of adding the gym. */}
+      <AddGymSheet
+        open={addingGym !== null}
+        initialName={addingGym ?? ''}
+        onClose={() => setAddingGym(null)}
+        onAdded={label => setValue('location', label, { shouldValidate: true })}
+      />
     </div>
   )
 }

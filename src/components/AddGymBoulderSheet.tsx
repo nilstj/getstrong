@@ -3,11 +3,11 @@ import { Camera, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from './BottomSheet'
 import { TapeGraphic, HoldGraphic } from './Chip'
-import { GymInput } from './GymInput'
+import { GymPicker } from './GymPicker'
+import { AddGymSheet } from './AddGymSheet'
 import { useAuth } from '../providers/AuthProvider'
 import { useProfile } from '../hooks/useProfile'
 import { useGymGradings } from '../hooks/useGymGradings'
-import { useGymSuggestions } from '../hooks/useGymSuggestions'
 import { useCreateGymProblem } from '../hooks/useGymProblems'
 import { HOLD_COLORS } from '../utils/holdColors'
 import { FONT_GRADES_ORDERED, V_GRADES } from '../utils/grades'
@@ -32,7 +32,6 @@ function RowLabel({ children }: { children: React.ReactNode }) {
 export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth()
   const { data: profile } = useProfile()
-  const { data: gymSuggestions = [] } = useGymSuggestions()
   const create = useCreateGymProblem()
 
   const defaultGyms = profile?.default_gyms ?? []
@@ -43,6 +42,7 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [addingGym, setAddingGym] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // The gym drives which grading colours exist, so it has to be chosen first.
@@ -52,15 +52,6 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
   const { data: gymGradings = [] } = useGymGradings(open && effectiveGym ? effectiveGym : null)
   const grades = profile?.grade_preference === 'v_scale' ? V_GRADES : FONT_GRADES_ORDERED
 
-  // Snap a typed gym to its known spelling (case-insensitively) so the boulder
-  // lands under the same gym string everyone else's discover feed filters on.
-  // No match (a genuinely new gym) just publishes what was typed.
-  const resolveGym = (typed: string): string => {
-    const trimmed = typed.trim()
-    const known = [...defaultGyms, ...gymSuggestions.map(s => s.name)]
-    return known.find(k => k.toLowerCase() === trimmed.toLowerCase()) ?? trimmed
-  }
-
   const clearFileInput = () => {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -68,6 +59,7 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
   const reset = () => {
     setGym(''); setGrade(''); setColor(''); setHoldColor('')
     setFile(null); setPreviewUrl(null)
+    setAddingGym(null)
     clearFileInput()
   }
 
@@ -105,7 +97,7 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
 
     create.mutate(
       {
-        gym: resolveGym(effectiveGym),
+        gym: effectiveGym,
         color: color || null,
         hold_color: holdColor || null,
         wall_angle: null,
@@ -144,10 +136,17 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
               ))}
             </div>
           )}
-          <GymInput
+          <GymPicker
             value={gym}
             onChange={v => { setGym(v); setColor('') }}
-            placeholder="e.g. Boulders Oslo"
+            placeholder="Pick your gym"
+            onAddRequest={setAddingGym}
+          />
+          <AddGymSheet
+            open={addingGym !== null}
+            initialName={addingGym ?? ''}
+            onClose={() => setAddingGym(null)}
+            onAdded={label => { setGym(label); setColor('') }}
           />
         </div>
 

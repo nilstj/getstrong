@@ -17,6 +17,8 @@ import {
 import { SetterBadge } from '../components/SetterBadge'
 import { FriendSessionCard } from '../components/FriendSessionCard'
 import { BottomSheet } from '../components/BottomSheet'
+import { GymPicker } from '../components/GymPicker'
+import { AddGymSheet } from '../components/AddGymSheet'
 import { cycleMonth } from '../utils/leaderboard'
 import { weeklyStreak } from '../utils/crewStreak'
 
@@ -280,6 +282,7 @@ function ProposeSessionSheet({ open, onClose, crewId, defaultGym }: { open: bool
   const [date, setDate] = useState('')
   const [gym, setGym] = useState(defaultGym ?? '')
   const [note, setNote] = useState('')
+  const [addingGym, setAddingGym] = useState<string | null>(null)
   const submit = () => {
     if (!date) { toast.error('Pick a date'); return }
     create.mutate(
@@ -296,7 +299,12 @@ function ProposeSessionSheet({ open, onClose, crewId, defaultGym }: { open: bool
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Gym (optional)</label>
-          <input value={gym} onChange={e => setGym(e.target.value)} placeholder="e.g. Boulders Oslo" className="w-full border rounded-lg px-3 py-2.5" />
+          <GymPicker
+            value={gym}
+            onChange={setGym}
+            placeholder="Pick a gym"
+            onAddRequest={setAddingGym}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
@@ -306,6 +314,12 @@ function ProposeSessionSheet({ open, onClose, crewId, defaultGym }: { open: bool
           {create.isPending ? 'Proposing…' : 'Propose session'}
         </button>
       </div>
+      <AddGymSheet
+        open={addingGym !== null}
+        initialName={addingGym ?? ''}
+        onClose={() => setAddingGym(null)}
+        onAdded={setGym}
+      />
     </BottomSheet>
   )
 }
