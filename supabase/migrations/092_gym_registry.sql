@@ -21,12 +21,58 @@
 -- ADDITIVE (name and uses keep their meaning, name returns the label) so the
 -- currently deployed client keeps working in between.
 
+-- ── requires 060, 071, 079 and 080, checked before anything installs ─────────
+-- The backfill and rewrite below read profiles.default_gyms (060),
+-- gym_gradings (071), crew_award_rounds (079) and session_groups (080).
+-- Without this guard a missing prerequisite surfaces as a bare "relation does
+-- not exist" partway through the paste, which reads like a broken file rather
+-- than a skipped migration. 091 set this precedent for the same reason.
+--
+-- pg_class/pg_attribute rather than information_schema: the latter hides
+-- objects the querying role holds no privilege on, so it can report "missing"
+-- against a database where the migration is in fact applied.
+do $$
+declare
+  v_missing text[] := '{}';
+begin
+  if to_regclass('public.session_groups') is null then
+    v_missing := v_missing || '080_shared_sessions.sql (session_groups)';
+  end if;
+  if to_regclass('public.crew_award_rounds') is null then
+    v_missing := v_missing || '079_session_awards.sql (crew_award_rounds)';
+  end if;
+  if to_regclass('public.gym_gradings') is null then
+    v_missing := v_missing || '071_gym_gradings.sql (gym_gradings)';
+  end if;
+  if not exists (
+    select 1 from pg_attribute
+     where attrelid = 'public.profiles'::regclass
+       and attname = 'default_gyms'
+       and not attisdropped
+  ) then
+    v_missing := v_missing || '060_default_gyms.sql (profiles.default_gyms)';
+  end if;
+
+  if array_length(v_missing, 1) > 0 then
+    raise exception '092 requires migrations that are not applied: %. Apply them first, in order, then re-run this file.',
+      array_to_string(v_missing, ', ');
+  end if;
+end $$;
+
 -- ── the fold ─────────────────────────────────────────────────────────────────
 -- Case, whitespace, punctuation and diacritics folded away. This is the
 -- authoritative definition; src/utils/gymRegistry.ts mirrors it for the UI's
 -- duplicate hints. If they drift, create_gym's idempotent return means the
 -- climber still converges on the existing row.
 --
+-- Two known limits, worth knowing before anyone tunes these rules. The
+-- enumerated translate() list is narrower than the TypeScript mirror's
+-- NFD-strip, so a diacritic outside the list survives folding there and not
+-- here ('Ściana' -> 'ciana' in SQL, 'sciana' in TS) — a missed duplicate hint,
+-- the benign direction. And the fallback fires only when folding empties the
+-- string completely, so a mixed-script name keeps just its ASCII: 'Скала 24'
+-- and 'Вертикаль 24' both fold to '24' and would collide. Irrelevant for
+-- Norwegian gyms; a trap if the app ever ships somewhere else.
 -- IMMUTABLE because lower/replace/translate/regexp_replace all are, and
 -- because create_gym uses it inside a lookup.
 --
@@ -93,6 +139,9 @@ create index if not exists gyms_merged_into_idx on gyms (merged_into) where merg
 alter table gyms enable row level security;
 
 -- Everyone signed in can read the registry — the picker needs it.
+-- Dropped first so the whole file stays re-runnable after a failed apply,
+-- which is the property the rest of its DDL already advertises.
+drop policy if exists "gyms readable by authenticated users" on gyms;
 create policy "gyms readable by authenticated users"
   on gyms for select
   using (auth.role() = 'authenticated');
@@ -124,8 +173,13 @@ create policy "gyms readable by authenticated users"
 -- discarded round takes its voting with it. gym_merge_impact reports the count
 -- so an admin sees that before confirming.
 --
--- No RLS concerns: SECURITY DEFINER, and it is only reachable from the
--- admin-gated functions below and from this file's own backfill.
+-- SECURITY DEFINER with NO authorization check of its own, because its callers
+-- do the checking. That makes it the most dangerous function in this file, so
+-- its EXECUTE grant is revoked below: CREATE FUNCTION grants EXECUTE to PUBLIC
+-- by default, and left alone that is an unauthenticated remote path to a
+-- twelve-column rewrite plus cascading deletes. Grants are cumulative, so
+-- revoking from anon and authenticated is not enough on its own — see the same
+-- note in 079_session_awards.sql.
 create or replace function public.rewrite_gym_label(p_from text, p_to text)
 returns void
 language plpgsql
@@ -199,6 +253,10 @@ begin
    where p.id = r.id;
 end;
 $$;
+
+-- Callable only by the functions in this file and by the migration operator.
+revoke execute on function public.rewrite_gym_label(text, text) from public;
+revoke execute on function public.rewrite_gym_label(text, text) from anon, authenticated;
 
 -- ── create ───────────────────────────────────────────────────────────────────
 -- Any signed-in climber can add a gym: someone standing in an unlisted gym is
@@ -281,6 +339,9 @@ begin
   end if;
 end;
 $$;
+
+revoke execute on function public.assert_gym_admin() from public;
+revoke execute on function public.assert_gym_admin() from anon, authenticated;
 
 -- Renaming into an existing canonical key RAISES rather than quietly becoming
 -- a merge. Renaming 'Klatreverkeet' to 'Klatreverket' when 'Klatreverket'
@@ -443,8 +504,13 @@ do $$
 declare
   r record;
 begin
+  -- Seed BOTH the stored value and its trimmed form. rewrite_gym_label matches
+  -- on exact string equality, so a stored 'Klatreverket ' can only be rewritten
+  -- if the loop below drives off the stored value; grouping on btrim alone
+  -- would leave it forked AND invisible, since the new gym_suggestions returns
+  -- registry rows rather than scraped strings.
   create temp table gym_seed on commit drop as
-  select btrim(g) as raw, count(*) as uses
+  select g as stored, btrim(g) as raw, count(*) as uses
     from (
       select location as g from public.sessions
       union all select gym      from public.problems
@@ -460,23 +526,29 @@ begin
       union all select unnest(default_gyms) from public.profiles
     ) s(g)
    where coalesce(btrim(g), '') <> ''
-   group by btrim(g);
+   group by g;
 
+  -- One row per canonical key, display name = the most-used TRIMMED spelling,
+  -- summing the uses of its padded variants so the winner is chosen on real
+  -- popularity rather than on whichever variant happened to be tidy.
   insert into public.gyms (name, city, label, canonical_key, verified, created_by)
-  select distinct on (public.fold_gym_text(s.raw))
-         s.raw, null, s.raw, public.fold_gym_text(s.raw), false, null
-    from gym_seed s
-   order by public.fold_gym_text(s.raw), s.uses desc, s.raw asc
+  select distinct on (w.key) w.raw, null, w.raw, w.key, false, null
+    from (
+      select public.fold_gym_text(s.raw) as key, s.raw, sum(s.uses) as uses
+        from gym_seed s
+       group by public.fold_gym_text(s.raw), s.raw
+    ) w
+   order by w.key, w.uses desc, w.raw asc
   on conflict (canonical_key) do nothing;
 
   -- Now collapse the variants for real. Without this the registry would look
   -- clean while the data stayed forked — a nicer picker over the same two
-  -- leaderboards.
+  -- leaderboards. Driven off `stored`, so padded values are rewritten too.
   for r in
-    select s.raw as from_label, g.label as to_label
+    select s.stored as from_label, g.label as to_label
       from gym_seed s
       join public.gyms g on g.canonical_key = public.fold_gym_text(s.raw)
-     where s.raw <> g.label
+     where s.stored <> g.label
   loop
     perform public.rewrite_gym_label(r.from_label, r.to_label);
     raise notice 'backfill: % -> %', r.from_label, r.to_label;
@@ -488,14 +560,27 @@ end $$;
 -- from the polluted data, so junk kept recommending itself. Now: registry
 -- rows, with usage counts, excluding anything merged away.
 --
--- ADDITIVE return shape, and this is load-bearing for the release gate.
--- `name` and `uses` keep their existing meaning and `name` returns the LABEL,
--- because the currently deployed client writes g.name straight into
--- problems.gym. It keeps working between this apply and the client deploy;
--- the new columns are simply ignored by it.
+-- ADDITIVE return shape, and this is load-bearing for the release gate:
+-- `name` still carries the string the deployed client writes into problems.gym
+-- (the LABEL), `uses` is still a count, and the six new columns are simply
+-- ignored by it. So the live app keeps working between this apply and the
+-- client deploy.
+--
+-- `uses` is not identical to 050's, though: this counts gym_problems as well
+-- as sessions and problems, so magnitudes and therefore ordering shift. The
+-- shape is compatible; the numbers are not the same numbers.
+--
+-- DROP before CREATE, and this is NOT optional. 050 declared
+-- `returns table (name text, uses bigint)`; RETURNS TABLE columns are OUT
+-- parameters, so adding columns changes the function's return type and
+-- `create or replace` raises "cannot change return type of existing function".
+-- The drop is inside the same transaction as the create, so the deployed
+-- client never sees a window without the function, and the grant below
+-- restores what the drop removes.
 --
 -- Still SECURITY DEFINER for 050's reason: sessions are not globally readable,
 -- and the counts read them.
+drop function if exists public.gym_suggestions();
 create or replace function public.gym_suggestions()
 returns table (
   name text, uses bigint, id uuid, gym_name text, city text,
@@ -530,7 +615,10 @@ grant execute on function public.gym_suggestions() to authenticated, anon;
 -- plpgsql bodies are NOT validated at CREATE: every function above could
 -- install cleanly and still raise on its first call, under a climber's thumb
 -- rather than in front of the operator who can act on it. So call them here,
--- for real, and roll back what they write.
+-- for real. Nothing here is wrapped in a rollback — there is no begin/rollback
+-- available inside a single do block anyway — so the smoke rows this writes
+-- are deleted explicitly at the foot of the block, after the checks that need
+-- them to still exist have run.
 --
 -- The fold cases mirror src/utils/__tests__/gymRegistry.test.ts. If these two
 -- ever disagree, this is where it should be caught.
@@ -538,6 +626,10 @@ do $$
 declare
   v_gym    record;
   v_impact record;
+  v_user   uuid;
+  v_admin  uuid;
+  v_a      uuid;
+  v_b      uuid;
 begin
   -- fold: the same vectors the Vitest suite asserts
   assert public.fold_gym_text('  Klatreverket ')      = 'klatreverket',        'fold: trim/lower';
@@ -553,35 +645,77 @@ begin
   assert public.fold_gym_text('Klatreverket' || ' ' || '') = public.fold_gym_text('Klatreverket'),
          'fold: empty city adds nothing';
 
-  -- create_gym, twice: the second call must return the first row, not fail
-  select * into v_gym from public.create_gym('Smoke Test Wall', 'Nowhere');
-  assert v_gym.label = 'Smoke Test Wall, Nowhere', 'create_gym: label';
-  assert v_gym.climber_added, 'create_gym: climber_added';
-  select * into v_gym from public.create_gym('  smoke test wall  ', 'NOWHERE');
-  assert v_gym.label = 'Smoke Test Wall, Nowhere', 'create_gym: idempotent on a folded match';
-  -- and the legacy single-string form must land on the same row
-  select * into v_gym from public.create_gym('Smoke Test Wall, Nowhere', null);
-  assert v_gym.label = 'Smoke Test Wall, Nowhere', 'create_gym: legacy form folds to the same key';
+  -- Everything below that touches create_gym or an admin function needs a
+  -- session identity. Applied by hand there is no JWT, so auth.uid() is null
+  -- and create_gym would raise 'You must be signed in to add a gym'. Borrow a
+  -- real profiles.id: gyms.created_by carries an FK to auth.users(id), so a
+  -- synthetic uuid would fail the insert rather than the guard.
+  select p.id into v_user  from public.profiles p order by p.id limit 1;
+  select p.id into v_admin from public.profiles p where p.is_admin = true order by p.id limit 1;
 
-  -- rewrite_gym_label: every one of the twelve statements planned and run.
-  -- Both labels exist and neither is in use, so this writes nothing while
-  -- still forcing parse analysis of every column reference.
-  select * into v_gym from public.create_gym('Smoke Test Wall Two', 'Nowhere');
-  assert v_gym.label = 'Smoke Test Wall Two, Nowhere', 'create_gym: second smoke gym';
-  perform public.rewrite_gym_label('Smoke Test Wall, Nowhere', 'Smoke Test Wall Two, Nowhere');
+  if v_user is null then
+    raise notice 'smoke: profiles is empty, so create_gym and all four admin bodies are NOT exercised here — they are parsed for the first time on their first real call. Watch the first add, rename and merge.';
+  else
+    perform set_config('request.jwt.claims', json_build_object('sub', v_user)::text, true);
 
-  -- admin-gated functions: reachable only behind assert_gym_admin, so prove
-  -- the guard fires rather than trying to pass it. Three outcomes, and only
-  -- one of them is a pass:
-  --   no raise           -> the guard is not guarding
-  --   the wrong message  -> the body is broken, which is the very thing this
-  --                         smoke block exists to catch; a handler that
-  --                         accepted any error would mask it
-  --   its guard message  -> pass
+    select * into v_gym from public.create_gym('Smoke Test Wall', 'Nowhere');
+    assert v_gym.label = 'Smoke Test Wall, Nowhere', 'create_gym: label';
+    assert v_gym.climber_added, 'create_gym: climber_added';
+    v_a := v_gym.id;
+
+    -- the second and third calls must return the FIRST row, not fail
+    select * into v_gym from public.create_gym('  smoke test wall  ', 'NOWHERE');
+    assert v_gym.id = v_a, 'create_gym: idempotent on a folded match';
+    select * into v_gym from public.create_gym('Smoke Test Wall, Nowhere', null);
+    assert v_gym.id = v_a, 'create_gym: legacy single-string form folds to the same key';
+
+    select * into v_gym from public.create_gym('Smoke Test Wall Two', 'Nowhere');
+    assert v_gym.label = 'Smoke Test Wall Two, Nowhere', 'create_gym: second smoke gym';
+    v_b := v_gym.id;
+
+    -- rewrite_gym_label: every one of the twelve statements planned and run.
+    -- Both labels exist and neither is in use, so this writes nothing while
+    -- still forcing parse analysis of every column reference.
+    perform public.rewrite_gym_label('Smoke Test Wall, Nowhere', 'Smoke Test Wall Two, Nowhere');
+
+    if v_admin is null then
+      raise notice 'smoke: no profile has is_admin, so rename_gym, merge_gyms, set_gym_verified and gym_merge_impact are NOT exercised — their bodies are parsed for the first time on their first real call. Watch the first rename and merge.';
+    else
+      -- Impersonate an admin so those four bodies actually run rather than
+      -- stopping at their guard. Every write below is confined to the two
+      -- smoke gyms, which are removed at the foot of this block.
+      perform set_config('request.jwt.claims', json_build_object('sub', v_admin)::text, true);
+
+      perform public.set_gym_verified(v_b, true);
+      assert (select verified from public.gyms where id = v_b), 'set_gym_verified';
+
+      perform public.rename_gym(v_b, 'Smoke Test Wall Two', 'Elsewhere');
+      assert (select label from public.gyms where id = v_b) = 'Smoke Test Wall Two, Elsewhere',
+             'rename_gym: label rewritten';
+
+      select * into v_impact from public.gym_merge_impact('Smoke Test Wall, Nowhere');
+      assert v_impact.problems = 0 and v_impact.climbers = 0,
+             'gym_merge_impact: counts for a label nothing uses';
+
+      perform public.merge_gyms(v_a, v_b);
+      assert (select merged_into from public.gyms where id = v_a) = v_b, 'merge_gyms: merged_into set';
+    end if;
+
+    -- Drop the borrowed identity before anything else runs.
+    perform set_config('request.jwt.claims', json_build_object('sub', null)::text, true);
+  end if;
+
+  -- The guard fires for a caller who is not an admin. A random uuid has no
+  -- profiles row, so this is deterministic whoever applies the file — it does
+  -- not depend on the operator's own admin flag. Three outcomes, one pass:
+  --   no raise          -> the guard is not guarding
+  --   the wrong message -> the body is broken, which is the very thing this
+  --                        block exists to catch; a handler that accepted any
+  --                        error would mask it
+  --   its guard message -> pass
+  perform set_config('request.jwt.claims', json_build_object('sub', gen_random_uuid())::text, true);
   begin
     perform public.assert_gym_admin();
-    -- Reached only if the guard let a non-admin through. The migration runs
-    -- with auth.uid() null, so the guard's select finds no profile and raises.
     raise exception 'assert_gym_admin: expected a raise for a non-admin caller';
   exception when others then
     if sqlerrm = 'assert_gym_admin: expected a raise for a non-admin caller' then
@@ -591,30 +725,20 @@ begin
     end if;
     raise notice 'assert_gym_admin raised as expected: %', sqlerrm;
   end;
+  perform set_config('request.jwt.claims', json_build_object('sub', null)::text, true);
 
-  -- gym_merge_impact's body past its guard: run the same ten counts inline so
-  -- every column reference in it is parsed and planned here.
-  select
-    (select count(*) from public.problems           where gym      = 'x'),
-    (select count(*) from public.gym_problems       where gym      = 'x'),
-    (select count(*) from public.sessions           where location = 'x'),
-    (select count(*) from public.session_groups     where gym      = 'x'),
-    (select count(*) from public.crews              where home_gym = 'x'),
-    (select count(*) from public.crew_plans         where gym      = 'x'),
-    (select count(*) from public.crew_award_rounds  where gym      = 'x'),
-    (select count(*) from public.gym_gradings       where gym      = 'x'),
-    (select count(*) from public.profiles           where default_gyms @> array['x']),
-    (select count(*) from public.wall_announcements where location = 'x')
-    into v_impact;
-
-  -- gym_suggestions must still answer, and must not list the smoke rows once
-  -- they are gone.
+  -- gym_suggestions must answer...
   perform 1 from public.gym_suggestions() limit 1;
 
-  delete from public.gyms where canonical_key in (
-    public.fold_gym_text('Smoke Test Wall Nowhere'),
-    public.fold_gym_text('Smoke Test Wall Two Nowhere')
-  );
+  -- ...and must not still be listing the smoke gyms after they go. merged_into
+  -- is a self-FK, so it has to be cleared before the delete.
+  if v_a is not null then
+    update public.gyms set merged_into = null where id in (v_a, v_b);
+    delete from public.gyms where id in (v_a, v_b);
+    assert not exists (
+      select 1 from public.gym_suggestions() where label like 'Smoke Test Wall%'
+    ), 'gym_suggestions: smoke rows still listed after delete';
+  end if;
 
-  raise notice 'gym registry: fold vectors, create_gym (x3, idempotent), rewrite_gym_label (all twelve columns), the admin guard, gym_merge_impact''s ten counts and gym_suggestions all ran; smoke rows removed';
+  raise notice 'gym registry smoke: 11 fold vectors, create_gym x4 (idempotent + legacy form), rewrite_gym_label across all twelve columns, the admin guard, and — where a profile and an admin exist — set_gym_verified, rename_gym, gym_merge_impact and merge_gyms all ran, on smoke rows since removed. READ THE NOTICES ABOVE: anything reported as NOT exercised is still unvalidated.';
 end $$;

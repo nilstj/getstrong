@@ -1204,6 +1204,17 @@ begin
 end $$;
 ```
 
+> **Review corrections applied after this task was implemented.** The SQL blocks above are the as-planned version; `supabase/migrations/092_gym_registry.sql` is authoritative. A review of the committed file found it could not be applied, and these corrections landed on top:
+>
+> 1. **`gym_suggestions` needs `drop function if exists` before the create.** `RETURNS TABLE` columns are OUT parameters, so adding columns changes the return type and `create or replace` raises `cannot change return type of existing function`. The whole paste is one transaction, so this made the file unappliable.
+> 2. **`rewrite_gym_label` and `assert_gym_admin` are revoked from `public`, `anon` and `authenticated`.** `CREATE FUNCTION` grants EXECUTE to PUBLIC by default, so a `SECURITY DEFINER` function with no authorization check of its own was an unauthenticated remote path to a twelve-column rewrite plus cascading deletes. 079 documents the same trap, including that grants are cumulative so `from public` is required too.
+> 3. **The smoke block sets `request.jwt.claims` before calling `create_gym`.** `auth.uid()` is null in the dashboard, so `create_gym` raised and the block never ran. It now borrows a real `profiles.id` (`created_by` has an FK to `auth.users`, so a synthetic uuid fails the insert), impersonates an admin where one exists so the four admin bodies actually execute, and drives the guard test off a random uuid so it is deterministic regardless of who applies the file. It skips with a loud NOTICE naming the unvalidated bodies where no profile or no admin exists.
+> 4. **The backfill seeds the stored value, not just its trimmed form.** `rewrite_gym_label` matches on exact equality, so grouping only on `btrim` left `'Klatreverket '` unrewritten — and the loop's own filter skipped it, because the winner's label *is* the trimmed form. Those rows would have kept a string matching no `gyms.label`, invisible in every picker: the exact fork this migration exists to remove.
+> 5. **A prerequisite guard runs first**, naming any of 060/071/079/080 that is unapplied, per 091's precedent.
+> 6. **`drop policy if exists` before `create policy`**, so the file is re-runnable after a failed apply.
+>
+> Two limits are now documented in the file rather than fixed: the SQL fold's enumerated `translate()` list is narrower than the TypeScript NFD-strip (a missed hint, the benign direction), and a mixed-script name keeps only its ASCII, so `'Скала 24'` and `'Вертикаль 24'` would collide. Neither matters for Norwegian gyms.
+
 - [ ] **Step 8: Check the file parses as one paste**
 
 There is no local Postgres in this project — migrations are applied by hand. Verify the file's shape before handing it to the dashboard:
