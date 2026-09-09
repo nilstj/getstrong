@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 
+/** How many BottomSheets are open. See the scroll-lock effect below. */
+let openSheetCount = 0
+
 interface BottomSheetProps {
   open: boolean
   onClose: () => void
@@ -10,8 +13,16 @@ interface BottomSheetProps {
 
 export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
   useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    if (!open) return
+    // Counted, not a plain set: sheets nest (the add-gym sheet opens on top of
+    // the publish sheet), and an inner sheet closing must not unlock the body
+    // while an outer one is still open.
+    openSheetCount += 1
+    document.body.style.overflow = 'hidden'
+    return () => {
+      openSheetCount -= 1
+      if (openSheetCount === 0) document.body.style.overflow = ''
+    }
   }, [open])
 
   if (!open) return null
@@ -23,6 +34,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
         <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-100 z-10">
           <h2 className="text-base font-bold tracking-tight">{title}</h2>
           <button
+            type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-lg leading-none"
             title="Close" aria-label="Close"

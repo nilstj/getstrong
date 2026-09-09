@@ -80,9 +80,10 @@ export function LeaderboardsPage() {
               browsing a leaderboard is not a reason to add a gym. */}
           <GymPicker
             id="leaderboard-gym"
-            value={gym}
+            value=""
             onChange={next => { selectGym(next); setLookupOpen(false) }}
             placeholder="Pick a gym"
+            clearOnSelect
           />
         </div>
       )}

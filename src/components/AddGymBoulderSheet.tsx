@@ -59,6 +59,7 @@ export function AddGymBoulderSheet({ open, onClose }: { open: boolean; onClose: 
   const reset = () => {
     setGym(''); setGrade(''); setColor(''); setHoldColor('')
     setFile(null); setPreviewUrl(null)
+    setAddingGym(null)
     clearFileInput()
   }
 

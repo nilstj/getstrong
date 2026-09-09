@@ -77,20 +77,12 @@ export function NewSessionPage() {
             control={control}
             rules={{ required: true }}
             render={({ field }) => (
-              <>
-                <GymPicker
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Pick your gym"
-                  onAddRequest={setAddingGym}
-                />
-                <AddGymSheet
-                  open={addingGym !== null}
-                  initialName={addingGym ?? ''}
-                  onClose={() => setAddingGym(null)}
-                  onAdded={field.onChange}
-                />
-              </>
+              <GymPicker
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Pick your gym"
+                onAddRequest={setAddingGym}
+              />
             )}
           />
         </div>
@@ -149,6 +141,17 @@ export function NewSessionPage() {
           {createSession.isPending ? 'Creating...' : 'Start Session'}
         </button>
       </form>
+
+      {/* Outside the <form> on purpose. BottomSheet is not portaled, so a
+          sheet rendered inside the form puts its inputs and its close button
+          in the form — and Enter in the name field, or a tap on ×, would
+          submit the session instead of adding the gym. */}
+      <AddGymSheet
+        open={addingGym !== null}
+        initialName={addingGym ?? ''}
+        onClose={() => setAddingGym(null)}
+        onAdded={label => setValue('location', label, { shouldValidate: true })}
+      />
     </div>
   )
 }
