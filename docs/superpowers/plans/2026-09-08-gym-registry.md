@@ -243,7 +243,7 @@ export function isPlausibleGymName(name: string): boolean {
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `npx vitest run src/utils/__tests__/gymRegistry.test.ts`
-Expected: PASS, 20 tests.
+Expected: PASS, 17 tests.
 
 - [ ] **Step 6: Verify the build and lint**
 
@@ -512,7 +512,7 @@ export function filterGyms(list: GymOption[], query: string, limit = 8): GymOpti
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run src/utils/__tests__/gymRegistry.test.ts`
-Expected: PASS, 41 tests.
+Expected: PASS, 37 tests (17 from Task 1 plus 20 here).
 
 - [ ] **Step 5: Run the whole suite, build and lint**
 
