@@ -8,6 +8,8 @@ import {
 } from '../hooks/useCrews'
 import { BottomSheet } from '../components/BottomSheet'
 import { CreateBattleSheet } from '../components/CreateBattleSheet'
+import { GymPicker } from '../components/GymPicker'
+import { AddGymSheet } from '../components/AddGymSheet'
 import { cycleMonth } from '../utils/leaderboard'
 
 export function MyCrewsPage() {
@@ -22,6 +24,7 @@ export function MyCrewsPage() {
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('')
   const [homeGym, setHomeGym] = useState('')
+  const [addingGym, setAddingGym] = useState<string | null>(null)
 
   // Cross-crew leaderboard, filterable by the home gyms of my crews.
   const month = cycleMonth(new Date())
@@ -186,8 +189,12 @@ export function MyCrewsPage() {
             </div>
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">Home gym (optional)</label>
-              <input value={homeGym} onChange={e => setHomeGym(e.target.value)} placeholder="e.g. Boulders Oslo"
-                className="w-full border rounded-lg px-3 py-2.5" />
+              <GymPicker
+                value={homeGym}
+                onChange={setHomeGym}
+                placeholder="Pick a gym"
+                onAddRequest={setAddingGym}
+              />
             </div>
           </div>
           <button
@@ -198,6 +205,12 @@ export function MyCrewsPage() {
             {createCrew.isPending ? 'Creating…' : 'Create crew'}
           </button>
         </div>
+        <AddGymSheet
+          open={addingGym !== null}
+          initialName={addingGym ?? ''}
+          onClose={() => setAddingGym(null)}
+          onAdded={setHomeGym}
+        />
       </BottomSheet>
     </div>
   )
