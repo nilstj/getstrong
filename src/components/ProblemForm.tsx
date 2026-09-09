@@ -111,13 +111,18 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const { data: gymGradings = [] } = useGymGradings(gym)
 
   const submit = async (values: FormValues) => {
-    let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? null) : null
+    // `previewUrl` alone, NOT `previewUrl && !selectedFile`: with a new file
+    // picked, the old form yielded null here, so a failed upload silently threw
+    // away the photo the problem already had. Starting from the existing one
+    // means a failure falls back to it, and clearing the preview still clears
+    // the photo (previewUrl is null then), which is how removal works.
+    let image_url = previewUrl ? (existing?.image_url ?? null) : null
 
     if (selectedFile && user) {
       setIsUploading(true)
       try {
         // A failed upload keeps whatever was there before — the go is still
-        // worth logging without its photo. Publishing is where a photo is
+        // worth logging without a new photo. Publishing is where a photo is
         // mandatory, and BoulderLinkSheet asks for one again at that point.
         image_url = (await uploadProblemImage(selectedFile, user.id)) ?? image_url
       } finally {
@@ -286,13 +291,15 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
             </p>
             {/* A blocker now, not a points tip. Public routes this log into
                 BoulderLinkSheet, whose "no, it's new — create it" is disabled
-                without a photo, so there is no path left to a photo-less shared
-                boulder. Joining one that is already at the gym needs no photo,
-                and pays no first_logger either. */}
+                without a photo, and AddGymBoulderSheet's Publish likewise — so
+                no CLIENT path reaches a photo-less shared boulder. create_gym_problem
+                itself still accepts a null image_url; the photo only gates its
+                10-point award (075). Joining a boulder already at the gym needs
+                no photo and earns nothing either way. */}
             {visibilityPublic && !previewUrl && (
               <p className="mt-1 text-[11px] leading-snug text-sage-700">
-                A brand-new boulder needs a photo — add one above, and it earns 10
-                points. Joining a boulder that&apos;s already at your gym doesn&apos;t.
+                A brand-new boulder needs a photo, and earns 10 points. Joining one
+                that&apos;s already at your gym needs no photo, and earns none.
               </p>
             )}
           </div>

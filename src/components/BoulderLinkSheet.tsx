@@ -74,7 +74,14 @@ export function BoulderLinkSheet({
   const createNew = async () => {
     // The button is disabled without a photo; this is the backstop.
     let image_url = problem.image_url
-    if (file && user) {
+    if (file) {
+      // canCreate only knows there is a photo, not that we can upload it — a
+      // session lost mid-flow used to fall through to `if (!image_url) return`
+      // and do nothing at all, from a button that looked ready.
+      if (!user) {
+        toast.error('You seem to be signed out — nothing was created. Sign in and try again.')
+        return
+      }
       setUploading(true)
       try {
         image_url = await uploadProblemImage(file, user.id)
@@ -149,14 +156,18 @@ export function BoulderLinkSheet({
             </p>
           )}
 
+          {/* The file input sits OUTSIDE the box: space-y-* selects
+              `> :not([hidden]) ~ :not([hidden])`, which tests the hidden
+              attribute rather than the class, so a class-hidden input inside
+              would count as a sibling and push the photo row down 8px. */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={e => pickFile(e.target.files?.[0] ?? null)}
+          />
           <div className="mt-2 space-y-2 rounded-xl border border-dashed border-sage-300 p-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => pickFile(e.target.files?.[0] ?? null)}
-            />
             <div className="flex items-center gap-3">
               {photoUrl ? (
                 <div className="relative flex-shrink-0">
