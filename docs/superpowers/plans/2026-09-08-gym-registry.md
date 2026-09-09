@@ -1957,6 +1957,124 @@ to do."
 
 ---
 
+### Task 7b: The three remaining free-text gym writers
+
+Added after Task 7's review. The design claimed four surfaces mint gym strings; there were eight. Task 7 covered five (the four planned plus `LeaderboardsPage`). These three survived untouched, and they write columns from the design's own twelve-column table — so as of Task 7 a typo logged against a problem still forks the grade leaderboard exactly as before, on the highest-volume path in the app. Owner's decision was to fix all three before the manual pass.
+
+**Files:**
+- Modify: `src/components/ProblemForm.tsx` (the gym `<input>` at ~line 155)
+- Modify: `src/pages/MyCrewsPage.tsx` (the "Home gym (optional)" `<input>` at ~line 189)
+- Modify: `src/pages/CrewGroupPage.tsx` (the "Gym (optional)" `<input>` at ~line 299)
+
+**Interfaces:**
+- Consumes: `GymPicker` and `AddGymSheet` (Tasks 5-6), unchanged.
+- Produces: no new exports.
+
+All three get `onAddRequest`, so a climber standing in an unlisted gym is never blocked — the same rule the rest of the feature follows. Only `GymGradingPage` omits it, because configuring grading colours for a gym that does not exist is a mistake rather than a new gym.
+
+- [ ] **Step 1: `ProblemForm` — the highest-volume writer of `problems.gym`**
+
+This one matters most: `useGymGradeLeaderboard` filters problems with `.eq('gym', gym)`, so a free-text typo here forks the grade leaderboard. The field is prefilled from the session's location, which is now a label, but it was still an unconstrained text input.
+
+No `Controller` is needed — the file already has `watch` and `setValue`, and `gym = watch('gym')` at line 107 already feeds `useGymGradings(gym)`.
+
+Replace the input:
+
+```tsx
+        <RowLabel>Gym</RowLabel>
+        <input {...register('gym')} type="text" placeholder="e.g. Boulders Oslo" className={INPUT} />
+```
+
+with:
+
+```tsx
+        <RowLabel>Gym</RowLabel>
+        <GymPicker
+          value={gym}
+          onChange={v => setValue('gym', v)}
+          placeholder="Pick your gym"
+          onAddRequest={setAddingGym}
+        />
+```
+
+`register('gym')` goes away, so confirm `gym` stays in `FormValues` and `defaultValues` — `setValue` still needs the field registered by the form's defaults.
+
+Add the state next to the other `useState` calls:
+
+```tsx
+  const [addingGym, setAddingGym] = useState<string | null>(null)
+```
+
+**`AddGymSheet` must go outside the `<form>`.** `BottomSheet` is not portaled, and its inputs inside a form make the phone keyboard's Go submit the problem instead of adding the gym. The component returns `<form>…</form>`, so wrap the return in a fragment and make the sheet a sibling:
+
+```tsx
+    <>
+      <form onSubmit={handleSubmit(submit)} className="space-y-2.5">
+        {/* …unchanged… */}
+      </form>
+      <AddGymSheet
+        open={addingGym !== null}
+        initialName={addingGym ?? ''}
+        onClose={() => setAddingGym(null)}
+        onAdded={label => setValue('gym', label)}
+      />
+    </>
+```
+
+- [ ] **Step 2: `MyCrewsPage` — `crews.home_gym`**
+
+Plain `useState`, no form. Replace the input:
+
+```tsx
+              <input value={homeGym} onChange={e => setHomeGym(e.target.value)} placeholder="e.g. Boulders Oslo"
+                className="w-full border rounded-lg px-3 py-2.5" />
+```
+
+with:
+
+```tsx
+              <GymPicker
+                value={homeGym}
+                onChange={setHomeGym}
+                placeholder="Pick a gym"
+                onAddRequest={setAddingGym}
+              />
+```
+
+Add `const [addingGym, setAddingGym] = useState<string | null>(null)` to the same component, and render `AddGymSheet` as a sibling of the surrounding block with `onAdded={setHomeGym}`. Keep the "(optional)" label — the field stays optional.
+
+- [ ] **Step 3: `CrewGroupPage` — `crew_plans.gym`**
+
+Same shape, and this one already sits inside a `BottomSheet` ("Propose a session"), so `AddGymSheet` nests inside it exactly as it does in `AddGymBoulderSheet`. That is fine: the body-scroll lock is reference-counted.
+
+```tsx
+          <GymPicker
+            value={gym}
+            onChange={setGym}
+            placeholder="Pick a gym"
+            onAddRequest={setAddingGym}
+          />
+```
+
+with `AddGymSheet` a sibling of the sheet's `space-y-4` wrapper, not inside it — Tailwind's `space-y-*` puts a top margin on a `fixed inset-0` overlay and leaves an undimmed strip across the top of the screen.
+
+- [ ] **Step 4: Verify**
+
+Run: `grep -rn "placeholder=\"e.g. Boulders Oslo\"" src`
+Expected: no output. That placeholder was the tell of a free-text gym field; every one of them should now be a picker.
+
+Run: `npm run build && npx vitest run && npm run lint 2>&1 | tail -3`
+Expected: build exit 0, tests pass, lint exactly `16 problems (15 errors, 1 warning)`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A src
+git commit -m "Pick the gym on the problem form and both crew fields too"
+```
+
+---
+
 ### Task 8: Admin — verify, rename, merge
 
 The cleanup lever. Without it, this ships with no way to remove a joke name, which is the weakness the rejected normalise-only option had.
