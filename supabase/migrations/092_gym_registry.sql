@@ -17,6 +17,14 @@
 -- be the easiest farm in the app.
 --
 -- RELEASE GATE: apply this before deploying the client that uses GymPicker.
+--
+-- APPLY THIS FILE AS ONE WHOLE-FILE PASTE, NOT STATEMENT BY STATEMENT. The
+-- dashboard invites the latter (091 says so explicitly) but it is unsafe here:
+-- the paste being one implicit transaction is what makes the gym_suggestions
+-- drop-and-recreate below invisible to the live client, and what guarantees a
+-- failed backfill rolls back rather than leaving an EMPTY registry behind a
+-- registry-backed picker — which would stop every climber logging a session
+-- anywhere, at eight surfaces.
 -- The gym_suggestions() rewrite at the foot of this file is deliberately
 -- ADDITIVE (name and uses keep their meaning, name returns the label) so the
 -- currently deployed client keeps working in between.
@@ -384,8 +392,16 @@ begin
   v_label := case when v_city is null then v_name else v_name || ', ' || v_city end;
   v_key   := public.fold_gym_text(v_name || ' ' || coalesce(v_city, ''));
 
-  if exists (select 1 from public.gyms where canonical_key = v_key and id <> p_id) then
+  if exists (
+    select 1 from public.gyms
+     where canonical_key = v_key and id <> p_id and merged_into is null
+  ) then
     raise exception 'A gym with that name already exists — merge into it instead of renaming';
+  elsif exists (select 1 from public.gyms where canonical_key = v_key and id <> p_id) then
+    -- A retired row keeps its label so a stale client's string still resolves,
+    -- and canonical_key is unique across retired rows too. Say which case this
+    -- is: the previous message sent the admin looking for a gym that is gone.
+    raise exception 'That name belongs to a gym that was merged away, whose row still holds it. Rename that row first, or pick a different name';
   end if;
 
   perform public.rewrite_gym_label(v_old.label, v_label);
@@ -472,6 +488,10 @@ $$;
 -- always larger than the real loss. Pass null before a target is picked: the
 -- discarded counts then read 0, which is the truth, because nothing is
 -- destroyed until there is a target to collide with.
+--
+-- Counts eleven of the twelve columns rewrite_gym_label touches.
+-- shared_projects.gym is omitted deliberately: its hook has no consumer, so
+-- the number would always be 0 and would only add noise to the confirm.
 create or replace function public.gym_merge_impact(p_from text, p_to text)
 returns table (
   problems bigint, boulders bigint, sessions bigint, session_groups bigint,
@@ -523,6 +543,18 @@ grant execute on function public.merge_gyms(uuid, uuid)         to authenticated
 grant execute on function public.set_gym_verified(uuid, boolean) to authenticated;
 grant execute on function public.gym_merge_impact(text, text)    to authenticated;
 
+-- Same posture as rewrite_gym_label above. CREATE FUNCTION grants EXECUTE to
+-- PUBLIC and grants are cumulative, so the explicit grants above narrow
+-- nothing by themselves. Each of these guards itself (auth.uid() is null, or
+-- assert_gym_admin), so anon only ever got a clean raise — but revoking on two
+-- functions and not the other five is the kind of gap that reads as an
+-- oversight a year later.
+revoke execute on function public.create_gym(text, text)         from public, anon;
+revoke execute on function public.rename_gym(uuid, text, text)    from public, anon;
+revoke execute on function public.merge_gyms(uuid, uuid)          from public, anon;
+revoke execute on function public.set_gym_verified(uuid, boolean) from public, anon;
+revoke execute on function public.gym_merge_impact(text, text)    from public, anon;
+
 -- ── backfill ─────────────────────────────────────────────────────────────────
 -- One gyms row per distinct canonical key, gathered from every column that
 -- holds a gym string, with the MOST-USED spelling winning the display name —
@@ -540,6 +572,8 @@ grant execute on function public.gym_merge_impact(text, text)    to authenticate
 do $$
 declare
   r record;
+  v_lost_gradings bigint;
+  v_lost_rounds   bigint;
 begin
   -- Seed BOTH the stored value and its trimmed form. rewrite_gym_label matches
   -- on exact string equality, so a stored 'Klatreverket ' can only be rewritten
@@ -587,8 +621,36 @@ begin
       join public.gyms g on g.canonical_key = public.fold_gym_text(s.raw)
      where s.stored <> g.label
   loop
+    -- Counted BEFORE the rewrite, with the same collision predicates
+    -- rewrite_gym_label deletes on. Everything else moves across; these are
+    -- the only rows a collapse destroys, and an operator gets no other chance
+    -- to see them.
+    select count(*) into v_lost_gradings
+      from public.gym_gradings src
+     where src.gym = r.from_label
+       and exists (
+         select 1 from public.gym_gradings t
+          where t.gym = r.to_label and t.color_name = src.color_name
+       );
+    select count(*) into v_lost_rounds
+      from public.crew_award_rounds src
+     where src.gym = r.from_label
+       and exists (
+         select 1 from public.crew_award_rounds t
+          where t.gym = r.to_label
+            and t.crew_id = src.crew_id
+            and t.round_date = src.round_date
+       );
+
     perform public.rewrite_gym_label(r.from_label, r.to_label);
-    raise notice 'backfill: % -> %', r.from_label, r.to_label;
+
+    if v_lost_gradings > 0 or v_lost_rounds > 0 then
+      -- WARNING, not NOTICE: this line is the only record that data was lost.
+      raise warning 'backfill: % -> % — DISCARDED % grading colour(s) and % award round(s) with their votes',
+        r.from_label, r.to_label, v_lost_gradings, v_lost_rounds;
+    else
+      raise notice 'backfill: % -> %', r.from_label, r.to_label;
+    end if;
   end loop;
 end $$;
 
@@ -611,9 +673,11 @@ end $$;
 -- `returns table (name text, uses bigint)`; RETURNS TABLE columns are OUT
 -- parameters, so adding columns changes the function's return type and
 -- `create or replace` raises "cannot change return type of existing function".
--- The drop is inside the same transaction as the create, so the deployed
--- client never sees a window without the function, and the grant below
--- restores what the drop removes.
+-- Applied as one paste (see the header), the drop and the create are in the
+-- same transaction, so the deployed client never sees a window without the
+-- function; the grant below restores what the drop removes. Applied statement
+-- by statement they are NOT, and the live client's picker errors in between —
+-- which is one of the reasons the header insists on a whole-file paste.
 --
 -- Still SECURITY DEFINER for 050's reason: sessions are not globally readable,
 -- and the counts read them.
@@ -652,10 +716,10 @@ grant execute on function public.gym_suggestions() to authenticated, anon;
 -- plpgsql bodies are NOT validated at CREATE: every function above could
 -- install cleanly and still raise on its first call, under a climber's thumb
 -- rather than in front of the operator who can act on it. So call them here,
--- for real. Nothing here is wrapped in a rollback — there is no begin/rollback
--- available inside a single do block anyway — so the smoke rows this writes
--- are deleted explicitly at the foot of the block, after the checks that need
--- them to still exist have run.
+-- for real. Nothing here is wrapped in a rollback — the enclosing whole-file
+-- paste IS the transaction, so a failure anywhere in this file rolls all of
+-- it back — so the smoke rows this writes are deleted explicitly at the foot
+-- of the block, after the checks that need them to still exist have run.
 --
 -- The fold cases mirror src/utils/__tests__/gymRegistry.test.ts. If these two
 -- ever disagree, this is where it should be caught.
@@ -681,6 +745,12 @@ begin
   assert public.fold_gym_text('Скала')                = 'скала',               'fold: non-latin fallback';
   assert public.fold_gym_text('Klatreverket' || ' ' || '') = public.fold_gym_text('Klatreverket'),
          'fold: empty city adds nothing';
+
+  -- Leftovers from a failed apply would make rename_gym below raise "a gym
+  -- with that name already exists", which reads like a broken file rather
+  -- than stale state. merged_into is a self-FK, so clear it before deleting.
+  update public.gyms set merged_into = null where label like 'Smoke Test Wall%';
+  delete from public.gyms where label like 'Smoke Test Wall%';
 
   -- Everything below that touches create_gym or an admin function needs a
   -- session identity. Applied by hand there is no JWT, so auth.uid() is null

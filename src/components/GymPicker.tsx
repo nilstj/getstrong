@@ -13,18 +13,17 @@ import { filterGyms, foldGymText } from '../utils/gymRegistry'
  * answers with the add sheet (AddGymSheet).
  */
 export function GymPicker({
-  value, onChange, placeholder, id, onCommit, onAddRequest, clearOnSelect = false,
+  value, onChange, placeholder, id, onAddRequest, clearOnSelect = false,
 }: {
   value: string
   onChange: (label: string) => void
   placeholder?: string
   id?: string
-  onCommit?: () => void
   onAddRequest?: (typed: string) => void
   /**
    * For an "add another" control whose `value` never changes (DefaultGymsEditor):
    * empty the field after a pick instead of leaving the chosen gym sitting in
-   * it. Without this the effect below never re-fires — `value` stayed `''` —
+   * it. Without it the render-time sync below never re-fires — `value` stays `''` —
    * and the last-added gym would look like it was still selected.
    */
   clearOnSelect?: boolean
@@ -44,9 +43,9 @@ export function GymPicker({
     setQuery(value)
   }
 
-  // A blur schedules its work 150ms out. If the parent sheet closes inside
-  // that window the timer still fires, and onCommit would run the parent's
-  // logic against a closure it has already torn down.
+  // A blur schedules its work 150ms out, so the timer can outlive the
+  // component when a parent sheet closes inside that window. Nothing it does
+  // is destructive, but React warns and the work is pointless.
   useEffect(() => () => {
     if (blurTimer.current) clearTimeout(blurTimer.current)
   }, [])
@@ -63,7 +62,6 @@ export function GymPicker({
     onChange(label)
     setQuery(clearOnSelect ? '' : label)
     setOpen(false)
-    onCommit?.()
   }
 
   return (
@@ -83,7 +81,6 @@ export function GymPicker({
             // Half-typed text must not sit in the field looking committed —
             // nothing was selected, so show what actually is selected.
             setQuery(value)
-            onCommit?.()
           }, 150)
         }}
         className="w-full border rounded-lg px-3 py-2.5"

@@ -77,6 +77,14 @@ describe('isPlausibleGymName', () => {
     expect(isPlausibleGymName('1234')).toBe(false)
     expect(isPlausibleGymName('!!!!')).toBe(false)
   })
+  it('accepts a non-latin name containing digits', () => {
+    // Folds to '24', so a fold-based letter test would reject it.
+    expect(isPlausibleGymName('Скала 24')).toBe(true)
+  })
+  it('still rejects digits and punctuation with no letters anywhere', () => {
+    expect(isPlausibleGymName('24 24')).toBe(false)
+    expect(isPlausibleGymName('!!! ???')).toBe(false)
+  })
   it('rejects four or more identical characters in a row', () => {
     expect(isPlausibleGymName('aaaa')).toBe(false)
     expect(isPlausibleGymName('Boulderssss')).toBe(false)

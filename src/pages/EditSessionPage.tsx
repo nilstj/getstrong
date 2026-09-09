@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useSession, useUpdateSession } from '../hooks/useSessions'
 import { INTENSITY_OPTIONS } from '../types'
 import type { SessionIntensity } from '../types'
+import { GymPicker } from '../components/GymPicker'
+import { AddGymSheet } from '../components/AddGymSheet'
 
 type FormValues = {
   date: string
@@ -20,7 +22,8 @@ export function EditSessionPage() {
   const { data: session, isLoading } = useSession(id!)
   const updateSession = useUpdateSession()
   const [intensity, setIntensity] = useState<SessionIntensity | null>(null)
-  const { register, handleSubmit, reset } = useForm<FormValues>()
+  const [addingGym, setAddingGym] = useState<string | null>(null)
+  const { register, handleSubmit, reset, control, setValue } = useForm<FormValues>()
 
   useEffect(() => {
     if (session) {
@@ -70,10 +73,18 @@ export function EditSessionPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-          <input
-            {...register('location', { required: true })}
-            type="text"
-            className="w-full border rounded-lg px-3 py-2.5"
+          <Controller
+            name="location"
+            control={control}
+            rules={{ required: true }}
+            render={({ field }) => (
+              <GymPicker
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="Pick your gym"
+                onAddRequest={setAddingGym}
+              />
+            )}
           />
         </div>
         <div>
@@ -128,6 +139,15 @@ export function EditSessionPage() {
           {updateSession.isPending ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
+      {/* Outside the <form> on purpose. BottomSheet is not portaled, so a sheet
+          rendered inside the form puts its inputs in the form and the phone
+          keyboard's Go would submit the session edit instead of adding the gym. */}
+      <AddGymSheet
+        open={addingGym !== null}
+        initialName={addingGym ?? ''}
+        onClose={() => setAddingGym(null)}
+        onAdded={label => setValue('location', label, { shouldValidate: true })}
+      />
     </div>
   )
 }

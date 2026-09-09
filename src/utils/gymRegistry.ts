@@ -66,10 +66,12 @@ export function isPlausibleGymName(name: string): boolean {
   if (t.length < 2 || t.length > 60) return false
   // Four or more identical characters in a row is mashing, not a name.
   if (/(.)\1{3,}/.test(t)) return false
-  // Must contain something letter-ish. foldGymText keeps the original for
-  // non-latin scripts, so stripping digits and spaces from the fold leaves
-  // Cyrillic and friends intact while rejecting '1234' and '!!!!'.
-  if (foldGymText(t).replace(/[0-9\s]/g, '') === '') return false
+  // Must contain a letter, tested against the ORIGINAL rather than the fold:
+  // the fold strips non-latin scripts whenever any ASCII survives, so
+  // 'Скала 24' folds to '24' and would read as digits-only. A climber standing
+  // in that gym would be told their gym's name is not a gym name, with no way
+  // past it.
+  if (!/\p{L}/u.test(t)) return false
   return true
 }
 

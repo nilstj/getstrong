@@ -41,8 +41,9 @@ function toGymOption(row: GymSuggestionRow): GymOption {
 }
 
 /**
- * The gym registry, most relevant first. Query key unchanged from the
- * free-text era so nothing else's invalidation has to move.
+ * The gym registry, most relevant first. Key kept as ['gym_suggestions']
+ * because it is what the free-text era used; useGymAdmin's mutations
+ * invalidate everything, so nothing depends on it specifically.
  */
 export function useGymSuggestions() {
   return useQuery({
