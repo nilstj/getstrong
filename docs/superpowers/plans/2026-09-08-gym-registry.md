@@ -1511,6 +1511,15 @@ export function GymPicker({
 }
 ```
 
+> **Review corrections applied after this task was implemented.** The code block above is the as-planned version; `src/components/GymPicker.tsx` is authoritative.
+>
+> 1. **`role="combobox"` and `aria-expanded` removed.** The popup is a plain `<ul>` of buttons with no `aria-controls`, `listbox`/`option` roles or arrow-key navigation, so the attributes announced keyboard semantics that did not exist — worse than the `GymInput` they replace, which claimed nothing. Owner chose removal over building the full ARIA combobox pattern; Tab and Enter still reach and activate every row.
+> 2. **The `[value]` sync effect became a render-time adjustment.** The effect tripped `react-hooks/set-state-in-effect` on a textbook instance of what that rule catches, and needed an `eslint-disable` to hold the lint baseline. React's documented "adjusting state when a prop changes" pattern removes the suppression and the extra render pass that flashed stale text for a frame.
+> 3. **The blur timer is cleared on unmount.** Without it, a sheet closing inside the 150ms window still fired `onCommit` against a torn-down parent closure.
+> 4. **`exact` now folds with `foldGymText`** rather than `toLowerCase`, matching how `filterGyms` matches. An accented label that was already listed used to also offer "Add it". The empty state's now-unreachable `exact` term went with it.
+>
+> Step 2 below is stale: this project's Tailwind config is `tailwind.config.ts`, not `.js`, and `khaki-100`/`khaki-700` are both confirmed present.
+
 - [ ] **Step 2: Check the `khaki` shades exist**
 
 Run: `grep -n "khaki" tailwind.config.js`

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Check, Plus } from 'lucide-react'
 import { useGymSuggestions } from '../hooks/useGymSuggestions'
-import { filterGyms } from '../utils/gymRegistry'
+import { filterGyms, foldGymText } from '../utils/gymRegistry'
 
 /**
  * Picks a gym from the registry. Deliberately NOT a text field for the gym
@@ -32,16 +32,32 @@ export function GymPicker({
 }) {
   const { data: gyms = [] } = useGymSuggestions()
   const [query, setQuery] = useState(value)
+  const [lastValue, setLastValue] = useState(value)
   const [open, setOpen] = useState(false)
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // A value set from outside (a default-gym pill, a form reset) has to show.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setQuery(value) }, [value])
+  // Adjusted during render rather than from an effect: an effect needs a
+  // second pass to correct the field, which flashes the stale text for a
+  // frame, and it trips react-hooks/set-state-in-effect for good reason.
+  if (value !== lastValue) {
+    setLastValue(value)
+    setQuery(value)
+  }
+
+  // A blur schedules its work 150ms out. If the parent sheet closes inside
+  // that window the timer still fires, and onCommit would run the parent's
+  // logic against a closure it has already torn down.
+  useEffect(() => () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current)
+  }, [])
 
   const matches = filterGyms(gyms, query)
   const typed = query.trim()
-  const exact = gyms.some(g => g.label.toLowerCase() === typed.toLowerCase())
+  // Folded the same way filterGyms matches, so a label that differs from what
+  // was typed only by an accent or a comma is recognised as already listed
+  // and does not also offer "Add it".
+  const exact = typed !== '' && gyms.some(g => foldGymText(g.label) === foldGymText(typed))
 
   const select = (label: string) => {
     if (blurTimer.current) clearTimeout(blurTimer.current)
@@ -59,8 +75,6 @@ export function GymPicker({
         value={query}
         placeholder={placeholder}
         autoComplete="off"
-        role="combobox"
-        aria-expanded={open}
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
         onBlur={() => {
@@ -112,7 +126,7 @@ export function GymPicker({
               </button>
             </li>
           )}
-          {matches.length === 0 && (typed === '' || exact || !onAddRequest) && (
+          {matches.length === 0 && (typed === '' || !onAddRequest) && (
             <li className="px-3 py-2 text-sm text-gray-400">No gyms yet</li>
           )}
         </ul>
