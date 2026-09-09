@@ -284,12 +284,15 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
             <p className="mt-1 text-[11px] leading-snug text-gray-400">
               Public problems show up on the Gym problems page, where others can log them and compare beta.
             </p>
-            {/* Only worth saying while it's still actionable: the photo has to be
-                attached here, and create_gym_problem awards nothing without one.
-                "New" because joining an existing boulder pays no first_logger. */}
+            {/* A blocker now, not a points tip. Public routes this log into
+                BoulderLinkSheet, whose "no, it's new — create it" is disabled
+                without a photo, so there is no path left to a photo-less shared
+                boulder. Joining one that is already at the gym needs no photo,
+                and pays no first_logger either. */}
             {visibilityPublic && !previewUrl && (
               <p className="mt-1 text-[11px] leading-snug text-sage-700">
-                Add a photo above — a new boulder published with one earns 10 points.
+                A brand-new boulder needs a photo — add one above, and it earns 10
+                points. Joining a boulder that&apos;s already at your gym doesn&apos;t.
               </p>
             )}
           </div>
