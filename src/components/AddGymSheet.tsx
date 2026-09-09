@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from './BottomSheet'
 import { useCreateGym, useGymSuggestions } from '../hooks/useGymSuggestions'
@@ -33,16 +33,23 @@ export function AddGymSheet({
   const [name, setName] = useState(initialName)
   const [city, setCity] = useState('')
   const [candidates, setCandidates] = useState<GymMatch[] | null>(null)
+  const [lastOpen, setLastOpen] = useState(open)
+  const [lastInitial, setLastInitial] = useState(initialName)
 
-  useEffect(() => {
+  // Opening the sheet starts a fresh gym, so the fields reset to what the
+  // climber typed into the picker. Adjusted during render rather than from an
+  // effect: an effect corrects the fields a paint late, flashing the previous
+  // gym's name, and deferring it to a microtask does the same thing while also
+  // hiding why react-hooks/set-state-in-effect was complaining.
+  if (open !== lastOpen || initialName !== lastInitial) {
+    setLastOpen(open)
+    setLastInitial(initialName)
     if (open) {
-      Promise.resolve().then(() => {
-        setName(initialName)
-        setCity('')
-        setCandidates(null)
-      })
+      setName(initialName)
+      setCity('')
+      setCandidates(null)
     }
-  }, [open, initialName])
+  }
 
   const trimmedCity = city.trim() === '' ? null : city.trim()
 
