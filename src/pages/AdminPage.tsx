@@ -5,6 +5,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useAppSetting, useUpdateAppSetting } from '../hooks/useAppSettings'
 import { useProblemTagDefinitions, useCreateProblemTagDefinition, useDeleteProblemTagDefinition } from '../hooks/useProblemTags'
 import { useChallengeTags, useCreateChallengeTag, useDeleteChallengeTag } from '../hooks/useChallengeTags'
+import { GymsAdmin } from '../components/GymsAdmin'
 import toast from 'react-hot-toast'
 
 const SUGGESTED_CATEGORIES = ['holds', 'style', 'wall type']
@@ -31,6 +32,7 @@ export function AdminPage() {
       </div>
 
       <CoachPromptAdmin />
+      <GymsAdmin />
       <ProblemTagsAdmin />
       <ChallengeTagsAdmin />
     </div>
