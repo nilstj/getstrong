@@ -3,17 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ArrowUp, ArrowDown, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useProfile } from '../hooks/useProfile'
-import { useGymSuggestions } from '../hooks/useGymSuggestions'
 import { useGymGradings, useSaveGymGradings } from '../hooks/useGymGradings'
 import { HOLD_COLORS } from '../utils/holdColors'
 import { TapeGraphic } from '../components/Chip'
+import { GymPicker } from '../components/GymPicker'
 
 interface Row { color_name: string; points: number }
 
 export function GymGradingPage() {
   const navigate = useNavigate()
   const { data: profile, isLoading } = useProfile()
-  const { data: gyms = [] } = useGymSuggestions()
   const [gym, setGym] = useState('')
   const { data: existing } = useGymGradings(gym || null)
   const save = useSaveGymGradings()
@@ -61,16 +60,11 @@ export function GymGradingPage() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Gym</label>
-        <input
-          list="gym-grading-gyms"
+        <GymPicker
           value={gym}
-          onChange={e => setGym(e.target.value)}
-          placeholder="e.g. Boulders Oslo"
-          className="w-full border rounded-lg px-3 py-2.5"
+          onChange={setGym}
+          placeholder="Pick a gym"
         />
-        <datalist id="gym-grading-gyms">
-          {gyms.map(g => <option key={g.name} value={g.name} />)}
-        </datalist>
       </div>
 
       {gym && (

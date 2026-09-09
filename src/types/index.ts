@@ -339,11 +339,6 @@ export interface BoulderSummary {
   doneByMe: boolean
 }
 
-export interface GymSuggestion {
-  name: string
-  uses: number
-}
-
 /**
  * A row from the gyms registry, as the picker sees it. `label` is the string
  * written into problems.gym / sessions.location / etc — never `name` alone.
