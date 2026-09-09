@@ -44,9 +44,13 @@ begin
   if to_regclass('public.gym_gradings') is null then
     v_missing := v_missing || '071_gym_gradings.sql (gym_gradings)';
   end if;
-  if not exists (
+  -- to_regclass first: a bare 'public.profiles'::regclass THROWS when the
+  -- relation is absent, which is the very error this guard exists to replace.
+  if to_regclass('public.profiles') is null then
+    v_missing := v_missing || '002_profiles_follows.sql (profiles)';
+  elsif not exists (
     select 1 from pg_attribute
-     where attrelid = 'public.profiles'::regclass
+     where attrelid = to_regclass('public.profiles')
        and attname = 'default_gyms'
        and not attisdropped
   ) then
@@ -254,7 +258,11 @@ begin
 end;
 $$;
 
--- Callable only by the functions in this file and by the migration operator.
+-- Client-unreachable after this: anon and authenticated are the roles a
+-- browser can present. service_role keeps its default grant, as it does for
+-- the same revokes in 079/082/083 — it is a server-side secret, never shipped
+-- to a client. The definer chain is unaffected: rename_gym and merge_gyms run
+-- as this function's owner, and the backfill runs as the operator.
 revoke execute on function public.rewrite_gym_label(text, text) from public;
 revoke execute on function public.rewrite_gym_label(text, text) from anon, authenticated;
 
@@ -654,7 +662,7 @@ begin
   select p.id into v_admin from public.profiles p where p.is_admin = true order by p.id limit 1;
 
   if v_user is null then
-    raise notice 'smoke: profiles is empty, so create_gym and all four admin bodies are NOT exercised here — they are parsed for the first time on their first real call. Watch the first add, rename and merge.';
+    raise notice 'smoke: profiles is empty, so create_gym, rewrite_gym_label and all four admin bodies are NOT exercised here — they are parsed for the first time on their first real call. Watch the first add, rename and merge.';
   else
     perform set_config('request.jwt.claims', json_build_object('sub', v_user)::text, true);
 
