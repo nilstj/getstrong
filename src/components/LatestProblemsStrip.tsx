@@ -8,10 +8,12 @@ import { StoryRing } from './StoryRing'
 import { AddGymBoulderSheet } from './AddGymBoulderSheet'
 import type { BoulderNavState } from '../utils/boulderNav'
 import { boulderStripLabel, boulderStripAriaLabel } from '../utils/boulderStripLabel'
+import { latestStripBoulders } from '../utils/boulders'
 
 /**
  * The "Latest Gym Problems" story strip: your boulders + the ones in your gyms,
- * newest first. Rings are blue until you open the problem, then grey.
+ * newest first, and only ones with a photo — see latestStripBoulders. Rings are
+ * blue until you open the problem, then grey.
  *
  * The first tile is always the add-a-boulder affordance, so the strip renders
  * even with nothing to show — a climber whose gyms have no active boulders needs
@@ -23,9 +25,7 @@ export function LatestProblemsStrip({ heading = 'Latest Gym Problems' }: { headi
   const { data: seen } = useSeenGymProblems()
   const [addOpen, setAddOpen] = useState(false)
 
-  const stories = [...(boulders?.yours ?? []), ...(boulders?.discover ?? [])]
-    .sort((a, b) => (a.set_at < b.set_at ? 1 : a.set_at > b.set_at ? -1 : 0))
-    .slice(0, 12)
+  const stories = latestStripBoulders(boulders?.yours ?? [], boulders?.discover ?? [])
   const storyIds = stories.map(b => b.id)
 
   return (

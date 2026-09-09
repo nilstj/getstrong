@@ -10,7 +10,7 @@ import { GymPicker } from './GymPicker'
 import { AddGymSheet } from './AddGymSheet'
 import { useProblemTagDefinitions } from '../hooks/useProblemTags'
 import { useGymGradings } from '../hooks/useGymGradings'
-import { supabase } from '../lib/supabase'
+import { uploadProblemImage } from '../lib/problemImages'
 import { useAuth } from '../providers/AuthProvider'
 
 type FormValues = {
@@ -111,19 +111,20 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
   const { data: gymGradings = [] } = useGymGradings(gym)
 
   const submit = async (values: FormValues) => {
-    let image_url = previewUrl && !selectedFile ? (existing?.image_url ?? null) : null
+    // `previewUrl` alone, NOT `previewUrl && !selectedFile`: with a new file
+    // picked, the old form yielded null here, so a failed upload silently threw
+    // away the photo the problem already had. Starting from the existing one
+    // means a failure falls back to it, and clearing the preview still clears
+    // the photo (previewUrl is null then), which is how removal works.
+    let image_url = previewUrl ? (existing?.image_url ?? null) : null
 
     if (selectedFile && user) {
       setIsUploading(true)
       try {
-        const ext = selectedFile.name.split('.').pop() ?? 'jpg'
-        const path = `${user.id}/${Date.now()}.${ext}`
-        const { error } = await supabase.storage
-          .from('problem-images')
-          .upload(path, selectedFile, { upsert: true })
-        if (!error) {
-          image_url = supabase.storage.from('problem-images').getPublicUrl(path).data.publicUrl
-        }
+        // A failed upload keeps whatever was there before — the go is still
+        // worth logging without a new photo. Publishing is where a photo is
+        // mandatory, and BoulderLinkSheet asks for one again at that point.
+        image_url = (await uploadProblemImage(selectedFile, user.id)) ?? image_url
       } finally {
         setIsUploading(false)
       }
@@ -288,12 +289,17 @@ export function ProblemForm({ onSubmit, isSubmitting, initialGradeSystem = 'font
             <p className="mt-1 text-[11px] leading-snug text-gray-400">
               Public problems show up on the Gym problems page, where others can log them and compare beta.
             </p>
-            {/* Only worth saying while it's still actionable: the photo has to be
-                attached here, and create_gym_problem awards nothing without one.
-                "New" because joining an existing boulder pays no first_logger. */}
+            {/* A blocker now, not a points tip. Public routes this log into
+                BoulderLinkSheet, whose "no, it's new — create it" is disabled
+                without a photo, and AddGymBoulderSheet's Publish likewise — so
+                no CLIENT path reaches a photo-less shared boulder. create_gym_problem
+                itself still accepts a null image_url; the photo only gates its
+                10-point award (075). Joining a boulder already at the gym needs
+                no photo and earns nothing either way. */}
             {visibilityPublic && !previewUrl && (
               <p className="mt-1 text-[11px] leading-snug text-sage-700">
-                Add a photo above — a new boulder published with one earns 10 points.
+                A brand-new boulder needs a photo, and earns 10 points. Joining one
+                that&apos;s already at your gym needs no photo, and earns none.
               </p>
             )}
           </div>
