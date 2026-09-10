@@ -87,9 +87,12 @@ at a host other than instagram.com.
 Accepted: `nils`, `@nils`, `  @nils  `, `instagram.com/nils`,
 `https://www.instagram.com/nils/`, `https://instagram.com/nils?hl=en`,
 `http://m.instagram.com/nils`.
-Rejected: `@`, `nils/photos`, `nils@x`, `instagram.com/p/abc123` (a post, not a
-profile — the residual `p/abc123` contains a slash), anything over 30 chars.
-Empty/whitespace: `empty`.
+Rejected: `nils/photos`, `nils@x`, `nils climbs`, `instagram.com/p/abc123` (a
+post, not a profile — the residual `p/abc123` contains a slash), anything over
+30 chars.
+Empty: `''`, whitespace, and a lone `@` — the input renders an `@` prefix, so a
+climber clearing the field may well leave the sigil behind; that reads as
+"remove it", not as a typo.
 
 Tested with Vitest, per the repo rule that only pure functions in `src/utils/`
 are tested.
