@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Migration release gate.** Migration `093` is applied **by hand in the Supabase dashboard**, never by tooling from this repo. It **must be applied before the client is deployed** — Task 3 makes the boulder-beta query select `instagram_handle`, so shipping the client first breaks the **beta tab on the boulder page**.
+- **Migration release gate.** Migration `093` is applied **by hand in the Supabase dashboard**, never by tooling from this repo. It **must be applied before the client is deployed** — Task 3 makes the boulder-beta query select `instagram_handle`. Shipping the client first does **not** break the beta tab: `src/hooks/useBoulderBeta.ts:130` never checks the profiles select's `error`, so a pre-migration 42703 (column does not exist) just leaves `profs` `null` and the query resolves successfully. The failure is silent instead — every beta author, every reply author, and the "who's asking" / "found working beta" rows lose their name and avatar, rendering "Someone" with an initials avatar until the migration lands.
 - **Lint baseline is 16 problems (15 errors, 1 warning)** measured on branch `feature/profile-instagram-link` on 2026-09-10. New work must add **zero**. Re-measure with `npm run lint` if the branch has moved.
 - **`noUnusedLocals` and `noUnusedParameters` are ON.** An unused local is a build-failing error that fails the Vercel deploy.
 - **Only pure functions in `src/utils/` are tested.** There is no `@testing-library/react`; hooks, components and pages are verified by `npm run build` plus a manual pass. Do not add a component test framework.
@@ -236,6 +236,15 @@ update profiles set instagram_handle = 'no spaces allowed' where id = auth.uid()
 ```
 
 Expected: ERROR — `violates check constraint "profiles_instagram_handle_format"`.
+
+These two checks prove Postgres sees the column — they do **not** prove
+PostgREST's schema cache does, which is the thing that actually gates the
+client. So also confirm at the app level: open a shared boulder's **Beta**
+tab and check that author names render normally (not "Someone" with an
+initials avatar). That is the check that actually proves the release gate
+cleared — `src/hooks/useBoulderBeta.ts:130` never checks the profiles
+select's error, so a stale schema cache degrades every author's name
+silently rather than failing loudly.
 
 - [ ] **Step 3: Add the field to the profile type and the update whitelist**
 
@@ -510,7 +519,7 @@ git commit -m "Point at where a beta author's clips live"
 
 ## Release checklist
 
-- [ ] Migration `093_profile_instagram.sql` applied in the Supabase dashboard, and both verification queries in Task 2 Step 2 return a row. **Do this before pushing** — the client selects the column, so an unapplied migration breaks the beta tab on the boulder page.
+- [ ] Migration `093_profile_instagram.sql` applied in the Supabase dashboard, and both verification queries in Task 2 Step 2 return a row. **Do this before pushing** — the client selects the column, and an unapplied migration does not break the beta tab, it silently strips every author's name and avatar down to "Someone" and an initials avatar (`src/hooks/useBoulderBeta.ts:130` swallows the profiles select's error). The `information_schema`/`pg_constraint` checks only prove Postgres sees the column, not that PostgREST's schema cache does — so also open a shared boulder's Beta tab and confirm author **names** render (not "Someone"). That app-level check is what actually proves the gate cleared.
 - [ ] `npx vitest run` green.
 - [ ] `npm run build` green.
 - [ ] `npm run lint` still at 16 problems.

@@ -55,8 +55,16 @@ to that function.
 
 Migration 093 is applied by hand in the Supabase dashboard and **must be applied
 before the client that reads the column is deployed.** The client selects
-`instagram_handle` inside the boulder-beta query, so deploying first breaks the
-**beta tab on the boulder page** — the same failure mode migration 090 had.
+`instagram_handle` inside the boulder-beta query, but deploying first does
+**not** break the beta tab — it fails silently instead. `useBoulderBeta`
+never checks the error on that profiles select
+(`src/hooks/useBoulderBeta.ts:130`); a pre-migration query returns Postgres
+error 42703 (column does not exist), `profs` comes back `null`, and the
+query still resolves successfully. The tab renders fine, but every beta
+author, every reply author, and the "who's asking" / "found working beta"
+rows lose their name and avatar, showing "Someone" with an initials avatar —
+a silent loss of authorship attribution on the app's hero surface, on a
+feature whose whole point is attributing beta to a person.
 
 ## Pure logic — `src/utils/instagram.ts`
 
