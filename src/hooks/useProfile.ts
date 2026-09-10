@@ -10,6 +10,8 @@ export interface Profile {
   is_setter: boolean
   grade_preference: 'font' | 'v_scale'
   default_gyms: string[]
+  /** Bare handle, no @ and no URL — see src/utils/instagram.ts. */
+  instagram_handle: string | null
   on_wall_at: string | null
   on_wall_label: string | null
   policy_version: string | null
@@ -40,7 +42,7 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   return useMutation({
-    mutationFn: async (values: Partial<Pick<Profile, 'username' | 'avatar_url' | 'grade_preference' | 'default_gyms'>>) => {
+    mutationFn: async (values: Partial<Pick<Profile, 'username' | 'avatar_url' | 'grade_preference' | 'default_gyms' | 'instagram_handle'>>) => {
       const { data, error } = await supabase
         .from('profiles')
         .update(values)
