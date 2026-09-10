@@ -32,7 +32,7 @@ export function InstagramLink({
       onClick={e => e.stopPropagation()}
       title={label}
       aria-label={label}
-      className={`inline-flex shrink-0 text-gray-400 hover:text-sage-700 ${className}`}
+      className={`inline-flex shrink-0 p-1 -m-1 text-gray-400 hover:text-sage-700 ${className}`}
     >
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

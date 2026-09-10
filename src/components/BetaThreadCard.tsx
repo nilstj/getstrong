@@ -55,7 +55,7 @@ export function BetaThreadCard({
     }`}>
       <div className="flex items-center gap-2 mb-1.5">
         <Avatar url={thread.authorAvatarUrl} name={thread.authorName} />
-        <span className="text-sm font-semibold">{thread.authorName ?? 'Someone'}</span>
+        <span className="text-sm font-semibold truncate min-w-0">{thread.authorName ?? 'Someone'}</span>
         <SetterBadge userId={thread.user_id} />
         <InstagramLink handle={thread.authorInstagram} />
         {caution ? (

@@ -8,7 +8,15 @@ export type InstagramParse =
   | { status: 'ok'; handle: string }
   | { status: 'invalid' }
 
-/** Kept identical to the profiles.instagram_handle check constraint (093). */
+/**
+ * A charset-and-length guard, not Instagram's actual handle rule — `.`, `..`,
+ * `nils.` and `.nils` all pass here and Instagram issues none of them. Its
+ * real job is narrower: a stored value can never contain the characters that
+ * would let it escape the `https://instagram.com/` prefix in instagramUrl().
+ * A well-formed-but-unissued handle can still be stored and will simply
+ * render a dead link. Kept character-identical to the profiles.instagram_handle
+ * check constraint (093) so client and database always agree.
+ */
 const HANDLE = /^[A-Za-z0-9._]{1,30}$/
 
 /**
@@ -20,7 +28,7 @@ export function parseInstagramHandle(input: string): InstagramParse {
   const handle = input
     .trim()
     .replace(/^https?:\/\//i, '')
-    .replace(/^(?:www\.|m\.)?instagram\.com\//i, '')
+    .replace(/^(?:www\.|m\.)?instagram\.com\/?/i, '')
     .replace(/[?#].*$/, '')
     .replace(/\/+$/, '')
     .replace(/^@/, '')

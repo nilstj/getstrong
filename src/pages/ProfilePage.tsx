@@ -238,17 +238,20 @@ export function ProfilePage() {
         </div>
 
         <div className="w-full">
-          <p className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Instagram</p>
+          <label htmlFor="instagram-handle" className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Instagram</label>
           <div className="flex items-center gap-1.5 w-full border border-gray-200 rounded-xl px-3 py-2 bg-white">
             <span className="text-sm text-gray-400">@</span>
             <input
+              id="instagram-handle"
               value={instagram}
               onChange={e => setInstagram(e.target.value)}
               onBlur={handleSaveInstagram}
               onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
               placeholder="your.handle"
+              maxLength={30}
               autoCapitalize="none"
               autoCorrect="off"
+              autoComplete="off"
               spellCheck={false}
               className="flex-1 min-w-0 text-sm bg-transparent outline-none"
             />

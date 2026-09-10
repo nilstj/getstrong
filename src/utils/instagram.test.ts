@@ -54,6 +54,18 @@ describe('parseInstagramHandle', () => {
     const h = 'a'.repeat(30)
     expect(parseInstagramHandle(h)).toEqual({ status: 'ok', handle: h })
   })
+
+  it('reads a bare domain with no path as empty, not as a handle', () => {
+    for (const input of [
+      'instagram.com',
+      'www.instagram.com',
+      'm.instagram.com',
+      'https://www.instagram.com',
+      'https://instagram.com/',
+    ]) {
+      expect(parseInstagramHandle(input)).toEqual({ status: 'empty' })
+    }
+  })
 })
 
 describe('instagramUrl', () => {

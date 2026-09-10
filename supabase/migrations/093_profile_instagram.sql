@@ -3,9 +3,14 @@
 -- (src/utils/instagram.ts), so this column cannot point anywhere but Instagram.
 alter table profiles add column if not exists instagram_handle text;
 
--- Instagram's own handle rule, and the real guard on this field — the client
--- regex in src/utils/instagram.ts is a courtesy, this is what a bypassed client
--- still has to satisfy. Kept identical to that regex.
+-- A charset-and-length guard, not Instagram's actual handle rule — a lone
+-- '.', '..', 'nils.' and '.nils' all pass this and Instagram issues none of
+-- them. Its real job is narrower: a stored value can never contain the
+-- characters that would let it escape the https://instagram.com/ prefix the
+-- client builds links from. A well-formed-but-unissued handle can still be
+-- stored and will simply render a dead link. Kept character-identical to the
+-- regex in src/utils/instagram.ts so client and database always agree, even
+-- if the client is bypassed.
 alter table profiles drop constraint if exists profiles_instagram_handle_format;
 alter table profiles add constraint profiles_instagram_handle_format
   check (instagram_handle is null or instagram_handle ~ '^[A-Za-z0-9._]{1,30}$');
