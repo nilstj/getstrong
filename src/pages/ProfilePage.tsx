@@ -18,6 +18,8 @@ import { DefaultGymsEditor } from '../components/DefaultGymsEditor'
 import { BottomSheet } from '../components/BottomSheet'
 import { useExportMyData, downloadExport, useDeleteMyAccount } from '../hooks/useMyData'
 import { summariseExport, deletionConfirmationMatches } from '../utils/myData'
+import { parseInstagramHandle } from '../utils/instagram'
+import { errorMessage } from '../utils/errors'
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -42,12 +44,15 @@ export function ProfilePage() {
   const [usernameInput, setUsernameInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [gyms, setGyms] = useState<string[]>([])
+  const [instagram, setInstagram] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [confirmText, setConfirmText] = useState('')
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setGyms(profile?.default_gyms ?? []) }, [profile?.default_gyms])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setInstagram(profile?.instagram_handle ?? '') }, [profile?.instagram_handle])
 
   const { data: searchResults = [] } = useSearchUsers(searchQuery)
 
@@ -100,6 +105,21 @@ export function ProfilePage() {
     updateProfile.mutate({ username: usernameInput.trim() }, {
       onSuccess: () => { setEditingUsername(false); toast.success('Username updated') },
       onError: () => toast.error('Username already taken'),
+    })
+  }
+
+  const handleSaveInstagram = () => {
+    const parsed = parseInstagramHandle(instagram)
+    if (parsed.status === 'invalid') {
+      toast.error("That doesn't look like an Instagram handle")
+      return
+    }
+    const next = parsed.status === 'empty' ? null : parsed.handle
+    // Blur fires on every exit from the field; only write when it changed.
+    if (next === (profile?.instagram_handle ?? null)) return
+    updateProfile.mutate({ instagram_handle: next }, {
+      onSuccess: () => toast.success(next ? 'Instagram saved' : 'Instagram removed'),
+      onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save that handle')),
     })
   }
 
@@ -215,6 +235,30 @@ export function ProfilePage() {
               updateProfile.mutate({ default_gyms: next })
             }}
           />
+        </div>
+
+        <div className="w-full">
+          <label htmlFor="instagram-handle" className="block text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Instagram</label>
+          <div className="flex items-center gap-1.5 w-full border border-gray-200 rounded-xl px-3 py-2 bg-white">
+            <span className="text-sm text-gray-400">@</span>
+            <input
+              id="instagram-handle"
+              value={instagram}
+              onChange={e => setInstagram(e.target.value)}
+              onBlur={handleSaveInstagram}
+              onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+              placeholder="your.handle"
+              maxLength={30}
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="off"
+              spellCheck={false}
+              className="flex-1 min-w-0 text-sm bg-transparent outline-none"
+            />
+          </div>
+          <p className="text-[11px] text-gray-400 text-center mt-1.5">
+            Where your beta clips live — shown on beta you post.
+          </p>
         </div>
       </div>
 

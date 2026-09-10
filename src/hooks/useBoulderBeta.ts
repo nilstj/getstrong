@@ -31,6 +31,7 @@ export interface BetaThread {
   worked_by_me: boolean
   authorName: string | null
   authorAvatarUrl: string | null
+  authorInstagram: string | null
   reactions: ReactionAgg[]
   replies: BetaReply[]
 }
@@ -124,11 +125,15 @@ export function useBoulderBetaThread(gymProblemId: string) {
         ...helpRows.map(h => h.user_id),
         ...workedUserIds,
       ]))
-      const profileById = new Map<string, { username: string | null; avatar_url: string | null }>()
+      const profileById = new Map<string, { username: string | null; avatar_url: string | null; instagram_handle: string | null }>()
       if (allIds.length > 0) {
-        const { data: profs } = await supabase.from('profiles').select('id, username, avatar_url').in('id', allIds)
+        const { data: profs } = await supabase.from('profiles').select('id, username, avatar_url, instagram_handle').in('id', allIds)
         for (const p of profs ?? []) {
-          profileById.set(p.id as string, { username: p.username as string | null, avatar_url: p.avatar_url as string | null })
+          profileById.set(p.id as string, {
+            username: p.username as string | null,
+            avatar_url: p.avatar_url as string | null,
+            instagram_handle: p.instagram_handle as string | null,
+          })
         }
       }
       const person = (uid: string): PersonLite => ({ user_id: uid, name: profileById.get(uid)?.username ?? null, avatarUrl: profileById.get(uid)?.avatar_url ?? null })
@@ -162,6 +167,7 @@ export function useBoulderBetaThread(gymProblemId: string) {
         worked_by_me: workedByBeta.get(b.id)?.mine ?? false,
         authorName: profileById.get(b.user_id)?.username ?? null,
         authorAvatarUrl: profileById.get(b.user_id)?.avatar_url ?? null,
+        authorInstagram: profileById.get(b.user_id)?.instagram_handle ?? null,
         reactions: aggregate(rxByBeta.get(b.id) ?? [], myId),
         replies: (commentsByBeta.get(b.id) ?? []).map(c => ({
           id: c.id,

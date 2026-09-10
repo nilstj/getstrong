@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Play, Send, Trash2, Star } from 'lucide-react'
 import { EmojiReactions } from './EmojiReactions'
 import { SetterBadge } from './SetterBadge'
+import { InstagramLink } from './InstagramLink'
 import type { BetaThread } from '../hooks/useBoulderBeta'
 import type { BetaSection, BetaBodyType } from '../types'
 import { riskMoveLabel } from '../utils/riskMoves'
@@ -54,8 +55,9 @@ export function BetaThreadCard({
     }`}>
       <div className="flex items-center gap-2 mb-1.5">
         <Avatar url={thread.authorAvatarUrl} name={thread.authorName} />
-        <span className="text-sm font-semibold">{thread.authorName ?? 'Someone'}</span>
+        <span className="text-sm font-semibold truncate min-w-0">{thread.authorName ?? 'Someone'}</span>
         <SetterBadge userId={thread.user_id} />
+        <InstagramLink handle={thread.authorInstagram} />
         {caution ? (
           <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400 text-amber-950 px-2 py-0.5 text-[10px] font-bold">
             ⚠️ Watch out
