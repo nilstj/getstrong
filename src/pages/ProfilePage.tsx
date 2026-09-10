@@ -238,7 +238,7 @@ export function ProfilePage() {
         </div>
 
         <div className="w-full">
-          <label htmlFor="instagram-handle" className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Instagram</label>
+          <label htmlFor="instagram-handle" className="block text-xs text-gray-400 text-center mb-2 uppercase tracking-wider font-medium">Instagram</label>
           <div className="flex items-center gap-1.5 w-full border border-gray-200 rounded-xl px-3 py-2 bg-white">
             <span className="text-sm text-gray-400">@</span>
             <input
