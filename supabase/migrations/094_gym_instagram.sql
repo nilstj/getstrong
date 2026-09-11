@@ -62,7 +62,8 @@ grant  execute on function public.set_gym_instagram(uuid, text) to authenticated
 -- clean and set_gym_instagram still raise on its first call. So call it once
 -- and roll back. A block with an EXCEPTION clause is a savepoint, so catching
 -- the final raise below undoes everything this block did, smoke gym included.
--- 092 sets this precedent.
+-- Stricter than 092's smoke block, which cleans up its rows explicitly instead:
+-- unwinding the savepoint cannot leave debris behind even on a mid-paste failure.
 do $$
 declare
   v_gym   uuid;

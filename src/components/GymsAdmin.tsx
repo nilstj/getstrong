@@ -124,7 +124,14 @@ function EditGymSheet({ gym, onClose }: { gym: GymOption; onClose: () => void })
     // Blur fires on every exit from the field; only write when it changed.
     if (next === savedHandle) return
     setGymInstagram.mutate({ id: gym.id, handle: next }, {
-      onSuccess: () => toast.success(next ? 'Instagram saved' : 'Instagram removed'),
+      onSuccess: () => {
+        // Show what was actually stored: the parser strips an '@' or a pasted URL,
+        // and the field renders its own '@' prefix. Clearing the flag lets later
+        // server state reach the field again.
+        setInstagram(next ?? '')
+        setInstagramTouched(false)
+        toast.success(next ? 'Instagram saved' : 'Instagram removed')
+      },
       onError: (e: unknown) => {
         toast.error(errorMessage(e, 'Could not save that handle'))
         // The save didn't stick — fall back to the stored value so the field
@@ -150,14 +157,14 @@ function EditGymSheet({ gym, onClose }: { gym: GymOption; onClose: () => void })
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor="rename-gym-name" className="block text-sm font-medium text-gray-700 mb-1">Gym</label>
-        <input id="rename-gym-name" value={name} onChange={e => setName(e.target.value)} className={INPUT} />
+        <label htmlFor="edit-gym-name" className="block text-sm font-medium text-gray-700 mb-1">Gym</label>
+        <input id="edit-gym-name" value={name} onChange={e => setName(e.target.value)} className={INPUT} />
       </div>
       <div>
-        <label htmlFor="rename-gym-city" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="edit-gym-city" className="block text-sm font-medium text-gray-700 mb-1">
           City or area <span className="text-gray-400">(optional)</span>
         </label>
-        <input id="rename-gym-city" value={city} onChange={e => setCity(e.target.value)} className={INPUT} />
+        <input id="edit-gym-city" value={city} onChange={e => setCity(e.target.value)} className={INPUT} />
       </div>
       <div>
         <label htmlFor="edit-gym-instagram" className="block text-sm font-medium text-gray-700 mb-1">
@@ -172,7 +179,7 @@ function EditGymSheet({ gym, onClose }: { gym: GymOption; onClose: () => void })
             onBlur={saveInstagram}
             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
             placeholder="gym.handle"
-            maxLength={30}
+            maxLength={100}
             autoCapitalize="none"
             autoCorrect="off"
             autoComplete="off"

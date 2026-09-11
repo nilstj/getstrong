@@ -16,6 +16,13 @@ import { supabase } from '../lib/supabase'
  * Deliberately its own query rather than a column on the boulder query. Before
  * migration 094 is applied this one fails, the glyph is simply absent, and
  * nothing else on the boulder page is affected.
+ *
+ * This is the only client read that queries `gyms` directly instead of going
+ * through the `gym_suggestions()` RPC (which is granted to `anon`). `gyms`'
+ * SELECT policy is `auth.role() = 'authenticated'`, so this needs a signed-in
+ * session — fine today because the boulder page sits behind `ProtectedRoute`,
+ * but revisit this read if a boulder page ever becomes publicly shareable, or
+ * the glyph will silently vanish for a signed-out visitor.
  */
 export function useGymInstagramHandles() {
   return useQuery({
