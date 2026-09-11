@@ -11,6 +11,7 @@ import { useGymProblem, useCrew } from '../hooks/useCrew'
 import { useCrewBoulderProgress } from '../hooks/useCrews'
 import { useProfile } from '../hooks/useProfile'
 import { SetterBadge } from '../components/SetterBadge'
+import { GymInstagramLink } from '../components/GymInstagramLink'
 import { useStripGymProblem, useClaimGymProblem, useDeleteGymProblem } from '../hooks/useGymProblems'
 import { useSessions, useCreateSession } from '../hooks/useSessions'
 import { useAddProblem } from '../hooks/useProblems'
@@ -509,7 +510,7 @@ export function CrewPage() {
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
               {displayGrade && <span className="font-semibold text-gray-800">{displayGrade}</span>}
               {(boulder.color || boulder.hold_color) && <><span className="text-gray-300">·</span><ProblemColorIcons color={boulder.color} holdColor={boulder.hold_color} size={16} /></>}
-              {boulder.gym && <><span className="text-gray-300">·</span><span>{boulder.gym}</span></>}
+              {boulder.gym && <><span className="text-gray-300">·</span><span className="inline-flex items-center gap-1">{boulder.gym}<GymInstagramLink gym={boulder.gym} /></span></>}
               <span className="text-gray-300">·</span>
               {editingSetter ? (
                 <span className="inline-flex items-center gap-1">
