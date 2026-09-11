@@ -248,7 +248,7 @@ export function ProfilePage() {
               onBlur={handleSaveInstagram}
               onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
               placeholder="your.handle"
-              maxLength={30}
+              maxLength={100}
               autoCapitalize="none"
               autoCorrect="off"
               autoComplete="off"

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BadgeCheck, Pencil, Merge } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { BottomSheet } from './BottomSheet'
 import { useGymSuggestions } from '../hooks/useGymSuggestions'
-import { useSetGymVerified, useRenameGym, useMergeGyms, useGymMergeImpact } from '../hooks/useGymAdmin'
+import { useSetGymVerified, useRenameGym, useMergeGyms, useGymMergeImpact, useSetGymInstagram } from '../hooks/useGymAdmin'
+import { useGymInstagramHandles } from '../hooks/useGymInstagram'
+import { parseInstagramHandle } from '../utils/instagram'
 import { gymLabel } from '../utils/gymRegistry'
 import { errorMessage } from '../utils/errors'
 import type { GymOption } from '../types'
@@ -92,10 +94,53 @@ function MergeSheet({ from, gyms, onClose }: { from: GymOption; gyms: GymOption[
   )
 }
 
-function RenameSheet({ gym, onClose }: { gym: GymOption; onClose: () => void }) {
+function EditGymSheet({ gym, onClose }: { gym: GymOption; onClose: () => void }) {
   const [name, setName] = useState(gym.name)
   const [city, setCity] = useState(gym.city ?? '')
   const rename = useRenameGym()
+
+  const { data: handles } = useGymInstagramHandles()
+  const savedHandle = handles?.get(gym.label) ?? null
+  const [instagram, setInstagram] = useState(savedHandle ?? '')
+  const [instagramTouched, setInstagramTouched] = useState(false)
+  const setGymInstagram = useSetGymInstagram()
+
+  // The handle map is cold the first time this sheet opens, so the field has
+  // to pick the value up when it lands — but not on top of what the admin is
+  // typing.
+  useEffect(() => {
+    if (instagramTouched) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInstagram(savedHandle ?? '')
+  }, [savedHandle, instagramTouched])
+
+  const saveInstagram = () => {
+    const parsed = parseInstagramHandle(instagram)
+    if (parsed.status === 'invalid') {
+      toast.error("That doesn't look like an Instagram handle")
+      return
+    }
+    const next = parsed.status === 'empty' ? null : parsed.handle
+    // Blur fires on every exit from the field; only write when it changed.
+    if (next === savedHandle) return
+    setGymInstagram.mutate({ id: gym.id, handle: next }, {
+      onSuccess: () => {
+        // Show what was actually stored: the parser strips an '@' or a pasted URL,
+        // and the field renders its own '@' prefix. Clearing the flag lets later
+        // server state reach the field again.
+        setInstagram(next ?? '')
+        setInstagramTouched(false)
+        toast.success(next ? 'Instagram saved' : 'Instagram removed')
+      },
+      onError: (e: unknown) => {
+        toast.error(errorMessage(e, 'Could not save that handle'))
+        // The save didn't stick — fall back to the stored value so the field
+        // stops disagreeing with the server, and let a fresh edit resync.
+        setInstagram(savedHandle ?? '')
+        setInstagramTouched(false)
+      },
+    })
+  }
 
   const run = async () => {
     try {
@@ -112,14 +157,39 @@ function RenameSheet({ gym, onClose }: { gym: GymOption; onClose: () => void }) 
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor="rename-gym-name" className="block text-sm font-medium text-gray-700 mb-1">Gym</label>
-        <input id="rename-gym-name" value={name} onChange={e => setName(e.target.value)} className={INPUT} />
+        <label htmlFor="edit-gym-name" className="block text-sm font-medium text-gray-700 mb-1">Gym</label>
+        <input id="edit-gym-name" value={name} onChange={e => setName(e.target.value)} className={INPUT} />
       </div>
       <div>
-        <label htmlFor="rename-gym-city" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="edit-gym-city" className="block text-sm font-medium text-gray-700 mb-1">
           City or area <span className="text-gray-400">(optional)</span>
         </label>
-        <input id="rename-gym-city" value={city} onChange={e => setCity(e.target.value)} className={INPUT} />
+        <input id="edit-gym-city" value={city} onChange={e => setCity(e.target.value)} className={INPUT} />
+      </div>
+      <div>
+        <label htmlFor="edit-gym-instagram" className="block text-sm font-medium text-gray-700 mb-1">
+          Instagram <span className="text-gray-400">(optional)</span>
+        </label>
+        <div className="flex items-center gap-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 focus-within:ring-2 focus-within:ring-sage-500">
+          <span className="text-sm text-gray-400">@</span>
+          <input
+            id="edit-gym-instagram"
+            value={instagram}
+            onChange={e => { setInstagram(e.target.value); setInstagramTouched(true) }}
+            onBlur={saveInstagram}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+            placeholder="gym.handle"
+            maxLength={100}
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
+            className="flex-1 min-w-0 text-sm bg-transparent outline-none"
+          />
+        </div>
+        <p className="mt-1 text-xs text-gray-400">
+          Shown next to the gym on its boulders. Saves on its own — the button below only renames.
+        </p>
       </div>
       <p className="text-xs text-gray-400">
         Will be listed as <span className="font-medium text-gray-600">{gymLabel(name, city) || '…'}</span>,
@@ -183,8 +253,8 @@ export function GymsAdmin() {
             <button
               type="button"
               onClick={() => setRenaming(gym)}
-              title="Rename"
-              aria-label={`Rename ${gym.label}`}
+              title="Edit"
+              aria-label={`Edit ${gym.label}`}
               className="text-gray-400 hover:text-gray-700"
             >
               <Pencil size={16} strokeWidth={1.75} />
@@ -203,8 +273,8 @@ export function GymsAdmin() {
       </ul>
 
       {/* Sheets are siblings of the heading, never children of it. */}
-      <BottomSheet open={renaming !== null} onClose={() => setRenaming(null)} title="Rename gym">
-        {renaming && <RenameSheet gym={renaming} onClose={() => setRenaming(null)} />}
+      <BottomSheet open={renaming !== null} onClose={() => setRenaming(null)} title="Edit gym">
+        {renaming && <EditGymSheet gym={renaming} onClose={() => setRenaming(null)} />}
       </BottomSheet>
       <BottomSheet open={merging !== null} onClose={() => setMerging(null)} title="Merge gym">
         {merging && <MergeSheet from={merging} gyms={gyms} onClose={() => setMerging(null)} />}
