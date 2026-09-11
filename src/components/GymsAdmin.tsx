@@ -102,12 +102,17 @@ function EditGymSheet({ gym, onClose }: { gym: GymOption; onClose: () => void })
   const { data: handles } = useGymInstagramHandles()
   const savedHandle = handles?.get(gym.label) ?? null
   const [instagram, setInstagram] = useState(savedHandle ?? '')
+  const [instagramTouched, setInstagramTouched] = useState(false)
   const setGymInstagram = useSetGymInstagram()
 
-  // The handle map may still be loading when this sheet mounts, so the field
-  // has to pick the value up when it lands.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setInstagram(savedHandle ?? '') }, [savedHandle])
+  // The handle map is cold the first time this sheet opens, so the field has
+  // to pick the value up when it lands — but not on top of what the admin is
+  // typing.
+  useEffect(() => {
+    if (instagramTouched) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInstagram(savedHandle ?? '')
+  }, [savedHandle, instagramTouched])
 
   const saveInstagram = () => {
     const parsed = parseInstagramHandle(instagram)
@@ -120,7 +125,13 @@ function EditGymSheet({ gym, onClose }: { gym: GymOption; onClose: () => void })
     if (next === savedHandle) return
     setGymInstagram.mutate({ id: gym.id, handle: next }, {
       onSuccess: () => toast.success(next ? 'Instagram saved' : 'Instagram removed'),
-      onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save that handle')),
+      onError: (e: unknown) => {
+        toast.error(errorMessage(e, 'Could not save that handle'))
+        // The save didn't stick — fall back to the stored value so the field
+        // stops disagreeing with the server, and let a fresh edit resync.
+        setInstagram(savedHandle ?? '')
+        setInstagramTouched(false)
+      },
     })
   }
 
@@ -157,7 +168,7 @@ function EditGymSheet({ gym, onClose }: { gym: GymOption; onClose: () => void })
           <input
             id="edit-gym-instagram"
             value={instagram}
-            onChange={e => setInstagram(e.target.value)}
+            onChange={e => { setInstagram(e.target.value); setInstagramTouched(true) }}
             onBlur={saveInstagram}
             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
             placeholder="gym.handle"
