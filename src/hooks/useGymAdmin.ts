@@ -56,6 +56,14 @@ export function useSetGymVerified() {
   })
 }
 
+/** Admin-only: set or clear a gym's Instagram handle (via RPC). `null` clears it. */
+export function useSetGymInstagram() {
+  return useGymMutation(async ({ id, handle }: { id: string; handle: string | null }) => {
+    const { error } = await supabase.rpc('set_gym_instagram', { p_id: id, p_handle: handle })
+    if (error) throw error
+  })
+}
+
 export function useRenameGym() {
   return useGymMutation(async ({ id, name, city }: { id: string; name: string; city: string | null }) => {
     const { error } = await supabase.rpc('rename_gym', { p_id: id, p_name: name, p_city: city })
