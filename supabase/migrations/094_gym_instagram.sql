@@ -65,19 +65,29 @@ grant  execute on function public.set_gym_instagram(uuid, text) to authenticated
 -- 092 sets this precedent.
 do $$
 declare
-  v_gym uuid;
+  v_gym   uuid;
+  v_admin uuid;
 begin
   insert into public.gyms (name, city, label, canonical_key)
   values ('Smoke Test Instagram Wall', null, 'Smoke Test Instagram Wall',
           public.fold_gym_text('Smoke Test Instagram Wall'))
   returning id into v_gym;
 
-  -- The function body, and the admin guard inside it. Which branch runs depends
-  -- on whether an admin profile sits behind auth.uid() in this session; either
-  -- way the body has now been parsed and executed, which is the point. Both
-  -- branches must end in a notice, never a raise: a migration that aborts for
-  -- whoever happens to be applying it is broken, not thorough.
-  begin
+  -- Applied by hand there is no JWT, so auth.uid() is null and assert_gym_admin
+  -- would raise on the very first line of set_gym_instagram's body — the update
+  -- that does the real work, and the assertions that prove it, would never run.
+  -- Borrow a real profiles.id the way 092 does, so the body is actually
+  -- exercised here rather than only at its guard.
+  select p.id into v_admin from public.profiles p where p.is_admin = true order by p.id limit 1;
+
+  if v_admin is null then
+    raise notice 'smoke: no profile has is_admin, so set_gym_instagram is NOT exercised here — its body is parsed for the first time on its first real call. Watch the first save in the admin UI.';
+  else
+    -- Impersonate so the guard passes and the real body runs. Every write
+    -- below stays confined to the smoke gym inserted above, which this block
+    -- rolls back along with everything else.
+    perform set_config('request.jwt.claims', json_build_object('sub', v_admin)::text, true);
+
     perform public.set_gym_instagram(v_gym, '  moresends  ');
     assert (select instagram_handle from public.gyms where id = v_gym) = 'moresends',
       'set_gym_instagram did not store the trimmed handle';
@@ -85,12 +95,10 @@ begin
     assert (select instagram_handle from public.gyms where id = v_gym) is null,
       'set_gym_instagram did not clear on empty input';
     raise notice 'set_gym_instagram ran end to end (admin profile in scope): stored, trimmed, and cleared';
-  exception when others then
-    if sqlerrm not like 'Only admins can manage gyms%' then
-      raise;
-    end if;
-    raise notice 'assert_gym_admin raised as expected (no admin profile in scope): %', sqlerrm;
-  end;
+
+    -- Drop the borrowed identity before anything else runs.
+    perform set_config('request.jwt.claims', json_build_object('sub', null)::text, true);
+  end if;
 
   -- The column and its constraint, exercised directly rather than through the
   -- admin-gated function, so this runs regardless of who is applying the file.
@@ -110,5 +118,9 @@ exception when others then
   if sqlerrm <> 'smoke complete, rolling back' then
     raise;
   end if;
-  raise notice 'set_gym_instagram smoke: function body, admin guard, column and constraint all exercised, all rolled back. READ THE NOTICES ABOVE.';
+  if v_admin is null then
+    raise notice 'set_gym_instagram smoke: column and constraint exercised directly; set_gym_instagram body and its admin guard NOT exercised (no admin profile in scope), all rolled back. READ THE NOTICES ABOVE.';
+  else
+    raise notice 'set_gym_instagram smoke: function body, admin guard, column and constraint all exercised, all rolled back. READ THE NOTICES ABOVE.';
+  end if;
 end $$;
