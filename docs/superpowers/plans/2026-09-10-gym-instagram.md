@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Migration release gate.** Migration `094` is applied **by hand in the Supabase dashboard**, never by tooling from this repo, and must be applied before the client that reads the column is deployed. **The gate is soft by design:** the handle is read by its own dedicated query, so before 094 lands that one query fails, the glyph is absent, and nothing else on the boulder page changes. (Contrast 093, where the column rode inside a select whose error is swallowed and every beta author silently became "Someone".)
+- **Migration release gate.** Migration `094` is applied **by hand in the Supabase dashboard**, never by tooling from this repo, and must be applied before the client that reads the column is deployed. **The gate is soft by design:** the handle is read by its own dedicated query, so before 094 lands that one query fails, the glyph is absent, and nothing else on the boulder page changes. (Contrast 093, where the column rode inside a select whose error is swallowed and every beta author silently became "Someone".) The Gyms admin sheet also renders the handle field regardless of whether 094 has landed: an admin who saves a handle before it is applied gets a PostgREST 404 ("Could not find the function public.set_gym_instagram…") surfaced as an error toast. Loud, admin-only, and no wrong write — but the owner should expect it, not be surprised by it.
 - **Handle rule** — the check constraint and the client regex in `src/utils/instagram.ts` must stay character-identical: `^[A-Za-z0-9._]{1,30}$`.
 - **`gyms` has a SELECT policy and NO insert/update/delete policy at all.** Every write goes through a `SECURITY DEFINER` function guarded by `assert_gym_admin()`. **Do not add an RLS write policy to `gyms`** — the RPC is the mechanism.
 - **A plpgsql body is not validated at `CREATE`.** A migration can apply perfectly clean and the function still raise on its first call, so migration 094 ends with a `do` block that calls it and rolls back. Migration 092 sets this precedent.
@@ -67,7 +67,11 @@ Create `supabase/migrations/094_gym_instagram.sql`:
 -- (useGymInstagramHandles), not by the boulder query, so until this lands that
 -- one query fails, the glyph is absent, and nothing else on the boulder page
 -- changes. Contrast 093, which rode inside a select whose error is swallowed
--- and so silently turned every beta author into "Someone".
+-- and so silently turned every beta author into "Someone". The Gyms admin
+-- sheet also renders the handle field regardless: an admin who saves before
+-- this lands gets a PostgREST 404 ("Could not find the function
+-- public.set_gym_instagram…") as an error toast. Loud, admin-only, no wrong
+-- write — but expected, not a bug.
 
 alter table gyms add column if not exists instagram_handle text;
 
@@ -117,22 +121,33 @@ grant  execute on function public.set_gym_instagram(uuid, text) to authenticated
 -- clean and set_gym_instagram still raise on its first call. So call it once
 -- and roll back. A block with an EXCEPTION clause is a savepoint, so catching
 -- the final raise below undoes everything this block did, smoke gym included.
--- 092 sets this precedent.
+-- Stricter than 092's smoke block, which cleans up its rows explicitly instead:
+-- unwinding the savepoint cannot leave debris behind even on a mid-paste failure.
 do $$
 declare
-  v_gym uuid;
+  v_gym   uuid;
+  v_admin uuid;
 begin
   insert into public.gyms (name, city, label, canonical_key)
   values ('Smoke Test Instagram Wall', null, 'Smoke Test Instagram Wall',
           public.fold_gym_text('Smoke Test Instagram Wall'))
   returning id into v_gym;
 
-  -- The function body, and the admin guard inside it. Which branch runs depends
-  -- on whether an admin profile sits behind auth.uid() in this session; either
-  -- way the body has now been parsed and executed, which is the point. Both
-  -- branches must end in a notice, never a raise: a migration that aborts for
-  -- whoever happens to be applying it is broken, not thorough.
-  begin
+  -- Applied by hand there is no JWT, so auth.uid() is null and assert_gym_admin
+  -- would raise on the very first line of set_gym_instagram's body — the update
+  -- that does the real work, and the assertions that prove it, would never run.
+  -- Borrow a real profiles.id the way 092 does, so the body is actually
+  -- exercised here rather than only at its guard.
+  select p.id into v_admin from public.profiles p where p.is_admin = true order by p.id limit 1;
+
+  if v_admin is null then
+    raise notice 'smoke: no profile has is_admin, so set_gym_instagram is NOT exercised here — its body is parsed for the first time on its first real call. Watch the first save in the admin UI.';
+  else
+    -- Impersonate so the guard passes and the real body runs. Every write
+    -- below stays confined to the smoke gym inserted above, which this block
+    -- rolls back along with everything else.
+    perform set_config('request.jwt.claims', json_build_object('sub', v_admin)::text, true);
+
     perform public.set_gym_instagram(v_gym, '  moresends  ');
     assert (select instagram_handle from public.gyms where id = v_gym) = 'moresends',
       'set_gym_instagram did not store the trimmed handle';
@@ -140,12 +155,10 @@ begin
     assert (select instagram_handle from public.gyms where id = v_gym) is null,
       'set_gym_instagram did not clear on empty input';
     raise notice 'set_gym_instagram ran end to end (admin profile in scope): stored, trimmed, and cleared';
-  exception when others then
-    if sqlerrm not like 'Only admins can manage gyms%' then
-      raise;
-    end if;
-    raise notice 'assert_gym_admin raised as expected (no admin profile in scope): %', sqlerrm;
-  end;
+
+    -- Drop the borrowed identity before anything else runs.
+    perform set_config('request.jwt.claims', json_build_object('sub', null)::text, true);
+  end if;
 
   -- The column and its constraint, exercised directly rather than through the
   -- admin-gated function, so this runs regardless of who is applying the file.
@@ -165,11 +178,15 @@ exception when others then
   if sqlerrm <> 'smoke complete, rolling back' then
     raise;
   end if;
-  raise notice 'set_gym_instagram smoke: function body, admin guard, column and constraint all exercised, all rolled back. READ THE NOTICES ABOVE.';
+  if v_admin is null then
+    raise notice 'set_gym_instagram smoke: column and constraint exercised directly; set_gym_instagram body and its admin guard NOT exercised (no admin profile in scope), all rolled back. READ THE NOTICES ABOVE.';
+  else
+    raise notice 'set_gym_instagram smoke: function body, admin guard, column and constraint all exercised, all rolled back. READ THE NOTICES ABOVE.';
+  end if;
 end $$;
 ```
 
-Two things to hold onto while writing this. The handle passed to the RPC in the smoke block must be a **valid** one (`moresends`, deliberately padded with spaces so `btrim` is exercised): an invalid one would raise `check_violation`, the handler would not match the admin-guard message, and the whole paste would abort for any admin applying the file. And the malformed-handle case is tested by the **direct** `update` further down instead, which runs whoever applies the file — that is what proves the constraint bites.
+The smoke block borrows a real admin 'profiles.id' and impersonates it via `request.jwt.claims` so `assert_gym_admin()` passes and `set_gym_instagram`'s real body — the update and the assertions that prove it — actually runs, the way 092's smoke block impersonates an admin. If no profile has `is_admin` set in whatever database this is applied to, the block skips exercising the function body and says so with a notice instead of treating a guard-raise as proof of anything. Either way the column and its check constraint are still exercised directly, via a plain `update`, so that part of the smoke test runs regardless of who applies the file.
 
 - [ ] **Step 2: Check the file against the two functions it depends on**
 
@@ -357,7 +374,7 @@ export function useSetGymInstagram() {
 
 - [ ] **Step 2: Rename the sheet, since it no longer only renames**
 
-In `src/components/GymsAdmin.tsx`, three renames. The component:
+In `src/components/GymsAdmin.tsx`, four renames. The component:
 
 ```tsx
 function EditGymSheet({ gym, onClose }: { gym: GymOption; onClose: () => void }) {
@@ -371,7 +388,7 @@ its use site near the foot of the file:
       </BottomSheet>
 ```
 
-and the row button that opens it:
+the row button that opens it:
 
 ```tsx
             <button
@@ -383,6 +400,20 @@ and the row button that opens it:
             >
               <Pencil size={16} strokeWidth={1.75} />
             </button>
+```
+
+and the name/city fields' stale `id`/`htmlFor`, still `rename-gym-name`/`rename-gym-city` from when the sheet only renamed:
+
+```tsx
+        <label htmlFor="edit-gym-name" className="block text-sm font-medium text-gray-700 mb-1">Gym</label>
+        <input id="edit-gym-name" value={name} onChange={e => setName(e.target.value)} className={INPUT} />
+```
+
+```tsx
+        <label htmlFor="edit-gym-city" className="block text-sm font-medium text-gray-700 mb-1">
+          City or area <span className="text-gray-400">(optional)</span>
+        </label>
+        <input id="edit-gym-city" value={city} onChange={e => setCity(e.target.value)} className={INPUT} />
 ```
 
 Leave the `renaming` state variable's name alone — it is local, and churning it buys nothing.
@@ -407,12 +438,17 @@ Inside `EditGymSheet`, after the existing `rename` line, add:
   const { data: handles } = useGymInstagramHandles()
   const savedHandle = handles?.get(gym.label) ?? null
   const [instagram, setInstagram] = useState(savedHandle ?? '')
+  const [instagramTouched, setInstagramTouched] = useState(false)
   const setGymInstagram = useSetGymInstagram()
 
-  // The handle map may still be loading when this sheet mounts, so the field
-  // has to pick the value up when it lands.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setInstagram(savedHandle ?? '') }, [savedHandle])
+  // The handle map is cold the first time this sheet opens, so the field has
+  // to pick the value up when it lands — but not on top of what the admin is
+  // typing.
+  useEffect(() => {
+    if (instagramTouched) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInstagram(savedHandle ?? '')
+  }, [savedHandle, instagramTouched])
 
   const saveInstagram = () => {
     const parsed = parseInstagramHandle(instagram)
@@ -424,11 +460,26 @@ Inside `EditGymSheet`, after the existing `rename` line, add:
     // Blur fires on every exit from the field; only write when it changed.
     if (next === savedHandle) return
     setGymInstagram.mutate({ id: gym.id, handle: next }, {
-      onSuccess: () => toast.success(next ? 'Instagram saved' : 'Instagram removed'),
-      onError: (e: unknown) => toast.error(errorMessage(e, 'Could not save that handle')),
+      onSuccess: () => {
+        // Show what was actually stored: the parser strips an '@' or a pasted URL,
+        // and the field renders its own '@' prefix. Clearing the flag lets later
+        // server state reach the field again.
+        setInstagram(next ?? '')
+        setInstagramTouched(false)
+        toast.success(next ? 'Instagram saved' : 'Instagram removed')
+      },
+      onError: (e: unknown) => {
+        toast.error(errorMessage(e, 'Could not save that handle'))
+        // The save didn't stick — fall back to the stored value so the field
+        // stops disagreeing with the server, and let a fresh edit resync.
+        setInstagram(savedHandle ?? '')
+        setInstagramTouched(false)
+      },
     })
   }
 ```
+
+The `instagramTouched` flag is what keeps the sync effect from clobbering a keystroke: the handle map can resolve (or another admin's edit can invalidate it) while this admin is mid-type, and without the flag that landing would overwrite the field. It is set on every keystroke and cleared once a save actually lands (`onSuccess`) or fails (`onError`), which is also why `onSuccess` writes the field to `next` rather than leaving it alone — the field renders its own `@` prefix and shows raw text, so it has to be told what the parser actually stored, not what was typed.
 
 Then add this block in the JSX directly after the city field's `</div>` and before the `<p>` that previews the label:
 
@@ -442,11 +493,11 @@ Then add this block in the JSX directly after the city field's `</div>` and befo
           <input
             id="edit-gym-instagram"
             value={instagram}
-            onChange={e => setInstagram(e.target.value)}
+            onChange={e => { setInstagram(e.target.value); setInstagramTouched(true) }}
             onBlur={saveInstagram}
             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
             placeholder="gym.handle"
-            maxLength={30}
+            maxLength={100}
             autoCapitalize="none"
             autoCorrect="off"
             autoComplete="off"
@@ -487,7 +538,7 @@ git commit -m "Let an admin say where a gym films its sets"
 
 ## Release checklist
 
-- [ ] Migration `094_gym_instagram.sql` applied in the Supabase dashboard as **one whole-file paste**, and its notices read. Expect one of `set_gym_instagram ran end to end` / `assert_gym_admin raised as expected`, then the constraint notice, then the rollback notice. Any other outcome — especially an abort — means the file did not do what it claims; do not treat a failed paste as "the guard working".
+- [ ] Migration `094_gym_instagram.sql` applied in the Supabase dashboard as **one whole-file paste**, and its notices read. Expect, in order: either `smoke: no profile has is_admin, so set_gym_instagram is NOT exercised here…` (no admin profile in whatever database this is applied to) or `set_gym_instagram ran end to end (admin profile in scope): stored, trimmed, and cleared` (one exists); then `gyms_instagram_handle_format rejected a malformed handle, as expected`; then a matching rollback summary ending `READ THE NOTICES ABOVE.` — either `…set_gym_instagram body and its admin guard NOT exercised (no admin profile in scope)…` or `…function body, admin guard, column and constraint all exercised…`. Any other outcome — especially an abort with no notices — means the file did not do what it claims; do not treat a failed paste as "the guard working".
 - [ ] Confirm the column and constraint landed:
   ```sql
   select column_name from information_schema.columns

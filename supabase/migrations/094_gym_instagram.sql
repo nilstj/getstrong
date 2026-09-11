@@ -12,7 +12,11 @@
 -- (useGymInstagramHandles), not by the boulder query, so until this lands that
 -- one query fails, the glyph is absent, and nothing else on the boulder page
 -- changes. Contrast 093, which rode inside a select whose error is swallowed
--- and so silently turned every beta author into "Someone".
+-- and so silently turned every beta author into "Someone". The Gyms admin
+-- sheet also renders the handle field regardless: an admin who saves before
+-- this lands gets a PostgREST 404 ("Could not find the function
+-- public.set_gym_instagram…") as an error toast. Loud, admin-only, no wrong
+-- write — but expected, not a bug.
 
 alter table gyms add column if not exists instagram_handle text;
 
